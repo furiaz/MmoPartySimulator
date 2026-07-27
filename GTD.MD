@@ -195,9 +195,9 @@ The player is not represented as a world entity.
 
 The player is the manager/controller issuing intent and commands to party members.
 
-NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, and dungeon chest presentation.
+NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, dungeon chest presentation, and non-interactive service placeholders.
 
-Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, placeholder hub NPC display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
+Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, placeholder hub NPC display, Bounty Board placeholder display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
 
 Current NPC role values include:
 
@@ -205,6 +205,7 @@ Current NPC role values include:
 type NpcRole =
   | "quest_giver"
   | "class_mentor"
+  | "bounty_board"
   | "merchant"
   | "smith"
   | "dog"
@@ -428,7 +429,7 @@ Current role priority:
 
 `GameState` is the central simulation container.
 
-Current responsibilities include storing entities, shared party prototype inventory, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, hub food warning state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, debug options, and debug telemetry.
+Current responsibilities include storing entities, shared party prototype inventory, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, autonomous target suppression state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, hub food warning state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, last companion damage timing, debug options, and debug telemetry.
 
 Current movement planning fields include:
 
@@ -465,6 +466,12 @@ Current direct companion command fields include:
 - `directCommandGraceUntilByCompanionId`
 
 Direct companion command state tracks active attack, gather, and move orders plus short rejoin grace after normal command completion or cancellation.
+
+Current autonomous target suppression fields include:
+
+- `autonomousTargetSuppressionsByEnemyId`
+
+Autonomous target suppression state can temporarily remove a specific enemy from normal autonomous companion and skill target selection without canceling valid direct companion commands.
 
 Current POI preferences include:
 
@@ -553,6 +560,7 @@ Current health runtime fields include:
 
 - `lastHealthRegenAtByCompanionId`
 - `lastTargetDummyRegenAtByEnemyId`
+- `lastCompanionDamageTakenAtByCompanionId`
 
 Current debug option fields include:
 
@@ -595,7 +603,7 @@ Current save game behavior:
 - saved data includes `saveVersion`, `savedAtMs`, optional `offlineFarmingBlockedReason`, and sanitized `GameState`
 - validation rejects malformed saves, unsupported save versions, missing entities, invalid inventory, invalid wallet, invalid quest state, invalid leader id, and invalid current map id
 - restore rebuilds the current debug map from saved quest state
-- save sanitization resets transient runtime state such as active teleports, party intent, direct commands, interrupted POI state, movement caches, attack slots, combat feedback, combat projectiles, skill runtime, status-effect runtime, companion AoE runtime, enemy AoE runtime, consumable use runtime, drop visuals, resurrection runtime, world-wipe recovery, health timing, target dummy timing, and debug telemetry
+- save sanitization resets transient runtime state such as active teleports, party intent, direct commands, interrupted POI state, movement caches, attack slots, combat feedback, combat projectiles, autonomous target suppressions, skill runtime, status-effect runtime, companion AoE runtime, enemy AoE runtime, consumable use runtime, drop visuals, resurrection runtime, world-wipe recovery, health timing, target dummy timing, companion damage timing, and debug telemetry
 - companion save sanitization keeps dead companions dead, returns living companions to idle or follow state, clears temporary consumable buffs, and sanitizes skill progression data
 - enemy save sanitization keeps dead enemies dead and returns living enemies to idle state
 - Slimeward dungeon chest UI state is closed during save sanitization
@@ -1069,7 +1077,7 @@ Current Penitent prototype skills:
 - Penitent: Woodcutting Penance
 - Penitent: Atonement Step
 
-Current skill effects may include direct damage, lunge damage, sweeping/splash damage, area damage, taunt, multi-taunt, enemy mark bonus damage, self damage buff, ally damage buff, party damage buff, party class buffs, party poison coating, gathering speed buff, quick-step movement, shield block, absorb shields, mana shields, frost armor, damage mitigation, self mitigation, party mitigation, bind, immobilize, disarm, blind/forced evasion, fake death, curse, poison, burning, bleed, heal, self-percent heal, ally heal, heal-over-time effects, lifesteal, rewind runes, runic focus, overcharge, companion AoE channels, beginner fallback damage, beginner emergency recovery, beginner defensive survival, beginner support, and beginner mobility.
+Current skill effects may include direct damage, lunge damage, sweeping/splash damage, area damage, taunt, multi-taunt, enemy mark bonus damage, self damage buff, ally damage buff, party damage buff, party class buffs, party poison coating, gathering speed buff, quick-step movement, shield block, absorb shields, mana shields, frost armor, damage mitigation, self mitigation, party mitigation, bind, immobilize, disarm, blind/forced evasion, fake death, silence, poison, burning, bleed, heal, self-percent heal, ally heal, heal-over-time effects, lifesteal, rewind runes, runic focus, overcharge, companion AoE channels, beginner fallback damage, beginner emergency recovery, beginner defensive survival, beginner support, and beginner mobility.
 
 `skillEffectResolution.ts` owns applying current prototype skill effects after selection, including damage, lunge damage, sweeping damage, area damage, taunt, multi-taunt, mark, self buff, party buff, ally buff, party class buff, poison coating, gather buff, quick step, shield block, absorb shields, mana shields, frost armor, damage mitigation, self mitigation, party mitigation, bind, status effects, heal, self-percent heal, self-cost heal, heal-over-time effects, lifesteal, rewind runes, runic focus, overcharge setup, companion AoE channel setup, visual events, combat feedback, cooldown consumption decisions, XP grants, quest defeat progress, and enemy drop handling where relevant.
 
@@ -1935,10 +1943,11 @@ Combat movement order uses role priority for party members.
 
 Current status-effect types include:
 
+- `taunted`
 - `immobilized`
 - `incapacitated`
 - `disarmed`
-- `cursed`
+- `silenced`
 - `fakeDeath`
 - `forcedEvasion`
 - `nextAttackDamageBonus`
@@ -1951,7 +1960,7 @@ Current status-effect behavior:
 
 - movement is blocked by `immobilized` and `incapacitated`
 - basic attacks are blocked by `incapacitated` and `disarmed`
-- skill use is blocked by `incapacitated` and `cursed`
+- skill use is blocked by `incapacitated` and `silenced`
 - gathering is blocked by `incapacitated`
 - fake death can make enemies ignore or drop the affected companion where supported
 - forced evasion is consumed by the next eligible incoming attack
@@ -2400,7 +2409,7 @@ Current merchant behavior:
 - supports buying selected equipment, consumables, and skill books for Crowns
 - validates merchant identity, stock membership, item category, price, wallet balance, inventory capacity, and quest gating
 - adds purchased items to shared inventory
-- supports stock filtering by main group, secondary filter, and party equipment compatibility where implemented
+- supports stock filtering by main group, secondary filter, minimum level requirement, maximum level requirement, and party equipment compatibility where implemented
 - always allows consumable and skill-book stock entries through stock compatibility filtering
 - treats party-compatible filtering as an equipment compatibility filter, not a consumable or skill-book visibility rule
 - records merchant buy, quick exchange, inventory, wallet, and quest-gating telemetry
@@ -2426,6 +2435,8 @@ type MerchantBuyFilter = "all" | MerchantStockGroup;
 type MerchantStockFilterOptions = {
   mainFilter?: MerchantBuyFilter;
   secondaryFilter?: string | null;
+  minLevelRequirement?: number | null;
+  maxLevelRequirement?: number | null;
   partyCompatibleOnly?: boolean;
 };
 ```
@@ -2579,14 +2590,26 @@ Current prototype armor item groups include:
 - Scholar cloth armor
 - Scout leather armor
 - Stalker leather armor
+- Trailrunner leather armor
+- Ravager leather armor
 - Guard mail armor
 - Vanguard mail armor
+- Wardmail armor
+- Ironmarch armor
 - Bulwark plate armor
 - Warplate armor
+- Tier 2 level 15 and level 20 cloth armor variants
+- Tier 2 level 15 and level 20 leather armor variants
+- Tier 2 level 15 and level 20 mail armor variants
+- Tier 2 level 15 and level 20 plate armor variants
 
 Current shared prototype accessory items include:
 
 - Plain Charm
+
+Current scaled prototype equipment definitions include level 15 and level 20 weapons and offhands for current first classes where the matching weapon or offhand type exists.
+
+Current level 10 armor coverage includes cloth, leather, mail, and plate prototype armor options.
 
 Current quest equipment rewards may include:
 
@@ -2664,6 +2687,7 @@ Current debug map ids:
 ```ts
 type DebugMapId =
   | "hub"
+  | "hub-2"
   | "map-1"
   | "map-2"
   | "map-3"
@@ -2676,6 +2700,7 @@ type DebugMapId =
 Current readable map names:
 
 - `hub`: Harbor Union Bastion
+- `hub-2`: Forward Bastion
 - `map-1`: First Wild Zone
 - `map-2`: Second Wild Zone
 - `map-3`: Third Wild Zone
@@ -2691,6 +2716,7 @@ Map data is still development/prototype data and should not define final world c
 Current prototype map dimensions:
 
 - `hub`: 110 columns by 60 rows
+- `hub-2`: 132 columns by 72 rows
 - `map-1`: 160 columns by 57 rows
 - `map-2`: 160 columns by 57 rows
 - `map-3`: 160 columns by 30 rows
@@ -2738,8 +2764,12 @@ Current prototype/debug routes:
 - `map-2` -> `map-1`
 - `map-2` -> `map-3`
 - `map-3` -> `map-2`
-- `map-3` -> `map-4`
-- `map-4` -> `map-3`
+- `map-3` -> `hub-2`
+- `hub-2` -> `map-3`
+- `hub-2` -> `map-4`
+- `map-4` -> `hub-2`
+- `hub-2` -> `hub-2` north route placeholder
+- `hub-2` -> `hub-2` east route placeholder
 - `hub` -> `slimeward-camp`
 - `map-3` -> `slimeward-camp`
 - `slimeward-camp` -> `map-3`
@@ -2764,12 +2794,12 @@ Current teleport behavior:
 - party members rally to the teleport point
 - teleport completes when living party members are within teleport range
 - on completion, current map changes to the teleport target map
-- map-local enemies, resources, hub placeholders, hub target dummies, explored tiles, movement planning, direct commands, formation state, combat feedback, combat projectiles, skill runtime, status-effect runtime, skill visuals, companion AoE runtime, enemy AoE runtime, consumable-use runtime, drop visuals, resurrection state, health timing, target dummy timing, and follow trails are reset, cleared, pruned, or rebuilt for the new map
+- map-local enemies, resources, hub placeholders, hub target dummies, explored tiles, movement planning, direct commands, formation state, combat feedback, combat projectiles, autonomous target suppressions, skill runtime, status-effect runtime, skill visuals, companion AoE runtime, enemy AoE runtime, consumable-use runtime, drop visuals, resurrection state, health timing, target dummy timing, companion damage timing, and follow trails are reset, cleared, pruned, or rebuilt for the new map
 - companion progression, class, role, level, XP, health, party identity, equipment, consumables, wallet, inventory, quests, party order, and teleport working state are preserved
 
 `mapRuntimeCleanup.ts` owns clearing map-local runtime state during map transitions and pruning runtime records for entities that no longer exist.
 
-Map transition cleanup clears or resets active teleport, direct commands, direct-command grace, interrupted POI state, explored tiles, follow trails, combat feedback, combat projectiles, movement planning, attack slot cache, defender wait/blocking state, skill visuals, companion AoE runtime, enemy AoE runtime, consumable-use runtime, flask counted defeat records, health regeneration timing, target dummy regeneration timing, drop visuals, resurrection state, party formation state, and map-local skill/status runtime.
+Map transition cleanup clears or resets active teleport, direct commands, direct-command grace, interrupted POI state, explored tiles, follow trails, combat feedback, combat projectiles, autonomous target suppressions, movement planning, attack slot cache, defender wait/blocking state, skill visuals, companion AoE runtime, enemy AoE runtime, consumable-use runtime, flask counted defeat records, health regeneration timing, target dummy regeneration timing, companion damage timing, drop visuals, resurrection state, party formation state, and map-local skill/status runtime.
 
 Map transition cleanup clears map-local skill/status runtime such as marks, binds, shield blocks, status effects, party poison coatings, party class buffs, overcharges, mana shields, frost armor, heal-over-time effects, lifesteal buffs, rewind runes, runic focus, absorb shields, self mitigation buffs, party mitigation buffs, gather buffs, damage mitigations, and other transient skill records that should not survive a prototype map change.
 
@@ -2803,7 +2833,7 @@ Current World Travel routing:
 
 - returns no route when the current map is missing or already matches the destination
 - prefers a direct working teleport when one exists
-- routes between main-world maps through the ordered main route from hub through map-4
+- routes between main-world maps through the ordered main route from hub through map-4, including Forward Bastion between map 3 and map 4
 - uses breadth-first route search for other working prototype routes, including Slimeward routes
 - ignores non-working teleports
 - restricts main-world-to-main-world travel to main-world route teleports
@@ -2840,6 +2870,10 @@ type DungeonChestRuntimeState = {
 
 type SlimewardDungeonRuntimeState = {
   chest: DungeonChestRuntimeState | null;
+  azureMass?: {
+    triggeredPhaseThresholds: AzureMassPhaseThreshold[];
+    fleeUntilMs?: number;
+  };
 };
 ```
 
@@ -2850,6 +2884,13 @@ Current Slimeward dungeon behavior:
 - Floor 1 POI routing targets the next living authored dungeon enemy, then the Floor 2 teleporter.
 - Floor 2 POI routing targets the next living authored dungeon enemy, then the boss chest, then the final exit.
 - The boss chest appears after The Azure Mass is dead.
+- The Azure Mass phase system triggers at 75%, 50%, and 25% health remaining.
+- Azure Mass phase runtime records triggered thresholds and temporary flee timing.
+- Each newly crossed Azure Mass threshold spawns an authored phase wave in the boss room with one Superior slime.
+- Phase wave sizes are currently 3 enemies at 75%, 4 enemies at 50%, and 5 enemies at 25%.
+- When a phase starts, `partyTargetSystem.ts` suppresses The Azure Mass from autonomous target selection for the flee window and `dungeonSystem.ts` clears shared/autonomous party targets pointing at the boss.
+- Direct companion commands are preserved by Azure Mass flee retargeting.
+- During an active flee window, The Azure Mass clears attack/roam runtime and moves away from the nearest living companion inside the boss room at a prototype speed multiplier.
 - Chest loot currently rolls fixed prototype inventory slots for slime gel, slime core, and a minor recovery flask.
 - Chest collection routes loot through shared inventory.
 - If inventory accepts all chest loot, the chest is collected and the Floor 2 exit teleport becomes working.
@@ -2896,11 +2937,12 @@ Current resurrection constants:
 
 Current world-wipe recovery behavior:
 
-- triggers when every companion is dead outside Harbor Union Bastion
+- triggers when every companion is dead outside safe hub maps such as Harbor Union Bastion and Forward Bastion
 - chooses available unlocked rescue hubs by route distance for normal wild-map wipes
 - rescues Slimeward dungeon floor wipes directly to Slimeward Camp
 - may enter a pending choice state when multiple equally valid rescue hubs exist
-- currently defaults to Harbor Union Bastion as the normal unlocked rescue hub
+- currently defaults to Harbor Union Bastion as the first normal unlocked rescue hub
+- may use Forward Bastion as a normal rescue hub for later prototype map progress
 - treats Slimeward Camp as the rescue hub for Slimeward dungeon floors
 - may charge Crowns using the current rescue fee calculation, capped by current wallet balance
 - restores companions to rescue hub arrival positions with full health
@@ -3006,6 +3048,10 @@ Current world renderer behavior:
 - React hosts the renderer and passes game state and command callbacks.
 - The renderer supports preview and full modes.
 - The renderer may draw floor chunks, walls, obstacles, decorative map visual objects, entities, resources, NPCs, teleports, labels, combat feedback, skill visuals, companion AoE visuals, enemy AoE danger circles and channel bars, basic combat projectile visuals, drop visuals, resurrection feedback, world-wipe feedback, status-effect presentation where supported, and camera-follow presentation.
+- The renderer uses redraw gating so stable preview/full renderer frames are skipped unless game state, timed visual work, texture readiness, or sizing changes require a draw.
+- The renderer tracks Pixi texture lifetime with shared, current-map, previous-map, and durable texture scopes, then best-effort evicts old map-only textures.
+- The renderer reuses managed Pixi sprites and text where safe, caches static map-derived render data, and records draw/texture/performance sample metrics for debugging.
+- Texture cache and redraw behavior are renderer-only optimizations and must not define simulation cadence, gameplay timing, or map ownership rules.
 - PixiJS rendering must not own simulation rules, targeting rules, movement rules, combat rules, quest rules, or map data generation.
 
 Current companion visuals:
@@ -3030,7 +3076,7 @@ Current resource visuals use generated image icons by resource type.
 
 Current NPC visuals:
 
-- Quest Giver, Class Mentor, Merchant, Smith, and Dog may use generated image icons
+- Quest Giver, Class Mentor, Merchant, Smith, Bounty Board, and Dog may use generated image icons
 - Test Blade may use Test-NPC image assets
 - quest guide NPCs may use temporary NPC visuals
 - dungeon chest NPCs may use temporary or placeholder presentation
