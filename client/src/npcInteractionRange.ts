@@ -11,7 +11,7 @@ export function getNpcInteractionRange(
     return questGiverInteractionRange;
   }
 
-  if (npc.npcRole === "merchant") {
+  if (npc.npcRole === "merchant" || npc.npcRole === "smith") {
     return merchantInteractionRange;
   }
 

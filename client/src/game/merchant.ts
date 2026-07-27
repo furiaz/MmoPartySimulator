@@ -35,6 +35,7 @@ export type MerchantMenuSelection = "buy" | "sell" | "quick_exchange_parts" | "l
 export type MerchantStockGroup =
   | "flasks"
   | "food"
+  | "supplies"
   | "books"
   | "weapons"
   | "offhands"
@@ -149,6 +150,8 @@ const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "soldiers_recovery_flask", priceCrowns: 45, group: "flasks" },
   { itemId: "hearty_trail_rations", priceCrowns: 15, group: "food" },
   { itemId: "skirmisher_rations", priceCrowns: 15, group: "food" },
+  { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
+  { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
   { itemId: "throw_rock_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "kick_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "guard_up_skill_book", priceCrowns: 25, group: "books" },
@@ -473,6 +476,10 @@ export function isMerchantStockEntryCompatibleWithParty(
     return true;
   }
 
+  if (itemDefinition.category === "material") {
+    return true;
+  }
+
   if (itemDefinition.category !== "equipment") {
     return false;
   }
@@ -538,6 +545,7 @@ export function buyMerchantItem(
     !itemDefinition ||
     (itemDefinition.category !== "equipment" &&
       itemDefinition.category !== "consumable" &&
+      itemDefinition.category !== "material" &&
       itemDefinition.category !== "skill_book")
   ) {
     return createMerchantBuyFailure(

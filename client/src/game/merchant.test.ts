@@ -375,6 +375,40 @@ describe("merchant buy", () => {
     expect(countInventoryItem(nextState.inventory, "first_aid_skill_book")).toBe(1);
   });
 
+  it("buys crafting supplies into shared inventory for Crowns", () => {
+    let state = createMerchantState();
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+
+    const { state: nextState, result } = buyMerchantItem(
+      state,
+      MERCHANT_ID,
+      "crafting_string",
+    );
+
+    expect(result).toMatchObject({
+      status: "success",
+      itemId: "crafting_string",
+      priceCrowns: 2,
+      previousCrowns: 10,
+      newCrowns: 8,
+    });
+    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(8);
+    expect(countInventoryItem(nextState.inventory, "crafting_string")).toBe(1);
+  });
+
+  it("includes crafting supplies in the supplies stock group", () => {
+    const state = createMerchantState();
+
+    const supplies = getFilteredMerchantBuyStock(state, MERCHANT_ID, {
+      mainFilter: "supplies",
+    });
+
+    expect(supplies).toEqual([
+      { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
+      { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
+    ]);
+  });
+
   it("does not mutate state when Crowns are insufficient", () => {
     let state = createMerchantState();
     state = setCurrencyBalanceForDebug(state, "crowns", 5).state;

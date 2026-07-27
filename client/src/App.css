@@ -1048,6 +1048,235 @@
   padding: 12px;
 }
 
+.atlas-panel,
+.crafting-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.atlas-subtabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.atlas-subtabs button {
+  min-width: 92px;
+  padding: 8px 10px;
+  font-weight: 800;
+}
+
+.atlas-subtabs button.active {
+  border-color: #7aa6ad;
+  background: rgba(58, 90, 96, 0.62);
+  color: #ffffff;
+}
+
+.crafting-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3a5a60;
+}
+
+.crafting-header div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crafting-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.crafting-header span {
+  color: #aec6ca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.crafting-header div span {
+  color: #f3df93;
+}
+
+.crafting-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.9fr) minmax(280px, 1.15fr);
+  gap: 10px;
+  min-height: 300px;
+}
+
+.crafting-recipe-list,
+.crafting-requirement-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crafting-recipe-list {
+  max-height: 390px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.crafting-recipe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 50px;
+  padding: 8px;
+  border-color: #2f4c52;
+  text-align: left;
+}
+
+.crafting-recipe-row.selected {
+  border-color: #7aa6ad;
+  background: rgba(58, 90, 96, 0.62);
+  color: #ffffff;
+}
+
+.crafting-recipe-row.craftable b {
+  color: #b8f0c6;
+}
+
+.crafting-recipe-row span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crafting-recipe-row strong,
+.crafting-recipe-row small {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crafting-recipe-row small,
+.crafting-detail-kicker,
+.crafting-empty {
+  color: #aec6ca;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.crafting-detail {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(58, 90, 96, 0.8);
+  background: rgba(12, 22, 26, 0.35);
+}
+
+.crafting-output {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.crafting-output img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
+.crafting-output-placeholder {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(122, 166, 173, 0.72);
+  background: rgba(230, 240, 242, 0.12);
+}
+
+.crafting-output h3 {
+  margin: 2px 0 4px;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+
+.crafting-output p,
+.crafting-result-message {
+  margin: 0;
+  color: #aec6ca;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.crafting-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.crafting-cost-grid div,
+.crafting-requirement-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(58, 90, 96, 0.6);
+  background: rgba(9, 18, 21, 0.24);
+}
+
+.crafting-cost-grid dt,
+.crafting-cost-grid dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.crafting-cost-grid dt {
+  color: #7aa6ad;
+  text-transform: uppercase;
+}
+
+.crafting-requirement-row span,
+.crafting-requirement-row strong {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crafting-requirement-row.met strong {
+  color: #b8f0c6;
+}
+
+.crafting-requirement-row.missing strong {
+  color: #f3b08f;
+}
+
+.crafting-action {
+  min-height: 42px;
+  font-weight: 800;
+}
+
+.crafting-action:disabled {
+  cursor: not-allowed;
+  border-color: rgba(98, 117, 121, 0.45);
+  background: rgba(50, 62, 66, 0.48);
+  color: #73888d;
+}
+
+.crafting-result-message {
+  color: #d7e7df;
+}
+
 .options-panel {
   display: grid;
   align-content: start;
@@ -2782,6 +3011,8 @@ button {
   .game-menu-tabs,
   .options-actions,
   .menu-split-layout,
+  .crafting-layout,
+  .crafting-cost-grid,
   .compact-stat-grid,
   .full-stat-grid,
   .base-stat-grid,

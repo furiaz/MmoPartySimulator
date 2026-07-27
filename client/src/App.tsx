@@ -15,6 +15,7 @@ import {
   type GuidePopupId,
 } from "./guidePopupDefinitions";
 import type {
+  AtlasSubpage,
   GameMenuTab,
   PartyManagementSection,
   PartyMenuSection,
@@ -46,6 +47,7 @@ import {
   clearDebugTelemetry,
   closeSlimewardDungeonChestUi,
   continueSlimewardDungeonChest,
+  craftRecipe,
   debugAddCompanionToParty,
   debugAddEnemiesToCurrentSubzone,
   debugAddPrototypeConsumablesToInventory,
@@ -140,6 +142,8 @@ import {
   type ClassPath,
   type Companion,
   type CompanionAoeChannelState,
+  type CraftingFailureReason,
+  type CraftingRecipeId,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
   type ConsumableBehaviorUpdate,
@@ -286,7 +290,7 @@ type NavigationClickAccessibilityCache = {
 
 type MerchantPanel = "buy" | "sell";
 type QuestGiverPanel = "available" | "current";
-type NpcInteractionKind = "merchant" | "quest_giver";
+type NpcInteractionKind = "merchant" | "quest_giver" | "smith";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -304,6 +308,7 @@ const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
   all: "All",
   flasks: "Flasks",
   food: "Food",
+  supplies: "Supplies",
   books: "Books",
   weapons: "Weapons",
   offhands: "Offhands",
@@ -318,6 +323,7 @@ const merchantBuyFilters: MerchantBuyFilter[] = [
   "all",
   "flasks",
   "food",
+  "supplies",
   "books",
   "weapons",
   "offhands",
@@ -447,6 +453,18 @@ const skillBookFailureMessages: Record<ReadSkillBookFailureReason, string> = {
   skill_unavailable: "Companion has not learned this skill",
   skill_maxed: "Skill is already maxed",
   inventory_remove_failed: "Book could not be consumed",
+};
+
+const craftingFailureMessages: Record<CraftingFailureReason, string> = {
+  invalid_recipe: "Recipe unavailable",
+  invalid_output: "Recipe output unavailable",
+  leader_not_near_smith: "Requires Smithy",
+  missing_materials: "Missing materials",
+  insufficient_crowns: "Not enough Crowns",
+  inventory_full: "Inventory is full",
+  inventory_remove_failed: "Crafting failed",
+  currency_remove_failed: "Crafting failed",
+  inventory_add_failed: "Crafting failed",
 };
 
 type ViewportSize = {
@@ -582,6 +600,10 @@ function isHubVisualMap(mapId: string | undefined): boolean {
 function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
   if (npc.npcRole === "merchant") {
     return "merchant";
+  }
+
+  if (npc.npcRole === "smith") {
+    return "smith";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -2004,6 +2026,10 @@ function getMerchantItemTagText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantSlotText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Shared Inventory";
+  }
+
   if (itemDefinition.category === "skill_book") {
     return "Skill Book";
   }
@@ -2026,6 +2052,10 @@ function getMerchantSlotText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantTypeText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Material";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     return SKILL_DEFINITIONS[itemDefinition.skillBookSkillId].displayName;
   }
@@ -2044,6 +2074,10 @@ function getMerchantTypeText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantRequirementText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "No requirement";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     const skill = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
 
@@ -2064,6 +2098,10 @@ function getMerchantRequirementText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantModifierText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Used by crafting recipes.";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     const skill = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
 
@@ -2366,6 +2404,8 @@ function App() {
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
   const [activeGameMenuTab, setActiveGameMenuTab] =
     useState<GameMenuTab | null>(null);
+  const [activeAtlasSubpage, setActiveAtlasSubpage] =
+    useState<AtlasSubpage>("quests");
   const [activePartyManagementSection, setActivePartyManagementSection] =
     useState<PartyManagementSection>("role");
   const [activePartyMenuSection, setActivePartyMenuSection] =
@@ -2392,6 +2432,8 @@ function App() {
   const [merchantResultMessage, setMerchantResultMessage] =
     useState<string | null>(null);
   const [inventoryResultMessage, setInventoryResultMessage] =
+    useState<string | null>(null);
+  const [craftingResultMessage, setCraftingResultMessage] =
     useState<string | null>(null);
   const [activeQuestGiverNpcId, setActiveQuestGiverNpcId] = useState<
     string | null
@@ -2809,6 +2851,7 @@ function App() {
 
   const openMerchantInteraction = useCallback((npc: NpcEntity) => {
     setPendingNpcInteractionId(null);
+    setCraftingResultMessage(null);
     setActiveQuestGiverNpcId(null);
     setActiveQuestGiverPanel(null);
     setSelectedQuestGiverQuestId(null);
@@ -2831,6 +2874,7 @@ function App() {
 
   const openQuestGiverInteraction = useCallback((npc: NpcEntity) => {
     setPendingNpcInteractionId(null);
+    setCraftingResultMessage(null);
     setActiveMerchantNpcId(null);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(null);
@@ -2840,6 +2884,24 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+  }, []);
+
+  const openSmithInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setCraftingResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("crafts");
+    void npc;
   }, []);
 
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
@@ -2852,8 +2914,13 @@ function App() {
 
     if (interactionKind === "quest_giver") {
       openQuestGiverInteraction(npc);
+      return;
     }
-  }, [openMerchantInteraction, openQuestGiverInteraction]);
+
+    if (interactionKind === "smith") {
+      openSmithInteraction(npc);
+    }
+  }, [openMerchantInteraction, openQuestGiverInteraction, openSmithInteraction]);
 
   const closeNpcInteractions = useCallback(() => {
     const merchantNpcId = activeMerchantNpcId;
@@ -2937,13 +3004,17 @@ function App() {
   function resetUiForLoadedGame() {
     setIsGameMenuOpen(false);
     setActiveGameMenuTab(null);
+    setActiveAtlasSubpage("quests");
     setActiveMerchantNpcId(null);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(null);
+    setCraftingResultMessage(null);
     setActiveQuestGiverNpcId(null);
     setActiveQuestGiverPanel(null);
     setSelectedQuestGiverQuestId(null);
     setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
     setPendingNpcInteractionId(null);
     setEntityHoverTooltip(null);
     setDirectCommandFeedback(null);
@@ -3922,6 +3993,34 @@ function App() {
 
   function selectGameMenuTab(tab: GameMenuTab | null) {
     setActiveGameMenuTab(tab);
+
+    if (tab === "atlas") {
+      setActiveAtlasSubpage("quests");
+    }
+  }
+
+  function selectAtlasSubpage(subpage: AtlasSubpage) {
+    setActiveAtlasSubpage(subpage);
+    setCraftingResultMessage(null);
+  }
+
+  function craftSelectedRecipe(recipeId: CraftingRecipeId) {
+    const crafting = craftRecipe(gameState, recipeId);
+
+    if (crafting.result.status === "success") {
+      queueSaveAfterStateChange("Crafting saved");
+      setCraftingResultMessage(
+        `Crafted ${crafting.result.displayName}${
+          crafting.result.outputQuantity > 1
+            ? ` x${crafting.result.outputQuantity}`
+            : ""
+        }`,
+      );
+    } else {
+      setCraftingResultMessage(craftingFailureMessages[crafting.result.reason]);
+    }
+
+    setGameState(crafting.state);
   }
 
   function setWorldTravelRoute(targetMapId: DebugMapId) {
@@ -4963,6 +5062,7 @@ function App() {
           <Suspense fallback={null}>
             <LazyGameMenu
               activeTab={activeGameMenuTab}
+              activeAtlasSubpage={activeAtlasSubpage}
               activeManagementSection={activePartyManagementSection}
               activePartySection={activePartyMenuSection}
               inventory={inventory}
@@ -4977,6 +5077,7 @@ function App() {
               worldTravelTargetMapId={gameState.worldTravelTargetMapId}
               selectedCompanionId={selectedMenuCompanionId}
               selectedQuestId={selectedMenuQuestId}
+              craftingResultMessage={craftingResultMessage}
               totalPartyLevel={totalPartyLevel}
               onAllocateStatPoint={allocateStatPoint}
               onChangeLeader={changePartyLeader}
@@ -4992,8 +5093,10 @@ function App() {
               onSelectCompanion={setSelectedCompanionId}
               onSelectManagementSection={setActivePartyManagementSection}
               onSelectPartySection={setActivePartyMenuSection}
+              onSelectAtlasSubpage={selectAtlasSubpage}
               onSelectQuest={setSelectedQuestId}
               onSelectTab={selectGameMenuTab}
+              onCraftRecipe={craftSelectedRecipe}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onUnequipEquipment={unequipEquipment}

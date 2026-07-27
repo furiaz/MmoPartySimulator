@@ -185,6 +185,10 @@ export type ResourceItemId =
   | "iron_ore"
   | "redleaf_herb";
 
+export type CraftingSupplyItemId =
+  | "crafting_string"
+  | "iron_nails";
+
 export type ItemCategory =
   | "material"
   | "consumable"
@@ -574,6 +578,7 @@ export type SkillBookItemId =
 
 export type ItemId =
   | ResourceItemId
+  | CraftingSupplyItemId
   | JunkItemId
   | EquipmentItemId
   | ConsumableItemId
@@ -760,6 +765,7 @@ export type InventoryMutationSource =
   | "equipment"
   | "combat_loot"
   | "quest_reward"
+  | "crafting"
   | "merchant"
   | "consumable"
   | "skill_book"
@@ -769,6 +775,7 @@ export type InventoryMutationSource =
 export type CurrencyMutationSource =
   | "debug"
   | "quest_reward"
+  | "crafting"
   | "merchant"
   | "chest"
   | "world_wipe_recovery"

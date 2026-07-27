@@ -447,6 +447,23 @@ export {
   type QuickExchangeResult,
 } from "./merchant";
 export {
+  CRAFTING_RECIPES,
+  SMITH_CRAFTING_INTERACTION_RANGE,
+  craftRecipe,
+  getCraftingRecipe,
+  getCraftingRecipeStatus,
+  getCraftingRecipes,
+  getSortedCraftingRecipeStatuses,
+  isPartyLeaderNearSmith,
+  type CraftingCost,
+  type CraftingFailureReason,
+  type CraftingRecipe,
+  type CraftingRecipeId,
+  type CraftingRecipeStatus,
+  type CraftingRequirementStatus,
+  type CraftingResult,
+} from "./crafting";
+export {
   arePositionsEqual,
   getEuclideanDistance,
   getGridDistance,
