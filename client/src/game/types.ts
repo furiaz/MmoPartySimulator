@@ -714,12 +714,59 @@ export type HubDepartureFoodWarningState = {
 export type InventorySlot = {
   itemId: ItemId;
   quantity: number;
+  slotIndex?: number;
 };
 
 export type PartyInventory = {
   capacity: number;
   slots: InventorySlot[];
+  lockedSlotIndices?: number[];
 };
+
+export type BankAutoRoutingMode =
+  | "keep_inventory"
+  | "deposit_body_parts"
+  | "deposit_all";
+
+export type BankSlot = InventorySlot;
+
+export type PartyBank = {
+  capacity: number;
+  slots: BankSlot[];
+  lockedSlotIndices: number[];
+  autoRoutingMode: BankAutoRoutingMode;
+};
+
+export type BankTransferFailureReason =
+  | "not_near_bank"
+  | "remote_view_only"
+  | "source_empty"
+  | "source_locked"
+  | "destination_locked"
+  | "invalid_item"
+  | "quest_item"
+  | "invalid_quantity"
+  | "bank_full"
+  | "inventory_full";
+
+export type BankTransferResult =
+  | {
+      status: "success" | "partial";
+      itemId: ItemId;
+      requestedQuantity: number;
+      movedQuantity: number;
+      remainingQuantity: number;
+      previousSourceQuantity: number;
+      nextSourceQuantity: number;
+    }
+  | {
+      status: "failed";
+      itemId?: ItemId;
+      requestedQuantity: number;
+      movedQuantity: 0;
+      remainingQuantity: number;
+      reason: BankTransferFailureReason;
+    };
 
 export type DungeonChestRuntimeState = {
   status: "hidden" | "available" | "opened" | "collected";
@@ -770,6 +817,7 @@ export type InventoryMutationSource =
   | "consumable"
   | "skill_book"
   | "chest"
+  | "bank"
   | "unknown";
 
 export type CurrencyMutationSource =
@@ -2401,6 +2449,7 @@ export type NpcEntity = BaseEntity & {
     | "bounty_board"
     | "merchant"
     | "smith"
+    | "bank_chest"
     | "dog"
     | "test_blade"
     | "quest_guide"

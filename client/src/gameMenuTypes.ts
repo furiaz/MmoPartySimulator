@@ -6,7 +6,7 @@ export type GameMenuTab =
   | "world"
   | "options";
 
-export type AtlasSubpage = "quests" | "crafts";
+export type AtlasSubpage = "quests" | "crafts" | "bank";
 
 export type PartyMenuSection =
   | "stats"

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bankInteractionRange,
   defaultNpcInteractionRange,
   getNpcInteractionRange,
   merchantInteractionRange,
@@ -14,6 +15,9 @@ describe("NPC interaction ranges", () => {
     expect(getNpcInteractionRange({ npcRole: "smith" })).toBe(
       merchantInteractionRange,
     );
+    expect(getNpcInteractionRange({ npcRole: "bank_chest" })).toBe(
+      bankInteractionRange,
+    );
     expect(getNpcInteractionRange({ npcRole: "quest_giver" })).toBe(
       questGiverInteractionRange,
     );
@@ -21,6 +25,7 @@ describe("NPC interaction ranges", () => {
       questGiverInteractionRange,
     );
     expect(merchantInteractionRange).toBe(2);
+    expect(bankInteractionRange).toBe(2);
     expect(questGiverInteractionRange).toBe(2);
   });
 

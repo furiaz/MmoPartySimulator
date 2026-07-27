@@ -97,6 +97,7 @@ export const npcIds = [
   "hub-quest-giver",
   "hub-merchant",
   "hub-smith",
+  "hub-bank-chest",
   "hub-dog",
   "hub-test-blade",
 ];
@@ -289,12 +290,18 @@ export const hubNpcStartData = [
   },
   {
     id: npcIds[3],
+    position: { x: 61, y: 32 },
+    displayName: "Bank Chest",
+    npcRole: "bank_chest",
+  },
+  {
+    id: npcIds[4],
     position: { x: 58, y: 33 },
     displayName: "Dog",
     npcRole: "dog",
   },
   {
-    id: npcIds[4],
+    id: npcIds[5],
     position: { x: 73, y: 42 },
     displayName: "Test Blade",
     npcRole: "test_blade",
@@ -326,6 +333,12 @@ export const hubTwoNpcStartData = [
     position: { x: 90, y: 48 },
     displayName: "Smith",
     npcRole: "smith",
+  },
+  {
+    id: "hub-2-bank-chest",
+    position: { x: 72, y: 35 },
+    displayName: "Bank Chest",
+    npcRole: "bank_chest",
   },
   {
     id: "hub-2-bounty-board",

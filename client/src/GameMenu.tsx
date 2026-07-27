@@ -1,6 +1,7 @@
 import { InventoryPanel } from "./InventoryPanel";
 import { QuestsPanel } from "./QuestPanels";
 import { WorldPanel } from "./WorldPanel";
+import { BankPanel } from "./BankPanel";
 import type {
   AtlasSubpage,
   GameMenuTab,
@@ -295,6 +296,13 @@ function AtlasPanel({
         >
           Crafts
         </button>
+        <button
+          className={activeSubpage === "bank" ? "active" : ""}
+          onClick={() => onSelectSubpage("bank")}
+          type="button"
+        >
+          Bank
+        </button>
       </nav>
       {activeSubpage === "quests" ? (
         <QuestsPanel
@@ -302,11 +310,16 @@ function AtlasPanel({
           selectedQuestId={selectedQuestId}
           onSelectQuest={onSelectQuest}
         />
-      ) : (
+      ) : activeSubpage === "crafts" ? (
         <CraftingPanel
           resultMessage={craftingResultMessage}
           state={gameState}
           onCraft={onCraftRecipe}
+        />
+      ) : (
+        <BankPanel
+          canManage={false}
+          state={gameState}
         />
       )}
     </section>

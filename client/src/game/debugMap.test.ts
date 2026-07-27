@@ -236,6 +236,7 @@ describe("debug maps", () => {
       "quest_giver",
       "merchant",
       "smith",
+      "bank_chest",
       "bounty_board",
       "dog",
       "dog",

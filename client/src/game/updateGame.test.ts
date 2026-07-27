@@ -4643,7 +4643,7 @@ describe("game update intent priority", () => {
     });
   });
 
-  it("prioritizes hub Merchant quick exchange before quest work", () => {
+  it("prioritizes hub quest work instead of autonomous Merchant quick exchange", () => {
     const leader = createLeader({ x: 7, y: 20 });
     const stateWithJunk = addItemToInventoryState(
       createHubState([leader, ...createHubNpcs()], {
@@ -4658,8 +4658,8 @@ describe("game update intent priority", () => {
 
     const nextState = updateGame(stateWithJunk);
 
-    expect(nextState.localPoiTarget?.poiId).toBe(npcIds[1]);
-    expect(nextState.localPoiTarget?.reason).toBe("merchant quick exchange");
+    expect(nextState.localPoiTarget?.poiId).toBe(npcIds[0]);
+    expect(nextState.localPoiTarget?.reason).toBe("accept available quest");
   });
 
   it("does not choose hub Merchant quick exchange before the equipment tutorial is accepted", () => {

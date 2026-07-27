@@ -1,7 +1,7 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
+import { autoDepositByRoutingMode } from "./bank";
 import { getSlimewardDungeonPoiTarget } from "./dungeonSystem";
 import { HUB_MAP_ID } from "./debugMap";
-import { getQuickExchangeItems, quickExchangeParts } from "./merchant";
 import {
   isInteractionPoiTarget,
   isInteractionStandPositionUsable,
@@ -19,6 +19,7 @@ import {
 } from "./partyThreatSystem";
 import {
   getEntityById,
+  addCombatFeedback,
   updateEntity,
   type GameState,
 } from "./state";
@@ -38,9 +39,7 @@ import {
   getQuestGiverAvailableQuests,
   getQuestGiverReadyQuests,
   hasQuestGiverWork,
-  isMerchantUnlockedForQuests,
   matchesObjectiveSubzoneAtPosition,
-  recordMerchantLockedForQuest,
   recordQuestPoiReachedForQuests,
   updateQuestGiverInteraction,
 } from "./questSystem";
@@ -115,10 +114,9 @@ export function updatePoiSystem(
     return applyLocalTargetToPartyIntent(nextState, dungeonPoiTarget);
   }
 
-  let interactionState = clearReachedWorldTravelTarget(
+  const interactionState = clearReachedWorldTravelTarget(
     updateReachedPoiInteractions(state),
   );
-  interactionState = recordLockedMerchantPoiIfNeeded(interactionState);
 
   const interactionLeader = getPartyLeader(interactionState);
   const gathererReservations = createGathererResourceReservations(
@@ -413,24 +411,6 @@ function updateReachedPoiInteractions(state: GameState): GameState {
   }
 
   const leader = getPartyLeader(nextState);
-  const merchant = Object.values(nextState.entities).find(
-    (entity) => entity.kind === "npc" && entity.npcRole === "merchant",
-  );
-
-  if (
-    leader &&
-    merchant &&
-    isReachedHubInteraction(
-      nextState,
-      leader,
-      merchant,
-      DEFAULT_POI_INTERACTION_RANGE,
-    ) &&
-    getQuickExchangeItems(nextState).length > 0
-  ) {
-    return quickExchangeParts(nextState, merchant.id).state;
-  }
-
   const questSource = Object.values(nextState.entities).find(
     (entity) =>
       entity.kind === "npc" &&
@@ -452,7 +432,9 @@ function updateReachedPoiInteractions(state: GameState): GameState {
     return nextState;
   }
 
-  return updateQuestGiverInteraction(nextState, questSource.id);
+  return applyAutoDepositFeedback(
+    updateQuestGiverInteraction(nextState, questSource.id),
+  );
 }
 
 function isReachedHubInteraction(
@@ -555,24 +537,6 @@ function getGlobalPoiIntent(state: GameState): GlobalPoiIntent {
   };
 }
 
-function recordLockedMerchantPoiIfNeeded(state: GameState): GameState {
-  if (
-    state.currentMapId !== HUB_MAP_ID ||
-    isMerchantUnlockedForQuests(state) ||
-    getQuickExchangeItems(state).length === 0
-  ) {
-    return state;
-  }
-
-  const merchant = Object.values(state.entities).find(
-    (entity) => entity.kind === "npc" && entity.npcRole === "merchant",
-  );
-
-  return merchant
-    ? recordMerchantLockedForQuest(state, merchant.id, "merchant_poi_locked")
-    : state;
-}
-
 function getQuestObjective(
   questId: QuestId,
   objectiveId: string,
@@ -653,6 +617,40 @@ function applyLocalTargetToPartyIntent(
         : null,
     commandPriority: "autonomous",
   });
+}
+
+function applyAutoDepositFeedback(state: GameState): GameState {
+  const leader = getPartyLeader(state);
+  const deposit = autoDepositByRoutingMode(state);
+
+  if (!leader || deposit.state === state || hasRecentBankFeedback(deposit.state)) {
+    return deposit.state;
+  }
+
+  if (
+    deposit.movedQuantity <= 0 &&
+    deposit.message !== "Bank is full!"
+  ) {
+    return deposit.state;
+  }
+
+  return addCombatFeedback(deposit.state, {
+    type: "gather",
+    entityId: leader.id,
+    feedbackKind: "bank_auto_deposit",
+    text: deposit.message,
+    now: deposit.state.simulationTimeMs ?? Date.now(),
+    durationMs: 1800,
+  });
+}
+
+function hasRecentBankFeedback(state: GameState): boolean {
+  const nowMs = state.simulationTimeMs ?? Date.now();
+
+  return state.combatFeedbackEvents.some(
+    (event) =>
+      event.feedbackKind === "bank_auto_deposit" && event.expiresAt > nowMs,
+  );
 }
 
 function getPreservedPartyThreatTarget(

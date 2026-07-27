@@ -1,3 +1,4 @@
+import { createEmptyPartyBank } from "./bank";
 import { createEmptyPartyInventory } from "./inventory";
 import { createInitialQuestStates } from "./questSystem";
 import type { GameState } from "./state";
@@ -9,6 +10,7 @@ export function createTestGameState(
   return {
     entities: {},
     inventory: createEmptyPartyInventory(),
+    bank: createEmptyPartyBank(),
     wallet: createEmptyPartyWallet(),
     autoModeEnabled: false,
     worldTravelTargetMapId: null,

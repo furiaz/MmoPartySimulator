@@ -1,9 +1,10 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import {
   addItemToInventoryState,
-  countInventoryItem,
   getAvailableInventorySlots,
-  removeItemFromInventoryState,
+  getInventorySlotIndex,
+  isInventorySlotLocked,
+  removeItemFromInventorySlotState,
 } from "./inventory";
 import { getItemDefinition, ITEM_DEFINITIONS } from "./items";
 import {
@@ -851,7 +852,7 @@ export function isQuickExchangeItemDefinition(
 export function getQuickExchangeItems(state: GameState): QuickExchangeItem[] {
   return getQuickExchangeItemDefinitions()
     .map((itemDefinition) => {
-      const quantity = countInventoryItem(state.inventory, itemDefinition.id);
+      const quantity = countUnlockedInventoryItem(state, itemDefinition.id);
       const valueEach = itemDefinition.sellValue ?? 0;
 
       return {
@@ -944,10 +945,12 @@ export function quickExchangeParts(
     );
   }
 
-  const removeItem = options.removeItemFromInventory ?? removeItemFromInventoryState;
+  const removeItem = options.removeItemFromInventory;
 
   for (const item of exchangeItems) {
-    const removal = removeItem(nextState, item.itemId, item.quantity, "merchant");
+    const removal = removeItem
+      ? removeItem(nextState, item.itemId, item.quantity, "merchant")
+      : removeUnlockedQuickExchangeItem(nextState, item.itemId, item.quantity);
 
     if (removal.result.status !== "success") {
       const failedState = appendMerchantItemTelemetry(
@@ -1047,6 +1050,73 @@ export function quickExchangeParts(
       totalExchangeValue,
       previousCrowns,
       newCrowns: currencyResult.result.newBalance,
+    },
+  };
+}
+
+function countUnlockedInventoryItem(state: GameState, itemId: ItemId): number {
+  return state.inventory.slots
+    .filter((slot, fallbackIndex) => {
+      const slotIndex = getInventorySlotIndex(slot, fallbackIndex);
+
+      return (
+        slot.itemId === itemId &&
+        !isInventorySlotLocked(state.inventory, slotIndex)
+      );
+    })
+    .reduce((total, slot) => total + slot.quantity, 0);
+}
+
+function removeUnlockedQuickExchangeItem(
+  state: GameState,
+  itemId: ItemId,
+  quantity: number,
+): { state: GameState; result: InventoryRemoveResult } {
+  let nextState = state;
+  let remainingQuantity = Math.floor(quantity);
+  let removedQuantity = 0;
+
+  for (const slot of [...state.inventory.slots]) {
+    if (remainingQuantity <= 0 || slot.itemId !== itemId) {
+      continue;
+    }
+
+    const fallbackIndex = nextState.inventory.slots.findIndex(
+      (candidate) => candidate === slot,
+    );
+    const slotIndex = getInventorySlotIndex(
+      slot,
+      fallbackIndex >= 0 ? fallbackIndex : 0,
+    );
+
+    if (isInventorySlotLocked(nextState.inventory, slotIndex)) {
+      continue;
+    }
+
+    const removal = removeItemFromInventorySlotState(
+      nextState,
+      slotIndex,
+      remainingQuantity,
+      "merchant",
+    );
+    nextState = removal.state;
+    removedQuantity += removal.result.removedQuantity;
+    remainingQuantity -= removal.result.removedQuantity;
+  }
+
+  return {
+    state: nextState,
+    result: {
+      status:
+        removedQuantity === quantity
+          ? "success"
+          : removedQuantity > 0
+            ? "partial"
+            : "failed_invalid",
+      itemId,
+      requestedQuantity: quantity,
+      removedQuantity,
+      remainingQuantity,
     },
   };
 }

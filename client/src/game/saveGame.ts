@@ -1,5 +1,10 @@
 import { createDebugMapForQuestState, debugMapDefinitions } from "./debugMap";
+import {
+  sanitizeBankAutoRoutingMode,
+  sanitizePartyBank,
+} from "./bank";
 import { addItemToInventoryState } from "./inventory";
+import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import {
   getLevelGapXpModifier,
@@ -328,6 +333,13 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   return {
     ...state,
     entities,
+    inventory: sanitizePartyInventory(state.inventory),
+    bank: {
+      ...sanitizePartyBank(state.bank),
+      autoRoutingMode: sanitizeBankAutoRoutingMode(
+        state.bank?.autoRoutingMode,
+      ),
+    },
     currentMapId,
     map,
     activeTeleport: null,

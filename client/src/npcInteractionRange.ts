@@ -2,6 +2,7 @@ import type { NpcEntity } from "./game/types";
 
 export const questGiverInteractionRange = 2;
 export const merchantInteractionRange = 2;
+export const bankInteractionRange = 2;
 export const defaultNpcInteractionRange = 1.5;
 
 export function getNpcInteractionRange(
@@ -13,6 +14,10 @@ export function getNpcInteractionRange(
 
   if (npc.npcRole === "merchant" || npc.npcRole === "smith") {
     return merchantInteractionRange;
+  }
+
+  if (npc.npcRole === "bank_chest") {
+    return bankInteractionRange;
   }
 
   return defaultNpcInteractionRange;

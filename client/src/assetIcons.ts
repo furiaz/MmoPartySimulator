@@ -83,6 +83,7 @@ export const NPC_ICON_SRC: Partial<Record<NpcEntity["npcRole"], string>> = {
   class_mentor: `${nowAssetPackPath}/class-mentor.png`,
   merchant: `${nowAssetPackPath}/merchant.png`,
   smith: `${nowAssetPackPath}/smith.png`,
+  bank_chest: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
   dog: `${nowAssetPackPath}/dog.png`,
   dungeon_chest_closed: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
   dungeon_chest_open: `${slimewardDungeonAssetPath}/dungeon-chest-open-64.png`,

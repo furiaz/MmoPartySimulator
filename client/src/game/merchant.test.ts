@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addEntity } from "./state";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { createCompanion, createNpc } from "./entities";
+import { toggleInventoryBankLock } from "./bank";
 import { createTestGameState } from "./testState";
 import { startDebugTelemetryRecording } from "./debugTelemetry";
 import {
@@ -76,6 +77,24 @@ describe("merchant quick exchange", () => {
       { itemId: "softwood", quantity: 5 },
       { itemId: "training_sword", quantity: 1 },
     ]);
+  });
+
+  it("skips locked inventory slots during manual quick exchange", () => {
+    let state = createMerchantState();
+    state = addItemToInventoryState(state, "slime_gel_t1", 2, "debug").state;
+    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+    state = toggleInventoryBankLock(state, 0);
+
+    const { state: nextState, result } = quickExchangeParts(state, MERCHANT_ID);
+
+    expect(result).toMatchObject({
+      status: "success",
+      totalExchangeValue: 4,
+    });
+    expect(nextState.inventory.slots).toEqual([
+      { itemId: "slime_gel_t1", quantity: 2, slotIndex: 0 },
+    ]);
+    expect(nextState.inventory.lockedSlotIndices).toEqual([0]);
   });
 
   it("fails safely if inventory removal fails", () => {

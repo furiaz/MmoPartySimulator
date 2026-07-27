@@ -7,7 +7,6 @@ import {
   MAP_THREE_ID,
   MAP_TWO_ID,
 } from "./debugMap";
-import { getQuickExchangeItems } from "./merchant";
 import {
   getNavigationGrid,
   getNavigationNeighborPositions,
@@ -25,7 +24,6 @@ import {
   getActiveQuest,
   getIncompleteObjectives,
   getQuestTargetMapId,
-  isMerchantUnlockedForQuests,
   matchesObjectiveSubzoneAtPosition,
 } from "./questSystem";
 import { isTeleportWorking } from "./teleportState";
@@ -167,7 +165,6 @@ function getPoiTargetOptions(
 
   if (mapType === "hub") {
     return [
-      ...getHubMerchantOptions(state, candidates),
       ...subzoneQuestOptions,
       {
         poi: createIdlePoi(state.currentMapId ?? HUB_MAP_ID),
@@ -345,33 +342,6 @@ function isQuestElitePoi(
     entity.questSpawn?.isElite === true &&
     entity.questSpawn.objectiveId === objective.id
   );
-}
-
-function getHubMerchantOptions(
-  state: GameState,
-  candidates: PointOfInterest[],
-): PoiTargetOption[] {
-  if (
-    getQuickExchangeItems(state).length === 0 ||
-    !isMerchantUnlockedForQuests(state)
-  ) {
-    return [];
-  }
-
-  const merchantPoi = candidates.find((poi) => {
-    const entity = poi.targetEntityId ? state.entities[poi.targetEntityId] : undefined;
-    return entity?.kind === "npc" && entity.npcRole === "merchant";
-  });
-
-  return merchantPoi
-    ? [
-        {
-          poi: merchantPoi,
-          priority: 10,
-          reason: "merchant quick exchange",
-        },
-      ]
-    : [];
 }
 
 function getQuestTargetOptions(

@@ -1277,6 +1277,243 @@
   color: #d7e7df;
 }
 
+.bank-interaction {
+  position: fixed;
+  top: 132px;
+  left: 20px;
+  z-index: 31;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.bank-panel {
+  width: min(820px, calc(100vw - 188px));
+  max-height: calc(100vh - 172px);
+  padding: 14px;
+  border: 1px solid rgba(58, 90, 96, 0.8);
+  border-radius: 8px;
+  background: rgba(9, 18, 21, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
+  color: #e6f0f2;
+}
+
+.atlas-panel .bank-panel {
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bank-header,
+.bank-actions,
+.bank-slot-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bank-header h2,
+.bank-slot-panel-header h3 {
+  margin: 0;
+}
+
+.bank-header span,
+.bank-header strong,
+.bank-slot-panel-header span {
+  color: #aec6ca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bank-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.bank-actions button,
+.bank-routing-control select,
+.bank-quantity-popover button {
+  min-height: 32px;
+  border: 1px solid #3a5a60;
+  border-radius: 6px;
+  background: rgba(26, 42, 47, 0.58);
+  color: #e6f0f2;
+  font-weight: 800;
+}
+
+.bank-actions button.active {
+  border-color: #7aa6ad;
+  background: rgba(58, 90, 96, 0.62);
+}
+
+.bank-routing-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: #aec6ca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bank-routing-control select {
+  padding: 6px 8px;
+}
+
+.bank-result-message {
+  margin: 10px 0 0;
+  color: #b8f0c6;
+  font-size: 13px;
+}
+
+.bank-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.bank-slot-panel {
+  min-width: 0;
+}
+
+.bank-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(86px, 1fr));
+  gap: 6px;
+  max-height: min(500px, calc(100vh - 292px));
+  margin-top: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.atlas-panel .bank-slot-grid {
+  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  max-height: 430px;
+}
+
+.bank-slot {
+  position: relative;
+  display: grid;
+  grid-template-rows: 16px 34px 30px 16px;
+  align-items: center;
+  justify-items: center;
+  min-height: 104px;
+  padding: 6px;
+  border: 1px solid rgba(58, 90, 96, 0.6);
+  border-radius: 6px;
+  background: rgba(12, 22, 26, 0.35);
+  color: #e6f0f2;
+  text-align: center;
+}
+
+.bank-slot.empty {
+  background: rgba(9, 18, 21, 0.24);
+}
+
+.bank-slot.actionable {
+  cursor: pointer;
+}
+
+.bank-slot.locked {
+  border-color: rgba(243, 223, 147, 0.82);
+}
+
+.bank-slot:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.bank-slot-index {
+  justify-self: start;
+  color: rgba(174, 198, 202, 0.62);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bank-slot-lock {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #f3df93;
+  border-radius: 2px;
+}
+
+.bank-slot-lock::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 1px;
+  width: 6px;
+  height: 6px;
+  border: 2px solid #f3df93;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+
+.bank-slot-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: #e6f0f2;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bank-slot-quantity {
+  color: #aec6ca;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bank-quantity-popover {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 42;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: end;
+  width: min(460px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(58, 90, 96, 0.9);
+  border-radius: 8px;
+  background: rgba(9, 18, 21, 0.98);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
+  transform: translate(-50%, -50%);
+}
+
+.bank-quantity-popover h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.bank-quantity-popover label {
+  display: grid;
+  gap: 4px;
+  color: #aec6ca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bank-quantity-popover input {
+  min-width: 110px;
+  padding: 7px 8px;
+  border: 1px solid #3a5a60;
+  border-radius: 6px;
+  background: rgba(26, 42, 47, 0.58);
+  color: #e6f0f2;
+}
+
 .options-panel {
   display: grid;
   align-content: start;
