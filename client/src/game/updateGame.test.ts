@@ -4662,6 +4662,32 @@ describe("game update intent priority", () => {
     expect(nextState.localPoiTarget?.reason).toBe("accept available quest");
   });
 
+  it("guides the active equipment quest to the Merchant without auto-selling parts", () => {
+    const leader = createLeader({ x: 7, y: 20 });
+    const stateWithJunk = addItemToInventoryState(
+      createHubState([leader, ...createHubNpcs()], {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          outfit_the_expedition: "active",
+        }),
+      }),
+      "wolf_pelt",
+      1,
+    ).state;
+
+    const nextState = updateGame(stateWithJunk);
+
+    expect(nextState.localPoiTarget).toMatchObject({
+      poiId: npcIds[1],
+      reason: "active quest merchant objective",
+      objectiveId: "buy_merchant_equipment",
+    });
+    expect(nextState.inventory.slots).toEqual([
+      { itemId: "wolf_pelt", quantity: 1 },
+    ]);
+    expect(nextState.wallet).toEqual(stateWithJunk.wallet);
+  });
+
   it("does not choose hub Merchant quick exchange before the equipment tutorial is accepted", () => {
     const leader = createLeader({ x: 7, y: 20 });
     const stateWithJunk = addItemToInventoryState(

@@ -576,6 +576,24 @@ function getQuestObjectiveTargetOptions(
     ];
   }
 
+  if (objective.type === "buy_merchant_equipment") {
+    return candidates
+      .filter((poi) => {
+        const entity = poi.targetEntityId
+          ? state.entities[poi.targetEntityId]
+          : undefined;
+
+        return entity?.kind === "npc" && entity.npcRole === "merchant";
+      })
+      .map((poi) => ({
+        poi,
+        priority: 10,
+        reason: "active quest merchant objective",
+        questId,
+        objectiveId: objective.id,
+      }));
+  }
+
   return [];
 }
 

@@ -98,6 +98,43 @@ describe("POI target selection", () => {
     ]);
   });
 
+  it("guides active merchant equipment objectives to the Merchant without quick exchange priority", () => {
+    const leader = createLeader({ x: 7, y: 20 });
+    let state = createGameState(
+      HUB_MAP_ID,
+      [leader, ...createHubNpcs()],
+      {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          outfit_the_expedition: "active",
+        }),
+      },
+    );
+    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+
+    const selection = selectPoiTarget(
+      state,
+      {
+        type: "complete_current_quest",
+        questId: "outfit_the_expedition",
+        objectiveId: "buy_merchant_equipment",
+        reason: "active quest objective",
+      },
+      createEmptyReservations(),
+    );
+
+    expect(selection.localTarget).toMatchObject({
+      poiId: npcIds[1],
+      category: "npc",
+      targetEntityId: npcIds[1],
+      reason: "active quest merchant objective",
+      objectiveId: "buy_merchant_equipment",
+    });
+    expect(selection.consideredTargets[0].reason).not.toBe(
+      "merchant quick exchange",
+    );
+  });
+
   it("uses the World Travel route helper result for travel targets", () => {
     const leader = createLeader({ x: 10, y: 12 });
     const state = createGameState(HUB_MAP_ID, [leader], {
