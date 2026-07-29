@@ -1111,6 +1111,57 @@
   min-height: 300px;
 }
 
+.crafting-browser {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.crafting-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.crafting-filters label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: #aec6ca;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.crafting-filters select,
+.crafting-filters button {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid #3a5a60;
+  border-radius: 6px;
+  background: rgba(26, 42, 47, 0.58);
+  color: #e6f0f2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.crafting-filters button {
+  align-self: end;
+}
+
+.crafting-filters button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.crafting-recipe-count {
+  color: #aec6ca;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .crafting-recipe-list,
 .crafting-requirement-list {
   display: grid;
@@ -3256,6 +3307,7 @@ button {
   .options-actions,
   .menu-split-layout,
   .crafting-layout,
+  .crafting-filters,
   .crafting-cost-grid,
   .compact-stat-grid,
   .full-stat-grid,

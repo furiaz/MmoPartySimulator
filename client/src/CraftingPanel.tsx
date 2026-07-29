@@ -1,13 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
 import {
+  ARMOR_FAMILY_LABELS,
+  EQUIPMENT_SLOT_LABELS,
   formatCurrencyDisplay,
-  getItemDefinition,
   getSortedCraftingRecipeStatuses,
+  type ArmorFamily,
   type CraftingRecipeId,
   type CraftingRecipeStatus,
   type GameState,
+  type ItemDefinition,
 } from "./game";
+
+type CraftingLevelFilter = "all" | "1" | "5" | "10plus";
+type CraftingCategoryFilter = "all" | "weapons" | "armor" | "accessories";
+type CraftingArmorFamilyFilter = "all" | ArmorFamily;
+type CraftingArmorPartFilter =
+  | "all"
+  | "head"
+  | "chest"
+  | "legs"
+  | "gloves"
+  | "boots";
+type CraftingCraftabilityFilter = "all" | "craftable" | "missing";
+
+const armorFamilyFilterOptions: CraftingArmorFamilyFilter[] = [
+  "all",
+  "cloth",
+  "leather",
+  "mail",
+  "plate",
+];
+
+const armorPartFilterOptions: CraftingArmorPartFilter[] = [
+  "all",
+  "head",
+  "chest",
+  "legs",
+  "gloves",
+  "boots",
+];
 
 function getCraftingBlockReason(status: CraftingRecipeStatus): string | null {
   if (!status.outputItemDefinition) {
@@ -33,6 +65,93 @@ function getCraftingBlockReason(status: CraftingRecipeStatus): string | null {
   return null;
 }
 
+function getRecipeSummary(itemDefinition: ItemDefinition | undefined): string {
+  if (!itemDefinition) {
+    return "Unavailable";
+  }
+
+  const level = itemDefinition.levelRequirement ?? 1;
+
+  if (itemDefinition.equipmentKind === "armor" && itemDefinition.armorFamily) {
+    return `Level ${level} ${ARMOR_FAMILY_LABELS[itemDefinition.armorFamily]} ${itemDefinition.equipmentSlot ? EQUIPMENT_SLOT_LABELS[itemDefinition.equipmentSlot] : "Armor"}`;
+  }
+
+  if (itemDefinition.equipmentKind === "weapon") {
+    return `Level ${level} Weapon`;
+  }
+
+  if (itemDefinition.equipmentKind === "offhand") {
+    return `Level ${level} Offhand`;
+  }
+
+  if (itemDefinition.equipmentKind === "accessory") {
+    return `Level ${level} Accessory`;
+  }
+
+  return `Level ${level} Equipment`;
+}
+
+function matchesCraftingFilters(
+  status: CraftingRecipeStatus,
+  filters: {
+    level: CraftingLevelFilter;
+    category: CraftingCategoryFilter;
+    armorFamily: CraftingArmorFamilyFilter;
+    armorPart: CraftingArmorPartFilter;
+    craftability: CraftingCraftabilityFilter;
+  },
+): boolean {
+  const itemDefinition = status.outputItemDefinition;
+
+  if (!itemDefinition) {
+    return false;
+  }
+
+  const level = itemDefinition.levelRequirement ?? 1;
+
+  if (
+    (filters.level === "1" && level !== 1) ||
+    (filters.level === "5" && level !== 5) ||
+    (filters.level === "10plus" && level < 10)
+  ) {
+    return false;
+  }
+
+  if (
+    (filters.category === "weapons" &&
+      itemDefinition.equipmentKind !== "weapon" &&
+      itemDefinition.equipmentKind !== "offhand") ||
+    (filters.category === "armor" && itemDefinition.equipmentKind !== "armor") ||
+    (filters.category === "accessories" &&
+      itemDefinition.equipmentKind !== "accessory")
+  ) {
+    return false;
+  }
+
+  if (
+    filters.armorFamily !== "all" &&
+    itemDefinition.armorFamily !== filters.armorFamily
+  ) {
+    return false;
+  }
+
+  if (
+    filters.armorPart !== "all" &&
+    itemDefinition.equipmentSlot !== filters.armorPart
+  ) {
+    return false;
+  }
+
+  if (
+    (filters.craftability === "craftable" && !status.canCraft) ||
+    (filters.craftability === "missing" && status.canCraft)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export function CraftingPanel({
   state,
   resultMessage,
@@ -46,23 +165,58 @@ export function CraftingPanel({
     () => getSortedCraftingRecipeStatuses(state),
     [state],
   );
+  const [levelFilter, setLevelFilter] = useState<CraftingLevelFilter>("all");
+  const [categoryFilter, setCategoryFilter] =
+    useState<CraftingCategoryFilter>("all");
+  const [armorFamilyFilter, setArmorFamilyFilter] =
+    useState<CraftingArmorFamilyFilter>("all");
+  const [armorPartFilter, setArmorPartFilter] =
+    useState<CraftingArmorPartFilter>("all");
+  const [craftabilityFilter, setCraftabilityFilter] =
+    useState<CraftingCraftabilityFilter>("all");
+  const filteredRecipeStatuses = useMemo(
+    () =>
+      recipeStatuses.filter((status) =>
+        matchesCraftingFilters(status, {
+          level: levelFilter,
+          category: categoryFilter,
+          armorFamily: armorFamilyFilter,
+          armorPart: armorPartFilter,
+          craftability: craftabilityFilter,
+        }),
+      ),
+    [
+      armorFamilyFilter,
+      armorPartFilter,
+      categoryFilter,
+      craftabilityFilter,
+      levelFilter,
+      recipeStatuses,
+    ],
+  );
   const [selectedRecipeId, setSelectedRecipeId] =
-    useState<CraftingRecipeId | null>(recipeStatuses[0]?.recipe.id ?? null);
+    useState<CraftingRecipeId | null>(
+      filteredRecipeStatuses[0]?.recipe.id ?? null,
+    );
 
   useEffect(() => {
     if (
       selectedRecipeId &&
-      recipeStatuses.some((status) => status.recipe.id === selectedRecipeId)
+      filteredRecipeStatuses.some(
+        (status) => status.recipe.id === selectedRecipeId,
+      )
     ) {
       return;
     }
 
-    setSelectedRecipeId(recipeStatuses[0]?.recipe.id ?? null);
-  }, [recipeStatuses, selectedRecipeId]);
+    setSelectedRecipeId(filteredRecipeStatuses[0]?.recipe.id ?? null);
+  }, [filteredRecipeStatuses, selectedRecipeId]);
 
   const selectedStatus =
-    recipeStatuses.find((status) => status.recipe.id === selectedRecipeId) ??
-    recipeStatuses[0] ??
+    filteredRecipeStatuses.find(
+      (status) => status.recipe.id === selectedRecipeId,
+    ) ??
+    filteredRecipeStatuses[0] ??
     null;
   const selectedBlockReason = selectedStatus
     ? getCraftingBlockReason(selectedStatus)
@@ -70,6 +224,20 @@ export function CraftingPanel({
   const selectedOutputIconSrc = selectedStatus?.outputItemDefinition
     ? INVENTORY_ITEM_ICON_SRC[selectedStatus.outputItemDefinition.id]
     : undefined;
+  const hasActiveFilters =
+    levelFilter !== "all" ||
+    categoryFilter !== "all" ||
+    armorFamilyFilter !== "all" ||
+    armorPartFilter !== "all" ||
+    craftabilityFilter !== "all";
+
+  function clearFilters() {
+    setLevelFilter("all");
+    setCategoryFilter("all");
+    setArmorFamilyFilter("all");
+    setArmorPartFilter("all");
+    setCraftabilityFilter("all");
+  }
 
   return (
     <section className="crafting-panel" aria-label="Crafts">
@@ -83,32 +251,128 @@ export function CraftingPanel({
         </span>
       </div>
       <div className="crafting-layout">
-        <div className="crafting-recipe-list" aria-label="Crafting recipes">
-          {recipeStatuses.map((status) => {
-            const outputItem = status.outputItemDefinition;
-            const isSelected = selectedStatus?.recipe.id === status.recipe.id;
-
-            return (
-              <button
-                key={status.recipe.id}
-                className={`crafting-recipe-row${
-                  isSelected ? " selected" : ""
-                }${status.canCraft ? " craftable" : ""}`}
-                onClick={() => setSelectedRecipeId(status.recipe.id)}
-                type="button"
+        <div className="crafting-browser">
+          <div className="crafting-filters" aria-label="Crafting filters">
+            <label>
+              <span>Level</span>
+              <select
+                value={levelFilter}
+                onChange={(event) =>
+                  setLevelFilter(event.currentTarget.value as CraftingLevelFilter)
+                }
               >
-                <span>
-                  <strong>{outputItem?.displayName ?? "Unknown Recipe"}</strong>
-                  <small>
-                    {status.recipe.outputQuantity > 1
-                      ? `Output x${status.recipe.outputQuantity}`
-                      : "Equipment"}
-                  </small>
-                </span>
-                <b>{status.canCraft ? "Ready" : "Missing"}</b>
-              </button>
-            );
-          })}
+                <option value="all">All</option>
+                <option value="1">1</option>
+                <option value="5">5</option>
+                <option value="10plus">10+</option>
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select
+                value={categoryFilter}
+                onChange={(event) =>
+                  setCategoryFilter(
+                    event.currentTarget.value as CraftingCategoryFilter,
+                  )
+                }
+              >
+                <option value="all">All</option>
+                <option value="weapons">Weapons</option>
+                <option value="armor">Armor</option>
+                <option value="accessories">Accessories</option>
+              </select>
+            </label>
+            <label>
+              <span>Armor type</span>
+              <select
+                value={armorFamilyFilter}
+                onChange={(event) =>
+                  setArmorFamilyFilter(
+                    event.currentTarget.value as CraftingArmorFamilyFilter,
+                  )
+                }
+              >
+                {armorFamilyFilterOptions.map((armorFamily) => (
+                  <option key={armorFamily} value={armorFamily}>
+                    {armorFamily === "all"
+                      ? "All"
+                      : ARMOR_FAMILY_LABELS[armorFamily]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Armor part</span>
+              <select
+                value={armorPartFilter}
+                onChange={(event) =>
+                  setArmorPartFilter(
+                    event.currentTarget.value as CraftingArmorPartFilter,
+                  )
+                }
+              >
+                {armorPartFilterOptions.map((armorPart) => (
+                  <option key={armorPart} value={armorPart}>
+                    {armorPart === "all"
+                      ? "All"
+                      : EQUIPMENT_SLOT_LABELS[armorPart]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Status</span>
+              <select
+                value={craftabilityFilter}
+                onChange={(event) =>
+                  setCraftabilityFilter(
+                    event.currentTarget.value as CraftingCraftabilityFilter,
+                  )
+                }
+              >
+                <option value="all">All</option>
+                <option value="craftable">Craftable</option>
+                <option value="missing">Missing requirements</option>
+              </select>
+            </label>
+            <button
+              disabled={!hasActiveFilters}
+              onClick={clearFilters}
+              type="button"
+            >
+              Clear Filters
+            </button>
+          </div>
+          <div className="crafting-recipe-count">
+            {filteredRecipeStatuses.length}/{recipeStatuses.length} recipes
+          </div>
+          <div className="crafting-recipe-list" aria-label="Crafting recipes">
+            {filteredRecipeStatuses.map((status) => {
+              const outputItem = status.outputItemDefinition;
+              const isSelected = selectedStatus?.recipe.id === status.recipe.id;
+
+              return (
+                <button
+                  key={status.recipe.id}
+                  className={`crafting-recipe-row${
+                    isSelected ? " selected" : ""
+                  }${status.canCraft ? " craftable" : ""}`}
+                  onClick={() => setSelectedRecipeId(status.recipe.id)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{outputItem?.displayName ?? "Unknown Recipe"}</strong>
+                    <small>{getRecipeSummary(outputItem)}</small>
+                  </span>
+                  <b>{status.canCraft ? "Ready" : "Missing"}</b>
+                </button>
+              );
+            })}
+            {filteredRecipeStatuses.length === 0 ? (
+              <span className="crafting-empty">No recipes match filters</span>
+            ) : null}
+          </div>
         </div>
         <div className="crafting-detail" aria-label="Selected recipe">
           {selectedStatus ? (
@@ -151,16 +415,14 @@ export function CraftingPanel({
               <div className="crafting-requirement-list">
                 <span className="crafting-detail-kicker">Materials</span>
                 {selectedStatus.requirements.map((requirement) => {
-                  const item = getItemDefinition(requirement.itemId);
-
                   return (
                     <div
-                      key={requirement.itemId}
+                      key={`${requirement.kind}:${requirement.displayName}`}
                       className={`crafting-requirement-row${
                         requirement.isMet ? " met" : " missing"
                       }`}
                     >
-                      <span>{item.displayName}</span>
+                      <span>{requirement.displayName}</span>
                       <strong>
                         {requirement.ownedQuantity}/{requirement.quantity}
                       </strong>
