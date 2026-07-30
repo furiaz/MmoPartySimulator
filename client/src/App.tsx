@@ -109,7 +109,6 @@ import {
   isActiveResource,
   isMerchantUnlockedForQuests,
   isMerchantNpc,
-  quickExchangeParts,
   recordMerchantInteractionClosed,
   recordMerchantInteractionOpened,
   recordMerchantLockedForQuest,
@@ -1714,6 +1713,14 @@ function MerchantBuyPanel({
         <div className="merchant-buy-detail" aria-label="Selected stock item">
           {selectedEntry && selectedItemDefinition ? (
             <>
+              {INVENTORY_ITEM_ICON_SRC[selectedItemDefinition.id] ? (
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="merchant-detail-item-icon"
+                  src={INVENTORY_ITEM_ICON_SRC[selectedItemDefinition.id]}
+                />
+              ) : null}
               <div>
                 <span className="merchant-detail-kicker">
                   {merchantBuyFilterLabels[selectedEntry.group]}
@@ -4210,45 +4217,6 @@ function App() {
     );
   }
 
-  function exchangeMerchantJunk() {
-    if (!activeMerchantNpcId) {
-      return;
-    }
-
-    if (!isMerchantUnlockedForQuests(gameState)) {
-      setMerchantResultMessage("Merchant unlocks during Outfit the Expedition");
-      setGameState((state) =>
-        recordMerchantLockedForQuest(
-          state,
-          activeMerchantNpcId,
-          "merchant_exchange_locked",
-        ),
-      );
-      return;
-    }
-
-    setActiveMerchantPanel(null);
-    const selectedState = recordMerchantMenuSelected(
-      gameState,
-      activeMerchantNpcId,
-      "quick_exchange_parts",
-    );
-    const exchange = quickExchangeParts(selectedState, activeMerchantNpcId);
-
-    if (exchange.result.status === "success") {
-      queueSaveAfterStateChange("Merchant exchange saved");
-      setMerchantResultMessage(
-        `Exchanged junk for ${exchange.result.totalExchangeValue} Crowns`,
-      );
-    } else if (exchange.result.status === "no_items") {
-      setMerchantResultMessage("No junk to exchange");
-    } else {
-      setMerchantResultMessage("Quick exchange failed");
-    }
-
-    setGameState(exchange.state);
-  }
-
   function buyMerchantStockItem(itemId: ItemId) {
     if (!activeMerchantNpcId) {
       return;
@@ -4922,13 +4890,6 @@ function App() {
                 type="button"
               >
                 Sell
-              </button>
-              <button
-                disabled={activeMerchantLocked}
-                onClick={exchangeMerchantJunk}
-                type="button"
-              >
-                Quick Exchange Junk
               </button>
               <button onClick={closeMerchantInteraction} type="button">
                 Leave

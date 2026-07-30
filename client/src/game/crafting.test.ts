@@ -14,6 +14,7 @@ import {
   createEmptyPartyInventory,
   toggleInventorySlotLock,
 } from "./inventory";
+import { createInitialQuestStates } from "./questSystem";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
 import type { ItemId } from "./types";
@@ -401,11 +402,41 @@ describe("Smith crafting", () => {
     expect(result.result.status).toBe("success");
     expect(countInventoryItem(result.state.inventory, "stalker_mask")).toBe(1);
   });
+
+  it("uses the tutorial Plain Charm recipe and records successful craft progress", () => {
+    const quests = createInitialQuestStates();
+    quests.smiths_first_work = {
+      ...quests.smiths_first_work,
+      status: "active",
+    };
+    let state = createCraftingState({ quests });
+    state = addItems(state, [
+      ["slime_gel_t1", 3],
+      ["crafting_string", 1],
+      ["iron_nails", 1],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+
+    const result = craftRecipe(state, "plain_charm");
+
+    expect(result.result.status).toBe("success");
+    expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "iron_nails")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "plain_charm")).toBe(1);
+    expect(
+      result.state.quests.smiths_first_work.objectiveProgress.craft_plain_charm,
+    ).toMatchObject({
+      currentCount: 1,
+      completed: true,
+    });
+  });
 });
 
 function createCraftingState(options: {
   leaderPosition?: { x: number; y: number };
   inventory?: GameState["inventory"];
+  quests?: GameState["quests"];
 } = {}): GameState {
   const leader = createCompanion(
     "leader",
@@ -421,6 +452,7 @@ function createCraftingState(options: {
     },
     partyLeaderId: leader.id,
     ...(options.inventory ? { inventory: options.inventory } : {}),
+    ...(options.quests ? { quests: options.quests } : {}),
   });
 }
 

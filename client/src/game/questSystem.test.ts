@@ -91,6 +91,7 @@ describe("prototype quest system", () => {
     state = updateQuestGiverInteraction(state);
     expect(state.quests.clear_the_shore.status).toBe("completed");
     expect(state.quests.outfit_the_expedition.status).toBe("available");
+    expect(state.quests.smiths_first_work.status).toBe("locked");
     expect(state.quests.stolen_field_supplies.status).toBe("locked");
     expect(state.quests.break_lower_shore_blockage.status).toBe("locked");
     expect(state.wallet.balancesByCurrencyId.crowns).toBe(50);
@@ -246,6 +247,7 @@ describe("prototype quest system", () => {
     expect(Object.keys(quests)).toEqual([
       "clear_the_shore",
       "outfit_the_expedition",
+      "smiths_first_work",
       "stolen_field_supplies",
       "break_lower_shore_blockage",
       "scout_rise_samples",
@@ -259,6 +261,7 @@ describe("prototype quest system", () => {
     ]);
     expect(quests.clear_the_shore.status).toBe("available");
     expect(quests.outfit_the_expedition.status).toBe("locked");
+    expect(quests.smiths_first_work.status).toBe("locked");
     expect(quests.open_wolf_causeway.status).toBe("locked");
     expect(quests.broken_thicket_survey.status).toBe("locked");
     expect(quests.crawler_shelf_report.status).toBe("locked");
@@ -415,7 +418,7 @@ describe("prototype quest system", () => {
     ).toBe(true);
   });
 
-  it("completes the merchant equipment objective only for equipment purchases", () => {
+  it("completes merchant item objectives only for matching purchases", () => {
     const merchant = createNpc("merchant-1", { x: 2, y: 0 }, "Merchant", "merchant");
     let state = createStateWithParty({
       wallet: {
@@ -431,15 +434,15 @@ describe("prototype quest system", () => {
 
     state = buyMerchantItem(state, merchant.id, "minor_recovery_flask").state;
     expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_merchant_equipment,
+      state.quests.outfit_the_expedition.objectiveProgress.buy_first_aid_skill_book,
     ).toMatchObject({
       currentCount: 0,
       completed: false,
     });
 
-    state = buyMerchantItem(state, merchant.id, "training_sword").state;
+    state = buyMerchantItem(state, merchant.id, "first_aid_skill_book").state;
     expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_merchant_equipment,
+      state.quests.outfit_the_expedition.objectiveProgress.buy_first_aid_skill_book,
     ).toMatchObject({
       currentCount: 1,
       completed: true,

@@ -261,20 +261,39 @@ export function recordEquippedItemObjectivesForQuests(
   return nextState;
 }
 
-export function recordMerchantEquipmentPurchasedForQuests(
+export function recordMerchantItemPurchasedForQuests(
   state: GameState,
   itemId: ItemId,
+  quantity = 1,
 ): GameState {
-  const itemDefinition = getItemDefinition(itemId);
-
-  if (!itemDefinition || itemDefinition.category !== "equipment") {
+  if (!getItemDefinition(itemId) || quantity <= 0) {
     return state;
   }
 
   return updateMatchingQuestObjectives(
     state,
-    (objective) => objective.type === "buy_merchant_equipment",
-    1,
+    (objective) =>
+      objective.type === "buy_merchant_item" &&
+      (!objective.itemId || objective.itemId === itemId),
+    quantity,
+  );
+}
+
+export function recordCraftedItemForQuests(
+  state: GameState,
+  itemId: ItemId,
+  quantity = 1,
+): GameState {
+  if (!getItemDefinition(itemId) || quantity <= 0) {
+    return state;
+  }
+
+  return updateMatchingQuestObjectives(
+    state,
+    (objective) =>
+      objective.type === "craft_item" &&
+      (!objective.itemId || objective.itemId === itemId),
+    quantity,
   );
 }
 

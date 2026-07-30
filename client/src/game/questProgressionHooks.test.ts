@@ -15,7 +15,7 @@ import {
   recordEnemyDefeatedForQuests,
   recordEquippedItemObjectivesForQuests,
   recordMapReachedForQuests,
-  recordMerchantEquipmentPurchasedForQuests,
+  recordMerchantItemPurchasedForQuests,
   recordQuestPoiReachedForQuests,
   recordQuestRepairProgress,
   recordResourceGatheredForQuests,
@@ -313,14 +313,28 @@ describe("quest progression hooks", () => {
         .equip_minor_recovery_flask.completed,
     ).toBe(true);
     expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_merchant_equipment
+      state.quests.outfit_the_expedition.objectiveProgress.buy_first_aid_skill_book
         .completed,
     ).toBe(false);
 
-    state = recordMerchantEquipmentPurchasedForQuests(state, "training_sword");
+    state = recordMerchantItemPurchasedForQuests(state, "first_aid_skill_book");
+    state = recordMerchantItemPurchasedForQuests(state, "crafting_string");
+    state = recordMerchantItemPurchasedForQuests(state, "iron_nails");
 
     expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_merchant_equipment,
+      state.quests.outfit_the_expedition.objectiveProgress.buy_first_aid_skill_book,
+    ).toMatchObject({
+      currentCount: 1,
+      completed: true,
+    });
+    expect(
+      state.quests.outfit_the_expedition.objectiveProgress.buy_crafting_string,
+    ).toMatchObject({
+      currentCount: 1,
+      completed: true,
+    });
+    expect(
+      state.quests.outfit_the_expedition.objectiveProgress.buy_iron_nails,
     ).toMatchObject({
       currentCount: 1,
       completed: true,

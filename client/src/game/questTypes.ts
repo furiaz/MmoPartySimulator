@@ -13,6 +13,7 @@ import type { PoiCategory } from "./poiTypes";
 export type QuestId =
   | "clear_the_shore"
   | "outfit_the_expedition"
+  | "smiths_first_work"
   | "stolen_field_supplies"
   | "break_lower_shore_blockage"
   | "scout_rise_samples"
@@ -39,7 +40,8 @@ export type QuestObjectiveType =
   | "gather_item_count"
   | "equip_item"
   | "equip_flask"
-  | "buy_merchant_equipment"
+  | "buy_merchant_item"
+  | "craft_item"
   | "inspect_poi"
   | "repair_poi"
   | "defend_area"

@@ -9,6 +9,7 @@ import { ARMOR_FAMILY_LABELS, EQUIPMENT_TYPE_LABELS } from "./equipmentTypes";
 import { getItemDefinition } from "./items";
 import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
+import { recordCraftedItemForQuests } from "./questProgressionHooks";
 import type { GameState } from "./state";
 import {
   canAfford,
@@ -284,10 +285,9 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     outputItemId: "plain_charm",
     outputQuantity: 1,
     costs: [
-      itemCost("copper_ore", 2),
-      itemCost("field_herb", 2),
-      itemCost("slime_gel_t1", 2),
+      itemCost("slime_gel_t1", 3),
       itemCost("crafting_string", 1),
+      itemCost("iron_nails", 1),
     ],
     crownCost: 6,
   },
@@ -415,6 +415,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
 
 export function getCraftingRecipes(): CraftingRecipe[] {
   return CRAFTING_RECIPES;
+}
+
+export function getCraftingRecipeOutputItemIds(): ItemId[] {
+  return Array.from(new Set(CRAFTING_RECIPES.map((recipe) => recipe.outputItemId)));
 }
 
 export function getCraftingRecipe(
@@ -545,8 +549,14 @@ export function craftRecipe(
     return createCraftingFailure(state, recipe.id, "inventory_add_failed");
   }
 
+  const craftedState = recordCraftedItemForQuests(
+    inventoryAdd.state,
+    recipe.outputItemId,
+    recipe.outputQuantity,
+  );
+
   return {
-    state: inventoryAdd.state,
+    state: craftedState,
     result: {
       status: "success",
       recipeId: recipe.id,

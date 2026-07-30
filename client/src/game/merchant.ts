@@ -1,4 +1,5 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
+import { CLASS_DEFINITIONS } from "./classes";
 import {
   addItemToInventoryState,
   getAvailableInventorySlots,
@@ -6,15 +7,17 @@ import {
   isInventorySlotLocked,
   removeItemFromInventorySlotState,
 } from "./inventory";
+import { getCraftingRecipeOutputItemIds } from "./crafting";
 import { getItemDefinition, ITEM_DEFINITIONS } from "./items";
 import {
   isMerchantUnlockedForQuests,
-  recordMerchantEquipmentPurchasedForQuests,
+  recordMerchantItemPurchasedForQuests,
   recordMerchantLockedForQuest,
 } from "./questSystem";
 import type { GameState } from "./state";
 import { EQUIPMENT_SLOT_LABELS, EQUIPMENT_TYPE_LABELS } from "./equipmentTypes";
 import { isClassAllowedForEquipment } from "./equipmentRules";
+import { SKILL_DEFINITIONS } from "./skills";
 import {
   addCurrencyToWalletState,
   canAfford,
@@ -146,7 +149,7 @@ type QuickExchangeOptions = {
   removeItemFromInventory?: RemoveItemFromInventory;
 };
 
-const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
+const BASE_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "minor_recovery_flask", priceCrowns: 30, group: "flasks" },
   { itemId: "soldiers_recovery_flask", priceCrowns: 45, group: "flasks" },
   { itemId: "hearty_trail_rations", priceCrowns: 15, group: "food" },
@@ -380,6 +383,17 @@ const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "conqueror_sabatons", priceCrowns: 150, group: "plate" },
   { itemId: "plain_charm", priceCrowns: 25, group: "accessories" },
 ];
+
+const craftableEquipmentItemIds = new Set(
+  getCraftingRecipeOutputItemIds().filter(
+    (itemId) => getItemDefinition(itemId).category === "equipment",
+  ),
+);
+
+const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] =
+  BASE_MERCHANT_BUY_STOCK.filter(
+    (entry) => !craftableEquipmentItemIds.has(entry.itemId),
+  );
 
 export function isMerchantNpc(entity: unknown): entity is NpcEntity {
   return Boolean(
@@ -688,7 +702,7 @@ export function buyMerchantItem(
       nextCurrencyBalance: currencyResult.result.newBalance,
     },
   );
-  nextState = recordMerchantEquipmentPurchasedForQuests(nextState, itemId);
+  nextState = recordMerchantItemPurchasedForQuests(nextState, itemId, 1);
 
   return {
     state: nextState,
@@ -800,6 +814,20 @@ function getMerchantSecondaryFilterOption(
       id: itemDefinition.equipmentType,
       label: "Charm",
     };
+  }
+
+  if (entry.group === "books" && itemDefinition.skillBookSkillId) {
+    const skillDefinition = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
+    const classDefinition = skillDefinition
+      ? CLASS_DEFINITIONS[skillDefinition.classId]
+      : null;
+
+    return classDefinition
+      ? {
+          id: classDefinition.id,
+          label: classDefinition.displayName,
+        }
+      : null;
   }
 
   return null;

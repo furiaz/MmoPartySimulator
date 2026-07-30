@@ -576,7 +576,7 @@ function getQuestObjectiveTargetOptions(
     ];
   }
 
-  if (objective.type === "buy_merchant_equipment") {
+  if (objective.type === "buy_merchant_item") {
     return candidates
       .filter((poi) => {
         const entity = poi.targetEntityId
@@ -589,6 +589,24 @@ function getQuestObjectiveTargetOptions(
         poi,
         priority: 10,
         reason: "active quest merchant objective",
+        questId,
+        objectiveId: objective.id,
+      }));
+  }
+
+  if (objective.type === "craft_item") {
+    return candidates
+      .filter((poi) => {
+        const entity = poi.targetEntityId
+          ? state.entities[poi.targetEntityId]
+          : undefined;
+
+        return entity?.kind === "npc" && entity.npcRole === "smith";
+      })
+      .map((poi) => ({
+        poi,
+        priority: 10,
+        reason: "active quest smith objective",
         questId,
         objectiveId: objective.id,
       }));

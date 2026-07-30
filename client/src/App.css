@@ -1938,6 +1938,14 @@
   background: rgba(12, 22, 26, 0.35);
 }
 
+.merchant-detail-item-icon {
+  justify-self: center;
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
 .merchant-buy-detail h3 {
   margin: 2px 0 6px;
   font-size: 18px;

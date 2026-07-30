@@ -4662,7 +4662,7 @@ describe("game update intent priority", () => {
     expect(nextState.localPoiTarget?.reason).toBe("accept available quest");
   });
 
-  it("guides the active equipment quest to the Merchant without auto-selling parts", () => {
+  it("guides the active Merchant purchase quest without auto-selling parts", () => {
     const leader = createLeader({ x: 7, y: 20 });
     const stateWithJunk = addItemToInventoryState(
       createHubState([leader, ...createHubNpcs()], {
@@ -4680,7 +4680,7 @@ describe("game update intent priority", () => {
     expect(nextState.localPoiTarget).toMatchObject({
       poiId: npcIds[1],
       reason: "active quest merchant objective",
-      objectiveId: "buy_merchant_equipment",
+      objectiveId: "buy_first_aid_skill_book",
     });
     expect(nextState.inventory.slots).toEqual([
       { itemId: "wolf_pelt", quantity: 1 },

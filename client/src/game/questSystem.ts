@@ -58,7 +58,8 @@ export {
   recordEnemyDefeatedForQuests,
   recordEquippedItemObjectivesForQuests,
   recordMapReachedForQuests,
-  recordMerchantEquipmentPurchasedForQuests,
+  recordCraftedItemForQuests,
+  recordMerchantItemPurchasedForQuests,
   recordQuestPoiReachedForQuests,
   recordQuestRepairProgress,
   recordResourceGatheredForQuests,
@@ -70,6 +71,7 @@ export const EQUIPMENT_TUTORIAL_QUEST_ID: QuestId = "outfit_the_expedition";
 export const QUEST_ORDER: QuestId[] = [
   "clear_the_shore",
   EQUIPMENT_TUTORIAL_QUEST_ID,
+  "smiths_first_work",
   "stolen_field_supplies",
   "break_lower_shore_blockage",
   "scout_rise_samples",
@@ -153,8 +155,47 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
         requiredCount: 1,
       },
       {
-        id: "buy_merchant_equipment",
-        type: "buy_merchant_equipment",
+        id: "buy_first_aid_skill_book",
+        type: "buy_merchant_item",
+        itemId: "first_aid_skill_book",
+        requiredCount: 1,
+      },
+      {
+        id: "buy_crafting_string",
+        type: "buy_merchant_item",
+        itemId: "crafting_string",
+        requiredCount: 1,
+      },
+      {
+        id: "buy_iron_nails",
+        type: "buy_merchant_item",
+        itemId: "iron_nails",
+        requiredCount: 1,
+      },
+    ],
+    unlocksQuestIds: ["smiths_first_work"],
+    rewards: {
+      crowns: 10,
+      characterXp: 4,
+    },
+  },
+  smiths_first_work: {
+    id: "smiths_first_work",
+    displayName: "First Work at the Smithy",
+    sourceType: "npc",
+    questGiverPoiId: QUEST_GIVER_POI_ID,
+    objectives: [
+      {
+        id: "craft_plain_charm",
+        type: "craft_item",
+        itemId: "plain_charm",
+        requiredCount: 1,
+      },
+      {
+        id: "equip_plain_charm",
+        type: "equip_item",
+        itemId: "plain_charm",
+        targetSlot: "accessory1",
         requiredCount: 1,
       },
     ],
@@ -162,6 +203,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
     rewards: {
       crowns: 10,
       characterXp: 4,
+      items: [{ itemId: "minor_recovery_flask", quantity: 1 }],
     },
   },
   stolen_field_supplies: {
@@ -1007,7 +1049,12 @@ function acceptQuest(
     },
   );
 
-  if (questId === EQUIPMENT_TUTORIAL_QUEST_ID) {
+  if (
+    QUEST_DEFINITIONS[questId].objectives.some(
+      (objective) =>
+        objective.type === "equip_item" || objective.type === "equip_flask",
+    )
+  ) {
     nextState = recordEquippedItemObjectivesForQuests(
       nextState,
       "quest_acceptance",

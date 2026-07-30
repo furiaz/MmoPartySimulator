@@ -210,8 +210,20 @@ export function getObjectiveLabel(
       : "Equip Item";
   }
 
-  if (objective.type === "buy_merchant_equipment") {
-    return "Buy Equipment";
+  if (objective.type === "buy_merchant_item") {
+    const itemDefinition = objective.itemId
+      ? getItemDefinition(objective.itemId)
+      : null;
+
+    return itemDefinition ? `Buy ${itemDefinition.displayName}` : "Buy Item";
+  }
+
+  if (objective.type === "craft_item") {
+    const itemDefinition = objective.itemId
+      ? getItemDefinition(objective.itemId)
+      : null;
+
+    return itemDefinition ? `Craft ${itemDefinition.displayName}` : "Craft Item";
   }
 
   if (objective.type === "reach_poi") {
