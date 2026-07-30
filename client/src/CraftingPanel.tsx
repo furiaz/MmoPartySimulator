@@ -3,11 +3,13 @@ import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
 import {
   ARMOR_FAMILY_LABELS,
   EQUIPMENT_SLOT_LABELS,
+  EQUIPMENT_TYPE_LABELS,
   formatCurrencyDisplay,
   getSortedCraftingRecipeStatuses,
   type ArmorFamily,
   type CraftingRecipeId,
   type CraftingRecipeStatus,
+  type EquipmentType,
   type GameState,
   type ItemDefinition,
 } from "./game";
@@ -15,6 +17,7 @@ import {
 type CraftingLevelFilter = "all" | "1" | "5" | "10plus";
 type CraftingCategoryFilter = "all" | "weapons" | "armor" | "accessories";
 type CraftingArmorFamilyFilter = "all" | ArmorFamily;
+type CraftingWeaponTypeFilter = "all" | EquipmentType;
 type CraftingArmorPartFilter =
   | "all"
   | "head"
@@ -98,6 +101,7 @@ function matchesCraftingFilters(
     category: CraftingCategoryFilter;
     armorFamily: CraftingArmorFamilyFilter;
     armorPart: CraftingArmorPartFilter;
+    weaponType: CraftingWeaponTypeFilter;
     craftability: CraftingCraftabilityFilter;
   },
 ): boolean {
@@ -129,6 +133,7 @@ function matchesCraftingFilters(
   }
 
   if (
+    filters.category === "armor" &&
     filters.armorFamily !== "all" &&
     itemDefinition.armorFamily !== filters.armorFamily
   ) {
@@ -136,8 +141,17 @@ function matchesCraftingFilters(
   }
 
   if (
+    filters.category === "armor" &&
     filters.armorPart !== "all" &&
     itemDefinition.equipmentSlot !== filters.armorPart
+  ) {
+    return false;
+  }
+
+  if (
+    filters.category === "weapons" &&
+    filters.weaponType !== "all" &&
+    itemDefinition.equipmentType !== filters.weaponType
   ) {
     return false;
   }
@@ -172,8 +186,32 @@ export function CraftingPanel({
     useState<CraftingArmorFamilyFilter>("all");
   const [armorPartFilter, setArmorPartFilter] =
     useState<CraftingArmorPartFilter>("all");
+  const [weaponTypeFilter, setWeaponTypeFilter] =
+    useState<CraftingWeaponTypeFilter>("all");
   const [craftabilityFilter, setCraftabilityFilter] =
     useState<CraftingCraftabilityFilter>("all");
+  const weaponTypeFilterOptions = useMemo<CraftingWeaponTypeFilter[]>(() => {
+    const weaponTypes = new Set<EquipmentType>();
+
+    for (const status of recipeStatuses) {
+      const itemDefinition = status.outputItemDefinition;
+
+      if (
+        (itemDefinition?.equipmentKind === "weapon" ||
+          itemDefinition?.equipmentKind === "offhand") &&
+        itemDefinition.equipmentType
+      ) {
+        weaponTypes.add(itemDefinition.equipmentType);
+      }
+    }
+
+    return [
+      "all",
+      ...Array.from(weaponTypes).sort((first, second) =>
+        EQUIPMENT_TYPE_LABELS[first].localeCompare(EQUIPMENT_TYPE_LABELS[second]),
+      ),
+    ];
+  }, [recipeStatuses]);
   const filteredRecipeStatuses = useMemo(
     () =>
       recipeStatuses.filter((status) =>
@@ -182,6 +220,7 @@ export function CraftingPanel({
           category: categoryFilter,
           armorFamily: armorFamilyFilter,
           armorPart: armorPartFilter,
+          weaponType: weaponTypeFilter,
           craftability: craftabilityFilter,
         }),
       ),
@@ -192,6 +231,7 @@ export function CraftingPanel({
       craftabilityFilter,
       levelFilter,
       recipeStatuses,
+      weaponTypeFilter,
     ],
   );
   const [selectedRecipeId, setSelectedRecipeId] =
@@ -224,18 +264,38 @@ export function CraftingPanel({
   const selectedOutputIconSrc = selectedStatus?.outputItemDefinition
     ? INVENTORY_ITEM_ICON_SRC[selectedStatus.outputItemDefinition.id]
     : undefined;
+  const hasActiveCategoryFilter = categoryFilter !== "all";
+  const hasActiveArmorFilters =
+    categoryFilter === "armor" &&
+    (armorFamilyFilter !== "all" || armorPartFilter !== "all");
+  const hasActiveWeaponFilters =
+    categoryFilter === "weapons" && weaponTypeFilter !== "all";
   const hasActiveFilters =
     levelFilter !== "all" ||
-    categoryFilter !== "all" ||
-    armorFamilyFilter !== "all" ||
-    armorPartFilter !== "all" ||
+    hasActiveCategoryFilter ||
+    hasActiveArmorFilters ||
+    hasActiveWeaponFilters ||
     craftabilityFilter !== "all";
+
+  function changeCategoryFilter(nextCategoryFilter: CraftingCategoryFilter) {
+    setCategoryFilter(nextCategoryFilter);
+
+    if (nextCategoryFilter !== "armor") {
+      setArmorFamilyFilter("all");
+      setArmorPartFilter("all");
+    }
+
+    if (nextCategoryFilter !== "weapons") {
+      setWeaponTypeFilter("all");
+    }
+  }
 
   function clearFilters() {
     setLevelFilter("all");
     setCategoryFilter("all");
     setArmorFamilyFilter("all");
     setArmorPartFilter("all");
+    setWeaponTypeFilter("all");
     setCraftabilityFilter("all");
   }
 
@@ -272,7 +332,7 @@ export function CraftingPanel({
               <select
                 value={categoryFilter}
                 onChange={(event) =>
-                  setCategoryFilter(
+                  changeCategoryFilter(
                     event.currentTarget.value as CraftingCategoryFilter,
                   )
                 }
@@ -283,44 +343,69 @@ export function CraftingPanel({
                 <option value="accessories">Accessories</option>
               </select>
             </label>
-            <label>
-              <span>Armor type</span>
-              <select
-                value={armorFamilyFilter}
-                onChange={(event) =>
-                  setArmorFamilyFilter(
-                    event.currentTarget.value as CraftingArmorFamilyFilter,
-                  )
-                }
-              >
-                {armorFamilyFilterOptions.map((armorFamily) => (
-                  <option key={armorFamily} value={armorFamily}>
-                    {armorFamily === "all"
-                      ? "All"
-                      : ARMOR_FAMILY_LABELS[armorFamily]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Armor part</span>
-              <select
-                value={armorPartFilter}
-                onChange={(event) =>
-                  setArmorPartFilter(
-                    event.currentTarget.value as CraftingArmorPartFilter,
-                  )
-                }
-              >
-                {armorPartFilterOptions.map((armorPart) => (
-                  <option key={armorPart} value={armorPart}>
-                    {armorPart === "all"
-                      ? "All"
-                      : EQUIPMENT_SLOT_LABELS[armorPart]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {categoryFilter === "weapons" ? (
+              <label>
+                <span>Weapon type</span>
+                <select
+                  value={weaponTypeFilter}
+                  onChange={(event) =>
+                    setWeaponTypeFilter(
+                      event.currentTarget.value as CraftingWeaponTypeFilter,
+                    )
+                  }
+                >
+                  {weaponTypeFilterOptions.map((weaponType) => (
+                    <option key={weaponType} value={weaponType}>
+                      {weaponType === "all"
+                        ? "All"
+                        : EQUIPMENT_TYPE_LABELS[weaponType]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {categoryFilter === "armor" ? (
+              <>
+                <label>
+                  <span>Armor type</span>
+                  <select
+                    value={armorFamilyFilter}
+                    onChange={(event) =>
+                      setArmorFamilyFilter(
+                        event.currentTarget.value as CraftingArmorFamilyFilter,
+                      )
+                    }
+                  >
+                    {armorFamilyFilterOptions.map((armorFamily) => (
+                      <option key={armorFamily} value={armorFamily}>
+                        {armorFamily === "all"
+                          ? "All"
+                          : ARMOR_FAMILY_LABELS[armorFamily]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Armor part</span>
+                  <select
+                    value={armorPartFilter}
+                    onChange={(event) =>
+                      setArmorPartFilter(
+                        event.currentTarget.value as CraftingArmorPartFilter,
+                      )
+                    }
+                  >
+                    {armorPartFilterOptions.map((armorPart) => (
+                      <option key={armorPart} value={armorPart}>
+                        {armorPart === "all"
+                          ? "All"
+                          : EQUIPMENT_SLOT_LABELS[armorPart]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : null}
             <label>
               <span>Status</span>
               <select

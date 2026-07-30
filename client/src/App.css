@@ -1017,6 +1017,27 @@
   backdrop-filter: blur(10px);
 }
 
+.game-menu-panel.bank-menu-panel {
+  width: min(868px, calc(100vw - 32px));
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.game-menu-panel.bank-menu-panel .game-menu-tabs {
+  border: 1px solid var(--main-menu-panel-border);
+  background: var(--main-menu-panel-background);
+  box-shadow: var(--main-menu-panel-shadow);
+  backdrop-filter: blur(10px);
+}
+
+.game-menu-panel.bank-menu-panel .game-menu-content {
+  overflow: visible;
+  padding: 12px 0 0;
+}
+
 .game-menu-tabs {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1232,22 +1253,22 @@
 
 .crafting-output {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
   min-width: 0;
 }
 
 .crafting-output img {
-  width: 40px;
-  height: 40px;
+  width: 80px;
+  height: 80px;
   image-rendering: pixelated;
 }
 
 .crafting-output-placeholder {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 80px;
+  height: 80px;
   border: 1px solid rgba(122, 166, 173, 0.72);
   background: rgba(230, 240, 242, 0.12);
 }
@@ -1344,20 +1365,11 @@
   max-height: calc(100vh - 172px);
   padding: 14px;
   overflow-x: hidden;
-  border: 1px solid rgba(58, 90, 96, 0.8);
+  border: 1px solid var(--main-menu-panel-border);
   border-radius: 8px;
-  background: rgba(9, 18, 21, 0.94);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
-  color: #e6f0f2;
-}
-
-.atlas-panel .bank-panel {
-  width: 100%;
-  max-height: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  background: rgba(9, 18, 21, 0.9);
+  box-shadow: var(--main-menu-panel-shadow);
+  color: var(--main-menu-panel-text);
 }
 
 .bank-header,
@@ -1377,7 +1389,7 @@
 .bank-header span,
 .bank-header strong,
 .bank-slot-panel-header span {
-  color: #aec6ca;
+  color: var(--main-menu-panel-muted-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1392,10 +1404,10 @@
 .bank-routing-control select,
 .bank-quantity-popover button {
   min-height: 32px;
-  border: 1px solid #3a5a60;
+  border: 1px solid var(--main-menu-panel-border);
   border-radius: 6px;
-  background: rgba(26, 42, 47, 0.58);
-  color: #e6f0f2;
+  background: rgba(9, 18, 21, 0.2);
+  color: var(--main-menu-panel-text);
   font-weight: 800;
 }
 
@@ -1410,7 +1422,7 @@
   gap: 8px;
   min-width: 0;
   margin-left: auto;
-  color: #aec6ca;
+  color: var(--main-menu-panel-muted-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1449,10 +1461,6 @@
   padding-right: 4px;
 }
 
-.atlas-panel .bank-slot-grid {
-  max-height: 430px;
-}
-
 .bank-slot {
   position: relative;
   box-sizing: border-box;
@@ -1463,15 +1471,19 @@
   min-width: 0;
   min-height: 104px;
   padding: 6px;
-  border: 1px solid rgba(58, 90, 96, 0.6);
+  border: 1px solid var(--main-menu-panel-border);
   border-radius: 6px;
-  background: rgba(12, 22, 26, 0.35);
-  color: #e6f0f2;
+  background: rgba(230, 240, 242, 0.12);
+  color: var(--main-menu-panel-text);
+  font-size: 11px;
+  line-height: 1;
   text-align: center;
 }
 
 .bank-slot.empty {
-  background: rgba(9, 18, 21, 0.24);
+  border-style: dashed;
+  background: rgba(9, 18, 21, 0.14);
+  color: rgba(230, 240, 242, 0.54);
 }
 
 .bank-slot.actionable {
@@ -1489,9 +1501,9 @@
 
 .bank-slot-index {
   justify-self: start;
-  color: rgba(174, 198, 202, 0.62);
-  font-size: 11px;
-  font-weight: 800;
+  color: rgba(230, 240, 242, 0.56);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .bank-slot-lock {
@@ -1516,18 +1528,20 @@
   border-radius: 6px 6px 0 0;
 }
 
-.bank-slot-name {
+.bank-slot-name,
+.inventory-slot-name {
   max-width: 100%;
   overflow: hidden;
-  color: #e6f0f2;
+  color: var(--main-menu-panel-text);
   font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bank-slot-quantity {
-  color: #aec6ca;
+.bank-slot-quantity,
+.inventory-slot-quantity {
+  color: rgba(230, 240, 242, 0.78);
   font-size: 11px;
   font-weight: 800;
 }
@@ -1543,10 +1557,10 @@
   align-items: end;
   width: min(460px, calc(100vw - 32px));
   padding: 14px;
-  border: 1px solid rgba(58, 90, 96, 0.9);
+  border: 1px solid var(--main-menu-panel-border);
   border-radius: 8px;
-  background: rgba(9, 18, 21, 0.98);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
+  background: var(--main-menu-panel-background);
+  box-shadow: var(--main-menu-panel-shadow);
   transform: translate(-50%, -50%);
 }
 
@@ -1558,7 +1572,7 @@
 .bank-quantity-popover label {
   display: grid;
   gap: 4px;
-  color: #aec6ca;
+  color: var(--main-menu-panel-muted-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1566,10 +1580,10 @@
 .bank-quantity-popover input {
   min-width: 110px;
   padding: 7px 8px;
-  border: 1px solid #3a5a60;
+  border: 1px solid var(--main-menu-panel-border);
   border-radius: 6px;
   background: rgba(26, 42, 47, 0.58);
-  color: #e6f0f2;
+  color: var(--main-menu-panel-text);
 }
 
 .options-panel {
@@ -2170,8 +2184,9 @@
 
 .inventory-slot-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  overflow-x: hidden;
   padding: 10px;
 }
 
@@ -3038,17 +3053,21 @@
 
 .inventory-slot {
   position: relative;
+  box-sizing: border-box;
   display: grid;
-  grid-template-rows: 20px 18px 16px;
-  place-items: center;
+  grid-template-rows: 16px 66px 30px 16px;
+  align-items: center;
+  justify-items: center;
   min-width: 0;
-  aspect-ratio: 1;
-  padding: 5px;
+  min-height: 136px;
+  padding: 6px;
   border: 1px solid #3a5a60;
-  background: rgba(9, 18, 21, 0.2);
+  border-radius: 6px;
+  background: rgba(230, 240, 242, 0.12);
   color: #e6f0f2;
   font-size: 11px;
   line-height: 1;
+  text-align: center;
 }
 
 .inventory-slot.empty {
@@ -3078,18 +3097,16 @@
 }
 
 .inventory-slot-index {
-  position: absolute;
-  top: 4px;
-  left: 5px;
+  justify-self: start;
   color: rgba(230, 240, 242, 0.56);
   font-size: 10px;
   font-weight: 700;
 }
 
 .inventory-resource-shape {
-  width: 22px;
-  height: 22px;
-  margin-top: 6px;
+  width: 32px;
+  height: 32px;
+  margin-top: 0;
   border: 1px solid rgba(15, 23, 42, 0.42);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
 }
@@ -3117,21 +3134,10 @@
   image-rendering: pixelated;
 }
 
-.inventory-slot-name,
-.inventory-slot-quantity {
-  max-width: 100%;
-  overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.inventory-slot-name {
-  color: #e6f0f2;
-}
-
-.inventory-slot-quantity {
-  color: rgba(230, 240, 242, 0.78);
+.inventory-slot .inventory-item-icon,
+.inventory-slot .inventory-resource-shape {
+  width: 64px;
+  height: 64px;
 }
 
 .inventory-item-action-panel {

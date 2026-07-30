@@ -136,7 +136,14 @@ export function GameMenu({
   onManualSave: () => void;
 }) {
   return (
-    <aside className="game-menu-panel" aria-label="Game menu">
+    <aside
+      className={`game-menu-panel${
+        activeTab === "atlas" && activeAtlasSubpage === "bank"
+          ? " bank-menu-panel"
+          : ""
+      }`}
+      aria-label="Game menu"
+    >
           <nav className="game-menu-tabs" aria-label="Menu sections">
             <button
               className={activeTab === "party" ? "active" : ""}
