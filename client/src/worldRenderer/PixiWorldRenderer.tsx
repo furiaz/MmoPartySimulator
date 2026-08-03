@@ -102,7 +102,15 @@ const defaultCellPixelSize = 32;
 const floorChunkCellSpan = 4;
 const slimewardFloorTileCellSpan = 4;
 const slimewardWallTileCellSpan = 2;
-const wildernessMapIds = new Set(["map-1", "map-2", "map-3", "map-4"]);
+const wildernessMapIds = new Set([
+  "map-1",
+  "map-2",
+  "map-3",
+  "map-4",
+  "map-5",
+  "map-6",
+  "map-7",
+]);
 const defaultFeedbackFontSize = 11;
 const emphasizedFeedbackFontSize = defaultFeedbackFontSize * 2;
 const damageNumberAnimationDurationMs = 1000;

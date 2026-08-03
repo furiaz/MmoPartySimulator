@@ -4,6 +4,7 @@ import {
   getBankSlotsByFixedIndex,
   getInventorySlotsByFixedIndex,
   getItemDefinition,
+  getItemDisplayName,
   getPartyBank,
   type BankAutoRoutingMode,
   type GameState,
@@ -30,7 +31,7 @@ function getItemTitle(itemId: ItemId, quantity: number): string {
   const itemDefinition = getItemDefinition(itemId);
 
   return [
-    itemDefinition.displayName,
+    getItemDisplayName(itemDefinition),
     `Category ${itemDefinition.category}`,
     `Quantity ${quantity}`,
   ].join("\n");
@@ -219,7 +220,7 @@ export function BankPanel({
       </div>
       {pendingQuantityMove ? (
         <div className="bank-quantity-popover" role="dialog" aria-label="Move quantity">
-          <h3>{getItemDefinition(pendingQuantityMove.itemId).displayName}</h3>
+          <h3>{getItemDisplayName(pendingQuantityMove.itemId)}</h3>
           <label>
             <span>Quantity</span>
             <input
@@ -347,7 +348,7 @@ function BankSlotGrid({
                     />
                   )}
                   <span className="bank-slot-name">
-                    {itemDefinition.displayName}
+                    {getItemDisplayName(itemDefinition)}
                   </span>
                   <span className="bank-slot-quantity">x{slot.quantity}</span>
                 </>

@@ -2,8 +2,11 @@ import { isTargetDummyEnemy } from "./entityGuards";
 import {
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
+  MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
 } from "./debugMap";
@@ -1349,6 +1352,18 @@ function createGuideObjectivePoi(
 }
 
 function getMapExplorationTarget(mapId: DebugMapId): Position {
+  if (mapId === MAP_SEVEN_ID) {
+    return { x: 120, y: 16 };
+  }
+
+  if (mapId === MAP_SIX_ID) {
+    return { x: 132, y: 42 };
+  }
+
+  if (mapId === MAP_FIVE_ID) {
+    return { x: 132, y: 42 };
+  }
+
   if (mapId === MAP_FOUR_ID) {
     return { x: 132, y: 36 };
   }

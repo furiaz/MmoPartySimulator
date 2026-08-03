@@ -271,6 +271,7 @@ export {
 export {
   ITEM_DEFINITIONS,
   getItemDefinition,
+  getItemDisplayName,
   getItemDefinitionForResourceType,
 } from "./items";
 export {
@@ -801,9 +802,18 @@ export {
   hubTwoNpcStartData,
   hubTwoCompanionStartPositions,
   MAP_FOUR_TO_HUB_TWO_TELEPORTER_ID,
+  MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID,
+  MAP_FIVE_ID,
+  MAP_FIVE_TO_MAP_FOUR_TELEPORTER_ID,
+  MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID,
   mapOneEnemyStartPositions,
   mapOneResourceStartData,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SEVEN_TO_MAP_SIX_TELEPORTER_ID,
+  MAP_SIX_ID,
+  MAP_SIX_TO_MAP_FIVE_TELEPORTER_ID,
+  MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID,
   MAP_THREE_ID,
   MAP_THREE_TO_HUB_TWO_TELEPORTER_ID,
   MAP_FOUR_ID,

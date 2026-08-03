@@ -60,7 +60,15 @@ export const fullModeInteractionRadius = 1.5;
 export const MAX_RENDER_FPS = 60;
 export const MIN_RENDER_FRAME_MS = 1000 / MAX_RENDER_FPS;
 
-const wildernessMapIds = new Set(["map-1", "map-2", "map-3", "map-4"]);
+const wildernessMapIds = new Set([
+  "map-1",
+  "map-2",
+  "map-3",
+  "map-4",
+  "map-5",
+  "map-6",
+  "map-7",
+]);
 const aggressiveEnemyNameplateColor = 0xdc2626;
 const passiveEnemyNameplateColor = 0x1f2937;
 const prototypeVfxSpritePath = "assets/Generated/prototype-vfx/sprites";

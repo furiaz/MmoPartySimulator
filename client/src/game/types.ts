@@ -55,7 +55,15 @@ export type EnemyTypeId =
   | "ash_wisp"
   | "mossling"
   | "wolf"
-  | "orc";
+  | "orc"
+  | "ember_imp"
+  | "iron_crawler"
+  | "briar_wolf"
+  | "mire_spider"
+  | "night_bat"
+  | "elder_mossling"
+  | "cinder_wisp"
+  | "orc_warmaster";
 
 export type EnemyArchetypeDefinition = {
   id: EnemyArchetypeId;
@@ -309,8 +317,20 @@ export type JunkItemId =
   | "crawler_plate_t1"
   | "moss_tuft_t1"
   | "mossling_cap_t1"
+  | "bat_wing_t2"
+  | "bat_ear_t2"
+  | "spider_silk_t2"
+  | "spider_fang_t2"
   | "goblin_ear_t2"
   | "goblin_tooth_t2"
+  | "imp_horn_chip_t2"
+  | "imp_tail_t2"
+  | "wolf_pelt_t2"
+  | "wolf_fang_t2"
+  | "crawler_pebble_t2"
+  | "crawler_plate_t2"
+  | "moss_tuft_t2"
+  | "mossling_cap_t2"
   | "wisp_ash_t2"
   | "wisp_ember_t2"
   | "orc_tusk"
@@ -874,6 +894,9 @@ export type DebugMapId =
   | "map-2"
   | "map-3"
   | "map-4"
+  | "map-5"
+  | "map-6"
+  | "map-7"
   | "slimeward-camp"
   | "slimeward-floor-1"
   | "slimeward-floor-2";

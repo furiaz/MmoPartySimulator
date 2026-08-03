@@ -24,12 +24,20 @@ const EXPECTED_ENEMY_COMBAT_BODY_RADII = {
   mossling: 0.6,
   wolf: 0.6,
   orc: 0.6,
+  ember_imp: 0.6,
+  iron_crawler: 0.8,
+  briar_wolf: 0.65,
+  mire_spider: 0.8,
+  night_bat: 0.75,
+  elder_mossling: 0.7,
+  cinder_wisp: 0.65,
+  orc_warmaster: 1.1,
 } satisfies Record<keyof typeof ENEMY_TYPES, number>;
 
 describe("prototype enemy identity definitions", () => {
   it("defines broad archetypes and specific spawnable enemy types separately", () => {
     expect(Object.keys(ENEMY_ARCHETYPES)).toHaveLength(10);
-    expect(Object.keys(ENEMY_TYPES)).toHaveLength(16);
+    expect(Object.keys(ENEMY_TYPES)).toHaveLength(24);
     expect(ENEMY_ARCHETYPES).toHaveProperty("wolf");
     expect(ENEMY_ARCHETYPES).toHaveProperty("orc");
     expect(ENEMY_ARCHETYPES).toHaveProperty("goblin");
@@ -38,6 +46,7 @@ describe("prototype enemy identity definitions", () => {
     expect(ENEMY_TYPES).toHaveProperty("slimeward_spitter_slime");
     expect(ENEMY_TYPES).toHaveProperty("azure_mass");
     expect(ENEMY_TYPES).toHaveProperty("goblin_shaman");
+    expect(ENEMY_TYPES).toHaveProperty("orc_warmaster");
   });
 
   it("keeps archetype default attack ranges numeric and prototype-safe", () => {
@@ -71,6 +80,8 @@ describe("prototype enemy identity definitions", () => {
     expect(ENEMY_TYPES.forest_spider.archetypeId).toBe("spider");
     expect(ENEMY_TYPES.goblin_thrower.archetypeId).toBe("goblin");
     expect(ENEMY_TYPES.ash_wisp.archetypeId).toBe("wisp");
+    expect(ENEMY_TYPES.briar_wolf.archetypeId).toBe("wolf");
+    expect(ENEMY_TYPES.orc_warmaster.archetypeId).toBe("orc");
   });
 
   it("applies supported enemy type setup values when enemies are created", () => {

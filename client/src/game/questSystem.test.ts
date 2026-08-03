@@ -269,7 +269,7 @@ describe("prototype quest system", () => {
     expect(quests.azure_trial.status).toBe("locked");
   });
 
-  it("unlocks the Third Wild Zone bridge quests before Slimeward Trail", () => {
+  it("unlocks the Azurefen Hollow bridge quests before Slimeward Trail", () => {
     let state = createStateWithParty({
       quests: createQuestStates({
         open_wolf_causeway: "ready_to_turn_in",
@@ -841,7 +841,7 @@ describe("prototype quest system", () => {
     );
   });
 
-  it("progresses the Third Wild Zone bridge quests and Slimeward route unlock", () => {
+  it("progresses the Azurefen Hollow bridge quests and Slimeward route unlock", () => {
     let state = createStateWithParty({
       currentMapId: MAP_THREE_ID,
       map: createDebugMap(MAP_THREE_ID),
@@ -959,7 +959,7 @@ describe("prototype quest system", () => {
     );
   });
 
-  it("turns the Lower Shore route teleport working when repair completes", () => {
+  it("turns the Lowbank route teleport working when repair completes", () => {
     let state = createStateWithParty({
       quests: createQuestStates({
         break_lower_shore_blockage: "active",
@@ -985,7 +985,7 @@ describe("prototype quest system", () => {
     expect(isTeleportWorking(state, TELEPORTER_ID)).toBe(true);
   });
 
-  it("opens the Old Grove passage blocker immediately when the cache repair completes", () => {
+  it("opens the Thicket passage blocker immediately when the cache repair completes", () => {
     let state = createStateWithParty({
       currentMapId: MAP_TWO_ID,
       map: createDebugMap(MAP_TWO_ID),

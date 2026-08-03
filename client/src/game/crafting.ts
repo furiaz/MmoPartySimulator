@@ -6,7 +6,7 @@ import {
   removeItemFromInventorySlotState,
 } from "./inventory";
 import { ARMOR_FAMILY_LABELS, EQUIPMENT_TYPE_LABELS } from "./equipmentTypes";
-import { getItemDefinition } from "./items";
+import { getItemDefinition, getItemDisplayName } from "./items";
 import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
 import { recordCraftedItemForQuests } from "./questProgressionHooks";
@@ -806,7 +806,7 @@ function doesInventorySlotMatchCraftingRequirement(
 
 function getCraftingRequirementDisplayName(requirement: CraftingCost): string {
   if (requirement.kind === "item") {
-    return getItemDefinition(requirement.itemId).displayName;
+    return getItemDisplayName(requirement.itemId);
   }
 
   const equipmentTypeLabel = EQUIPMENT_TYPE_LABELS[requirement.equipmentType];

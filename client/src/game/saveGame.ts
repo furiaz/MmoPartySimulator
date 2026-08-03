@@ -71,7 +71,15 @@ type OfflineFarmingProfile = {
   resourceRatePerMinute: number;
 };
 
-const WILD_MAP_IDS: DebugMapId[] = ["map-1", "map-2", "map-3", "map-4"];
+const WILD_MAP_IDS: DebugMapId[] = [
+  "map-1",
+  "map-2",
+  "map-3",
+  "map-4",
+  "map-5",
+  "map-6",
+  "map-7",
+];
 
 const OFFLINE_FARMING_PROFILES: Record<string, OfflineFarmingProfile> = {
   "map-1:shore-fringe": { enemyRatePerMinute: 10, resourceRatePerMinute: 2.4 },
@@ -86,6 +94,14 @@ const OFFLINE_FARMING_PROFILES: Record<string, OfflineFarmingProfile> = {
   "map-4:north-center": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.1 },
   "map-4:north-east": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.6 },
   "map-4:south-east": { enemyRatePerMinute: 3, resourceRatePerMinute: 1.5 },
+  "map-5:crossing": { enemyRatePerMinute: 2.8, resourceRatePerMinute: 1.4 },
+  "map-5:burrows": { enemyRatePerMinute: 2.6, resourceRatePerMinute: 1.7 },
+  "map-5:thornfield": { enemyRatePerMinute: 2.4, resourceRatePerMinute: 1.7 },
+  "map-6:mire": { enemyRatePerMinute: 2.2, resourceRatePerMinute: 1.4 },
+  "map-6:canopy": { enemyRatePerMinute: 2, resourceRatePerMinute: 1.6 },
+  "map-6:oldroot": { enemyRatePerMinute: 1.8, resourceRatePerMinute: 1.6 },
+  "map-7:plaza": { enemyRatePerMinute: 1.5, resourceRatePerMinute: 1.3 },
+  "map-7:garden": { enemyRatePerMinute: 1.3, resourceRatePerMinute: 1.5 },
 };
 
 const COMBAT_ROLE_WEIGHTS: Record<PartyMemberRole, number> = {

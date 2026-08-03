@@ -325,19 +325,31 @@ function formatQuestMapName(mapId: QuestObjectiveDefinition["targetMapId"]): str
   }
 
   if (mapId === "map-1") {
-    return "First Wild Zone";
+    return "Mosswake Shore";
   }
 
   if (mapId === "map-2") {
-    return "Second Wild Zone";
+    return "Briarwood Rise";
   }
 
   if (mapId === "map-3") {
-    return "Third Wild Zone";
+    return "Azurefen Hollow";
   }
 
   if (mapId === "map-4") {
-    return "Fourth Wild Zone";
+    return "Ashwatch Approach";
+  }
+
+  if (mapId === "map-5") {
+    return "Emberbriar Crossing";
+  }
+
+  if (mapId === "map-6") {
+    return "Nightmire Canopy";
+  }
+
+  if (mapId === "map-7") {
+    return "Twilight of the Fallen";
   }
 
   return "Region";

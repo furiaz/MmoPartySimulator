@@ -233,7 +233,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
   },
   break_lower_shore_blockage: {
     id: "break_lower_shore_blockage",
-    displayName: "Break the Lower Shore Blockage",
+    displayName: "Break the Lowbank Blockage",
     sourceType: "npc",
     objectiveFlow: "sequential",
     questGiverPoiId: QUEST_GIVER_POI_ID,
@@ -299,7 +299,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
   },
   scout_rise_samples: {
     id: "scout_rise_samples",
-    displayName: "Scout Rise Samples",
+    displayName: "Outskirts Samples",
     sourceType: "npc",
     questGiverPoiId: QUEST_GIVER_POI_ID,
     objectives: [
@@ -399,7 +399,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
   },
   open_wolf_causeway: {
     id: "open_wolf_causeway",
-    displayName: "Open the Wolf Causeway",
+    displayName: "Open the Causeway",
     sourceType: "npc",
     objectiveFlow: "sequential",
     questGiverPoiId: QUEST_GIVER_POI_ID,
@@ -467,7 +467,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
   },
   broken_thicket_survey: {
     id: "broken_thicket_survey",
-    displayName: "Broken Thicket Survey",
+    displayName: "Fen Survey",
     sourceType: "npc",
     objectiveFlow: "sequential",
     questGiverPoiId: QUEST_GIVER_POI_ID,
@@ -510,7 +510,7 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
   },
   crawler_shelf_report: {
     id: "crawler_shelf_report",
-    displayName: "Crawler Shelf Report",
+    displayName: "Shelf Report",
     sourceType: "npc",
     objectiveFlow: "sequential",
     questGiverPoiId: QUEST_GIVER_POI_ID,

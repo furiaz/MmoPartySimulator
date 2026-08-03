@@ -1225,7 +1225,7 @@ describe("game update intent priority", () => {
     });
   });
 
-  it("routes the second Map 1 quest to Mossy Glade passage before the far herb", () => {
+  it("routes the second Zone 1 quest to the Glade passage before the far herb", () => {
     const leader = createLeader({ x: 4, y: 29 });
     const gladeBat = createEnemy("glade-bat", { x: 101, y: 29 }, undefined, {
       enemyTypeId: "cave_bat",
@@ -1255,7 +1255,7 @@ describe("game update intent priority", () => {
     });
   });
 
-  it("selects the second Map 1 quest target directly once inside Mossy Glade", () => {
+  it("selects the second Zone 1 quest target directly once inside Glade", () => {
     const leader = createLeader({ x: 58, y: 29 });
     const gladeBat = createEnemy("glade-bat", { x: 59, y: 29 }, undefined, {
       enemyTypeId: "cave_bat",
@@ -1361,7 +1361,7 @@ describe("game update intent priority", () => {
     );
   });
 
-  it("routes Lower Shore quest objectives through each Map 1 subzone hop", () => {
+  it("routes Lowbank quest objectives through each Zone 1 subzone hop", () => {
     const shoreLeader = createLeader({ x: 4, y: 29 });
     const shoreState = updateGame(
       createMapOneState([shoreLeader], {
@@ -1395,7 +1395,7 @@ describe("game update intent priority", () => {
     });
   });
 
-  it("targets Quest 4 objectives sequentially in Lower Shore", () => {
+  it("targets Quest 4 objectives sequentially in Lowbank", () => {
     const leader = createLeader({ x: 145, y: 28 });
     const spider = createEnemy("lower-shore-spider", { x: 146, y: 28 }, undefined, {
       enemyTypeId: "forest_spider",
@@ -5553,7 +5553,7 @@ function createMossyQuestTestMap(): GameMap {
   return {
     ...createOpenTestMap(),
     subzones: [
-      createTestSubzone("shore-fringe", "Shore Fringe", {
+      createTestSubzone("shore-fringe", "Shore", {
         x: 0,
         y: 0,
         width: 40,

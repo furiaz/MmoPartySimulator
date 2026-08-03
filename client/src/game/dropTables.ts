@@ -9,6 +9,8 @@ import type {
 export type DropTableId =
   | `${EnemyArchetypeId}_tier_${LootTier}_drops`
   | `${EnemyArchetypeId}_superior_tier_${LootTier}_drops`
+  | `${EnemyTypeId}_tier_${LootTier}_drops`
+  | `${EnemyTypeId}_superior_tier_${LootTier}_drops`
   | "azure_mass_tier_1_drops"
   | "goblin_shaman_tier_2_drops"
   | "goblin_shaman_superior_tier_2_drops";
@@ -29,6 +31,7 @@ export type EnemyDropTable = {
   archetypeId: EnemyArchetypeId;
   tier: LootTier;
   variant?: EnemyVariant;
+  overridesArchetypeDrops?: boolean;
   groups: DropGroup[];
 };
 
@@ -56,11 +59,19 @@ export const ENEMY_DROP_TABLES: Partial<
       createDropGroup("bat_common", 0.65, "bat_wing_t1"),
       createDropGroup("bat_rare", 0.1, "bat_ear_t1"),
     ]),
+    2: createArchetypeDropTable("bat", 2, [
+      createDropGroup("bat_common", 0.55, "bat_wing_t2"),
+      createDropGroup("bat_rare", 0.07, "bat_ear_t2"),
+    ]),
   },
   spider: {
     1: createArchetypeDropTable("spider", 1, [
       createDropGroup("spider_common", 0.65, "spider_silk_t1"),
       createDropGroup("spider_rare", 0.1, "spider_fang_t1"),
+    ]),
+    2: createArchetypeDropTable("spider", 2, [
+      createDropGroup("spider_common", 0.55, "spider_silk_t2"),
+      createDropGroup("spider_rare", 0.07, "spider_fang_t2"),
     ]),
   },
   goblin: {
@@ -78,11 +89,19 @@ export const ENEMY_DROP_TABLES: Partial<
       createDropGroup("imp_common", 0.6, "imp_horn_chip_t1"),
       createDropGroup("imp_rare", 0.08, "imp_tail_t1"),
     ]),
+    2: createArchetypeDropTable("imp", 2, [
+      createDropGroup("imp_common", 0.55, "imp_horn_chip_t2"),
+      createDropGroup("imp_rare", 0.07, "imp_tail_t2"),
+    ]),
   },
   wolf: {
     1: createArchetypeDropTable("wolf", 1, [
       createDropGroup("wolf_common", 0.6, "wolf_pelt"),
       createDropGroup("wolf_rare", 0.08, "wolf_fang"),
+    ]),
+    2: createArchetypeDropTable("wolf", 2, [
+      createDropGroup("wolf_common", 0.55, "wolf_pelt_t2"),
+      createDropGroup("wolf_rare", 0.07, "wolf_fang_t2"),
     ]),
   },
   crawler: {
@@ -90,11 +109,19 @@ export const ENEMY_DROP_TABLES: Partial<
       createDropGroup("crawler_common", 0.55, "crawler_pebble_t1"),
       createDropGroup("crawler_rare", 0.07, "crawler_plate_t1"),
     ]),
+    2: createArchetypeDropTable("crawler", 2, [
+      createDropGroup("crawler_common", 0.55, "crawler_pebble_t2"),
+      createDropGroup("crawler_rare", 0.07, "crawler_plate_t2"),
+    ]),
   },
   mossling: {
     1: createArchetypeDropTable("mossling", 1, [
       createDropGroup("mossling_common", 0.55, "moss_tuft_t1"),
       createDropGroup("mossling_rare", 0.07, "mossling_cap_t1"),
+    ]),
+    2: createArchetypeDropTable("mossling", 2, [
+      createDropGroup("mossling_common", 0.55, "moss_tuft_t2"),
+      createDropGroup("mossling_rare", 0.07, "mossling_cap_t2"),
     ]),
   },
   wisp: {
@@ -125,11 +152,19 @@ export const SUPERIOR_ENEMY_DROP_TABLES: Partial<
       createDropGroup("bat_superior_common", 1.4, "bat_wing_t1"),
       createDropGroup("bat_superior_rare", 0.7, "bat_ear_t1"),
     ], "superior"),
+    2: createArchetypeDropTable("bat", 2, [
+      createDropGroup("bat_superior_common", 1.2, "bat_wing_t2"),
+      createDropGroup("bat_superior_rare", 0.6, "bat_ear_t2"),
+    ], "superior"),
   },
   spider: {
     1: createArchetypeDropTable("spider", 1, [
       createDropGroup("spider_superior_common", 1.4, "spider_silk_t1"),
       createDropGroup("spider_superior_rare", 0.7, "spider_fang_t1"),
+    ], "superior"),
+    2: createArchetypeDropTable("spider", 2, [
+      createDropGroup("spider_superior_common", 1.2, "spider_silk_t2"),
+      createDropGroup("spider_superior_rare", 0.6, "spider_fang_t2"),
     ], "superior"),
   },
   goblin: {
@@ -147,11 +182,19 @@ export const SUPERIOR_ENEMY_DROP_TABLES: Partial<
       createDropGroup("imp_superior_common", 1.3, "imp_horn_chip_t1"),
       createDropGroup("imp_superior_rare", 0.6, "imp_tail_t1"),
     ], "superior"),
+    2: createArchetypeDropTable("imp", 2, [
+      createDropGroup("imp_superior_common", 1.2, "imp_horn_chip_t2"),
+      createDropGroup("imp_superior_rare", 0.6, "imp_tail_t2"),
+    ], "superior"),
   },
   wolf: {
     1: createArchetypeDropTable("wolf", 1, [
       createDropGroup("wolf_superior_common", 1.3, "wolf_pelt"),
       createDropGroup("wolf_superior_rare", 0.6, "wolf_fang"),
+    ], "superior"),
+    2: createArchetypeDropTable("wolf", 2, [
+      createDropGroup("wolf_superior_common", 1.2, "wolf_pelt_t2"),
+      createDropGroup("wolf_superior_rare", 0.6, "wolf_fang_t2"),
     ], "superior"),
   },
   crawler: {
@@ -159,11 +202,19 @@ export const SUPERIOR_ENEMY_DROP_TABLES: Partial<
       createDropGroup("crawler_superior_common", 1.2, "crawler_pebble_t1"),
       createDropGroup("crawler_superior_rare", 0.6, "crawler_plate_t1"),
     ], "superior"),
+    2: createArchetypeDropTable("crawler", 2, [
+      createDropGroup("crawler_superior_common", 1.2, "crawler_pebble_t2"),
+      createDropGroup("crawler_superior_rare", 0.6, "crawler_plate_t2"),
+    ], "superior"),
   },
   mossling: {
     1: createArchetypeDropTable("mossling", 1, [
       createDropGroup("mossling_superior_common", 1.15, "moss_tuft_t1"),
       createDropGroup("mossling_superior_rare", 0.6, "mossling_cap_t1"),
+    ], "superior"),
+    2: createArchetypeDropTable("mossling", 2, [
+      createDropGroup("mossling_superior_common", 1.15, "moss_tuft_t2"),
+      createDropGroup("mossling_superior_rare", 0.6, "mossling_cap_t2"),
     ], "superior"),
   },
   wisp: {
@@ -204,6 +255,18 @@ export const ENEMY_TYPE_DROP_TABLES: Partial<
       ],
     },
   },
+  cinder_wisp: {
+    2: createEnemyTypeDropTable("cinder_wisp", "wisp", 2, [
+      createDropGroup("cinder_wisp_common", 0.65, "wisp_ash_t2"),
+      createDropGroup("cinder_wisp_rare", 0.1, "wisp_ember_t2"),
+    ], { overridesArchetypeDrops: true }),
+  },
+  orc_warmaster: {
+    2: createEnemyTypeDropTable("orc_warmaster", "orc", 2, [
+      createDropGroup("orc_warmaster_common", 0.65, "orc_hide"),
+      createDropGroup("orc_warmaster_rare", 0.1, "orc_tusk"),
+    ], { overridesArchetypeDrops: true }),
+  },
 };
 
 export const SUPERIOR_ENEMY_TYPE_DROP_TABLES: Partial<
@@ -219,6 +282,18 @@ export const SUPERIOR_ENEMY_TYPE_DROP_TABLES: Partial<
         createDropGroup("goblin_shaman_superior_equipment", 0.2, "holy_lantern"),
       ],
     },
+  },
+  cinder_wisp: {
+    2: createEnemyTypeDropTable("cinder_wisp", "wisp", 2, [
+      createDropGroup("cinder_wisp_superior_common", 1.15, "wisp_ash_t2"),
+      createDropGroup("cinder_wisp_superior_rare", 0.65, "wisp_ember_t2"),
+    ], { variant: "superior", overridesArchetypeDrops: true }),
+  },
+  orc_warmaster: {
+    2: createEnemyTypeDropTable("orc_warmaster", "orc", 2, [
+      createDropGroup("orc_warmaster_superior_common", 1.15, "orc_hide"),
+      createDropGroup("orc_warmaster_superior_rare", 0.65, "orc_tusk"),
+    ], { variant: "superior", overridesArchetypeDrops: true }),
   },
 };
 
@@ -257,9 +332,11 @@ export function rollEnemyDropTable(
   enemyTypeId?: EnemyTypeId,
   variant?: EnemyVariant,
 ): DropRollResult[] {
+  const archetypeTable = getEnemyDropTable(archetypeId, tier, variant);
+  const enemyTypeTable = getEnemyTypeDropTable(enemyTypeId, tier, variant);
   const tables = [
-    getEnemyDropTable(archetypeId, tier, variant),
-    getEnemyTypeDropTable(enemyTypeId, tier, variant),
+    enemyTypeTable?.overridesArchetypeDrops ? undefined : archetypeTable,
+    enemyTypeTable,
   ].filter((table): table is EnemyDropTable => Boolean(table));
 
   return tables.flatMap((table) =>
@@ -280,6 +357,25 @@ function createArchetypeDropTable(
     archetypeId,
     tier,
     variant,
+    groups,
+  };
+}
+
+function createEnemyTypeDropTable(
+  enemyTypeId: EnemyTypeId,
+  archetypeId: EnemyArchetypeId,
+  tier: LootTier,
+  groups: DropGroup[],
+  options: { variant?: EnemyVariant; overridesArchetypeDrops?: boolean } = {},
+): EnemyDropTable {
+  return {
+    id: options.variant === "superior"
+      ? `${enemyTypeId}_superior_tier_${tier}_drops`
+      : `${enemyTypeId}_tier_${tier}_drops`,
+    archetypeId,
+    tier,
+    variant: options.variant,
+    overridesArchetypeDrops: options.overridesArchetypeDrops,
     groups,
   };
 }

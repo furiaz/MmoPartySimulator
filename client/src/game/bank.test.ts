@@ -6,6 +6,7 @@ import {
   createEmptyPartyBank,
   depositAllToBank,
   depositInventorySlotToBank,
+  isAutoDepositBodyPartDefinition,
   isPartyLeaderNearBankChest,
   sanitizePartyBank,
   setBankAutoRoutingMode,
@@ -14,6 +15,7 @@ import {
 } from "./bank";
 import { createCompanion, createNpc } from "./entities";
 import { addItemToInventoryState, createEmptyPartyInventory } from "./inventory";
+import { getItemDefinition } from "./items";
 import { createSavedGame } from "./saveGame";
 import { addEntity } from "./state";
 import { createTestGameState } from "./testState";
@@ -213,6 +215,15 @@ describe("bank storage", () => {
     expect(deposit.state.inventory.slots).toEqual([
       { itemId: "softwood", quantity: 4, slotIndex: 1 },
     ]);
+  });
+
+  it("treats new Tier 2 monster parts as body parts for auto-deposit", () => {
+    expect(isAutoDepositBodyPartDefinition(getItemDefinition("imp_horn_chip_t2")))
+      .toBe(true);
+    expect(isAutoDepositBodyPartDefinition(getItemDefinition("crawler_plate_t2")))
+      .toBe(true);
+    expect(isAutoDepositBodyPartDefinition(getItemDefinition("redleaf_herb")))
+      .toBe(false);
   });
 
   it("remote-style bank actions fail without proximity and mutate nothing", () => {
