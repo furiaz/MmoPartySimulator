@@ -6,6 +6,7 @@ import {
   removeItemFromInventorySlotState,
 } from "./inventory";
 import { FIRST_CLASS_IDS } from "./classes";
+import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import {
   ARMOR_FAMILY_LABELS,
   CLASS_EQUIPMENT_PROFILES,
@@ -23,6 +24,8 @@ import {
 } from "./wallet";
 import type {
   ArmorFamily,
+  DebugCraftingConsumedItemTelemetryRow,
+  DebugCraftingRequirementTelemetryRow,
   EquipmentItemId,
   EquipmentType,
   InventorySlot,
@@ -1394,8 +1397,14 @@ export function craftRecipe(
   const recipe = getCraftingRecipe(recipeId);
 
   if (!recipe) {
-    return {
+    const failedState = appendCraftingFailedTelemetry(
       state,
+      recipeId,
+      "invalid_recipe",
+    );
+
+    return {
+      state: failedState,
       result: {
         status: "failed",
         recipeId,
@@ -1405,34 +1414,75 @@ export function craftRecipe(
   }
 
   const status = getCraftingRecipeStatus(state, recipe);
+  const attemptedState = appendCraftingAttemptTelemetry(state, recipe, status);
 
   if (!status.outputItemDefinition) {
-    return createCraftingFailure(state, recipe.id, "invalid_output");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "invalid_output",
+      recipe,
+      status,
+    );
   }
 
   if (!status.isLeaderNearSmith) {
-    return createCraftingFailure(state, recipe.id, "leader_not_near_smith");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "leader_not_near_smith",
+      recipe,
+      status,
+    );
   }
 
   if (!status.hasRequiredMaterials) {
-    return createCraftingFailure(state, recipe.id, "missing_materials");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "missing_materials",
+      recipe,
+      status,
+    );
   }
 
   if (!status.hasRequiredCrowns) {
-    return createCraftingFailure(state, recipe.id, "insufficient_crowns");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "insufficient_crowns",
+      recipe,
+      status,
+    );
   }
 
   if (!status.hasInventorySpace) {
-    return createCraftingFailure(state, recipe.id, "inventory_full");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "inventory_full",
+      recipe,
+      status,
+    );
   }
 
-  let nextState = state;
+  const consumedCraftingItems = getConsumedCraftingItemsForTelemetry(
+    state.inventory,
+    recipe.costs,
+  );
+  let nextState = attemptedState;
 
   for (const cost of recipe.costs) {
     const removal = removeCraftingRequirementFromState(nextState, cost);
 
     if (!removal) {
-      return createCraftingFailure(state, recipe.id, "inventory_remove_failed");
+      return createCraftingFailure(
+        attemptedState,
+        recipe.id,
+        "inventory_remove_failed",
+        recipe,
+        status,
+      );
     }
 
     nextState = removal;
@@ -1447,7 +1497,13 @@ export function craftRecipe(
   );
 
   if (currencyRemoval.result.status !== "success") {
-    return createCraftingFailure(state, recipe.id, "currency_remove_failed");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "currency_remove_failed",
+      recipe,
+      status,
+    );
   }
 
   const inventoryAdd = addItemToInventoryState(
@@ -1458,13 +1514,27 @@ export function craftRecipe(
   );
 
   if (inventoryAdd.result.status !== "success") {
-    return createCraftingFailure(state, recipe.id, "inventory_add_failed");
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "inventory_add_failed",
+      recipe,
+      status,
+    );
   }
 
-  const craftedState = recordCraftedItemForQuests(
+  const craftedState = appendCraftingSucceededTelemetry(
+    recordCraftedItemForQuests(
     inventoryAdd.state,
     recipe.outputItemId,
     recipe.outputQuantity,
+    ),
+    recipe,
+    status,
+    consumedCraftingItems,
+    previousCrowns,
+    currencyRemoval.result.newBalance,
+    state,
   );
 
   return {
@@ -1818,13 +1888,177 @@ function getArmorSlotSortOrder(itemDefinition: ItemDefinition): number {
   }
 }
 
+function appendCraftingAttemptTelemetry(
+  state: GameState,
+  recipe: CraftingRecipe,
+  status: CraftingRecipeStatus,
+): GameState {
+  return appendDebugTelemetryEvent(state, {
+    type: "craft_attempted",
+    entityId: getCraftingTelemetryEntityId(state),
+    craftingRecipeId: recipe.id,
+    outputItemId: recipe.outputItemId,
+    outputQuantity: recipe.outputQuantity,
+    craftingRequirements: getCraftingRequirementsForTelemetry(status),
+    crownCost: recipe.crownCost,
+    previousCurrencyBalance: status.crownBalance,
+    nextCurrencyBalance: status.crownBalance,
+    inventoryUsedSlots: state.inventory.slots.length,
+    inventoryCapacity: state.inventory.capacity,
+    inventoryFreeSlotsBefore: getAvailableInventorySlots(state.inventory),
+    inventoryFreeSlotsAfter: getAvailableInventorySlots(state.inventory),
+  });
+}
+
+function appendCraftingFailedTelemetry(
+  state: GameState,
+  recipeId: string,
+  reason: CraftingFailureReason,
+  recipe?: CraftingRecipe,
+  status?: CraftingRecipeStatus,
+): GameState {
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+
+  return appendDebugTelemetryEvent(state, {
+    type: "craft_failed",
+    entityId: getCraftingTelemetryEntityId(state),
+    craftingRecipeId: recipeId,
+    outputItemId: recipe?.outputItemId,
+    outputQuantity: recipe?.outputQuantity,
+    craftingFailureReason: reason,
+    craftingRequirements: status
+      ? getCraftingRequirementsForTelemetry(status)
+      : undefined,
+    crownCost: recipe?.crownCost,
+    previousCurrencyBalance: status?.crownBalance ?? crownBalance,
+    nextCurrencyBalance: status?.crownBalance ?? crownBalance,
+    inventoryUsedSlots: state.inventory.slots.length,
+    inventoryCapacity: state.inventory.capacity,
+    inventoryFreeSlotsBefore: getAvailableInventorySlots(state.inventory),
+    inventoryFreeSlotsAfter: getAvailableInventorySlots(state.inventory),
+  });
+}
+
+function appendCraftingSucceededTelemetry(
+  state: GameState,
+  recipe: CraftingRecipe,
+  status: CraftingRecipeStatus,
+  consumedCraftingItems: DebugCraftingConsumedItemTelemetryRow[],
+  previousCrowns: number,
+  nextCrowns: number,
+  previousState: GameState,
+): GameState {
+  return appendDebugTelemetryEvent(state, {
+    type: "craft_succeeded",
+    entityId: getCraftingTelemetryEntityId(previousState),
+    craftingRecipeId: recipe.id,
+    outputItemId: recipe.outputItemId,
+    outputQuantity: recipe.outputQuantity,
+    craftingRequirements: getCraftingRequirementsForTelemetry(status),
+    consumedCraftingItems,
+    crownCost: recipe.crownCost,
+    previousCurrencyBalance: previousCrowns,
+    nextCurrencyBalance: nextCrowns,
+    inventoryUsedSlots: state.inventory.slots.length,
+    inventoryCapacity: state.inventory.capacity,
+    inventoryFreeSlotsBefore: getAvailableInventorySlots(previousState.inventory),
+    inventoryFreeSlotsAfter: getAvailableInventorySlots(state.inventory),
+  });
+}
+
+function getCraftingRequirementsForTelemetry(
+  status: CraftingRecipeStatus,
+): DebugCraftingRequirementTelemetryRow[] {
+  return status.requirements.map((requirement) => ({
+    kind: requirement.kind,
+    ...(requirement.kind === "item"
+      ? { itemId: requirement.itemId }
+      : {
+          equipmentType: requirement.equipmentType,
+          armorFamily: requirement.armorFamily,
+          levelRequirement: requirement.levelRequirement,
+        }),
+    displayName: requirement.displayName,
+    ownedQuantity: requirement.ownedQuantity,
+    requiredQuantity: requirement.quantity,
+    isMet: requirement.isMet,
+  }));
+}
+
+function getConsumedCraftingItemsForTelemetry(
+  inventory: PartyInventory,
+  requirements: CraftingCost[],
+): DebugCraftingConsumedItemTelemetryRow[] {
+  const lockedSlotIndices = getLockedInventorySlotIndices(inventory);
+  const rows: DebugCraftingConsumedItemTelemetryRow[] = [];
+  const remainingSlots = inventory.slots.map((slot) => ({ ...slot }));
+
+  for (const requirement of requirements) {
+    let remainingQuantity = requirement.quantity;
+
+    for (
+      let arrayIndex = 0;
+      arrayIndex < remainingSlots.length && remainingQuantity > 0;
+      arrayIndex += 1
+    ) {
+      const slot = remainingSlots[arrayIndex];
+      const slotIndex = getInventorySlotIndex(slot, arrayIndex);
+
+      if (
+        lockedSlotIndices.includes(slotIndex) ||
+        !doesInventorySlotMatchCraftingRequirement(slot, requirement)
+      ) {
+        continue;
+      }
+
+      const quantity = Math.min(slot.quantity, remainingQuantity);
+      const itemDefinition = getItemDefinition(slot.itemId);
+      rows.push({
+        kind: requirement.kind,
+        itemId: slot.itemId,
+        itemDisplayName: getItemDisplayName(slot.itemId),
+        quantity,
+        ...(requirement.kind === "equipment"
+          ? {
+              equipmentType: requirement.equipmentType,
+              armorFamily: requirement.armorFamily ?? itemDefinition.armorFamily,
+              levelRequirement:
+                requirement.levelRequirement ?? itemDefinition.levelRequirement,
+            }
+          : {}),
+      });
+      remainingSlots[arrayIndex] = {
+        ...slot,
+        quantity: slot.quantity - quantity,
+      };
+      remainingQuantity -= quantity;
+    }
+  }
+
+  return rows;
+}
+
+function getCraftingTelemetryEntityId(state: GameState): string {
+  return getPartyLeader(state)?.id ?? state.partyLeaderId ?? "crafting";
+}
+
 function createCraftingFailure(
   state: GameState,
   recipeId: CraftingRecipeId,
   reason: CraftingFailureReason,
+  recipe?: CraftingRecipe,
+  status?: CraftingRecipeStatus,
 ): { state: GameState; result: CraftingResult } {
-  return {
+  const failedState = appendCraftingFailedTelemetry(
     state,
+    recipeId,
+    reason,
+    recipe,
+    status,
+  );
+
+  return {
+    state: failedState,
     result: {
       status: "failed",
       recipeId,

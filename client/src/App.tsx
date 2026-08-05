@@ -49,6 +49,7 @@ import {
   closeSlimewardDungeonChestUi,
   continueSlimewardDungeonChest,
   craftRecipe,
+  debugAddCraftingMaterialsAndEnemyDropsToInventory,
   debugAddCompanionToParty,
   debugAddEnemiesToCurrentSubzone,
   debugAddPrototypeConsumablesToInventory,
@@ -3917,6 +3918,10 @@ function App() {
     setGameState(debugAddPrototypeConsumablesToInventory);
   }
 
+  function addCraftingMaterialsAndEnemyDrops() {
+    setGameState(debugAddCraftingMaterialsAndEnemyDropsToInventory);
+  }
+
   function finishCurrentQuestForDebug() {
     setGameState((state) =>
       debugFinishCurrentQuest(state, getDisplayQuest(state.quests)?.questId),
@@ -5358,6 +5363,9 @@ function App() {
                   <button onClick={addTestCrowns}>+100 Crowns</button>
                   <button onClick={addPrototypeConsumables}>
                     Add Prototype Consumables
+                  </button>
+                  <button onClick={addCraftingMaterialsAndEnemyDrops}>
+                    Add Craft Materials x20
                   </button>
                   <button onClick={finishCurrentQuestForDebug}>
                     Finish Current Quest

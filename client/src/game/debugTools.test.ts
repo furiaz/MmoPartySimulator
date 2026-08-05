@@ -4,6 +4,7 @@ import { createCompanion, createEnemy, createNpc } from "./entities";
 import { companionIds, createDebugMap, TELEPORTER_ID } from "./debugMap";
 import {
   DEBUG_ADD_ENEMIES_MAX_COUNT,
+  debugAddCraftingMaterialsAndEnemyDropsToInventory,
   debugAddEnemiesToCurrentSubzone,
   debugAddTestCrowns,
   debugApplyCompanionInfiniteHealth,
@@ -16,6 +17,7 @@ import {
   debugTurnInCurrentQuest,
 } from "./debugTools";
 import { isSuperiorEnemy } from "./enemyVariants";
+import { countInventoryItem, createEmptyPartyInventory } from "./inventory";
 import { MAX_CHARACTER_LEVEL } from "./leveling";
 import { createInitialQuestStates } from "./questSystem";
 import { startDebugTelemetryRecording } from "./debugTelemetry";
@@ -404,6 +406,79 @@ describe("companion debug test tools", () => {
 
     expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(100);
     expect(nextState.wallet.visibleUntil).toBeGreaterThan(Date.now() - 1);
+  });
+
+  it("adds 20 of each crafting material and enemy drop to inventory", () => {
+    const state = createTestGameState({
+      inventory: createEmptyPartyInventory(80),
+    });
+
+    const nextState = debugAddCraftingMaterialsAndEnemyDropsToInventory(state);
+
+    expect(countInventoryItem(nextState.inventory, "softwood")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "crafting_string")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "slime_gel_t1")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "orc_hide")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "training_sword")).toBe(0);
+    expect(countInventoryItem(nextState.inventory, "minor_recovery_flask")).toBe(0);
+    expect(countInventoryItem(nextState.inventory, "first_aid_skill_book")).toBe(0);
+  });
+
+  it("records debug crafting material fill telemetry while recording", () => {
+    const state = startDebugTelemetryRecording(
+      createTestGameState({
+        inventory: createEmptyPartyInventory(80),
+      }),
+    );
+
+    const nextState = debugAddCraftingMaterialsAndEnemyDropsToInventory(state);
+
+    expect(nextState.debugTelemetry?.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "debug_crafting_materials_added",
+          entityId: "debug_tools",
+          requestedQuantity: 20,
+          successfulItemCount: expect.any(Number),
+          partialItemCount: 0,
+          failedItemCount: 0,
+          inventoryCapacity: 80,
+        }),
+      ]),
+    );
+  });
+
+  it("summarizes constrained inventory results for debug material fill", () => {
+    const state = startDebugTelemetryRecording(
+      createTestGameState({
+        inventory: createEmptyPartyInventory(1),
+      }),
+    );
+
+    const nextState = debugAddCraftingMaterialsAndEnemyDropsToInventory(state);
+    const fillEvent = nextState.debugTelemetry?.events.find(
+      (event) => event.type === "debug_crafting_materials_added",
+    );
+
+    expect(fillEvent).toMatchObject({
+      requestedQuantity: 20,
+      successfulItemCount: 1,
+      partialItemCount: 0,
+      inventoryCapacity: 1,
+      inventoryFreeSlotsAfter: 0,
+    });
+    expect(fillEvent?.failedItemCount).toBeGreaterThan(0);
+    expect(fillEvent?.eligibleItemCount).toBeGreaterThan(1);
+  });
+
+  it("does not record debug crafting material fill telemetry when recording is off", () => {
+    const state = createTestGameState({
+      inventory: createEmptyPartyInventory(80),
+    });
+
+    const nextState = debugAddCraftingMaterialsAndEnemyDropsToInventory(state);
+
+    expect(nextState.debugTelemetry?.events ?? []).toEqual([]);
   });
 });
 

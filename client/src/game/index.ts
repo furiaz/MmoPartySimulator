@@ -839,6 +839,7 @@ export {
   debugAddCompanion,
   debugAddCompanionToParty,
   debugAddEnemiesToCurrentSubzone,
+  debugAddCraftingMaterialsAndEnemyDropsToInventory,
   debugApplyCompanionInfiniteHealth,
   debugAddPrototypeConsumablesToInventory,
   debugAddPrototypeEquipmentToInventory,

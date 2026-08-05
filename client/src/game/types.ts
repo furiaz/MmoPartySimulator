@@ -1965,6 +1965,10 @@ export type DebugTelemetryEventType =
   | "quick_exchange_completed"
   | "quick_exchange_failed"
   | "quick_exchange_no_items"
+  | "craft_attempted"
+  | "craft_succeeded"
+  | "craft_failed"
+  | "debug_crafting_materials_added"
   | "skill_selected"
   | "skill_used"
   | "skill_skipped"
@@ -2051,6 +2055,28 @@ export type DebugTelemetryEntitySnapshot = {
   blockerId?: string;
   blockerKind?: EntityKind | "wall" | "bounds" | "reserved" | "unknown";
   navigation?: DebugNavigationTelemetry;
+};
+
+export type DebugCraftingRequirementTelemetryRow = {
+  kind: "item" | "equipment";
+  itemId?: ItemId;
+  equipmentType?: EquipmentType;
+  armorFamily?: ArmorFamily;
+  levelRequirement?: number;
+  displayName: string;
+  ownedQuantity: number;
+  requiredQuantity: number;
+  isMet: boolean;
+};
+
+export type DebugCraftingConsumedItemTelemetryRow = {
+  kind: "item" | "equipment";
+  itemId: ItemId;
+  itemDisplayName: string;
+  quantity: number;
+  equipmentType?: EquipmentType;
+  armorFamily?: ArmorFamily;
+  levelRequirement?: number;
 };
 
 export type DebugTelemetryEvent = {
@@ -2201,6 +2227,19 @@ export type DebugTelemetryEvent = {
   objectiveId?: string;
   objectiveProgress?: number;
   objectiveRequiredCount?: number;
+  craftingRecipeId?: string;
+  outputItemId?: ItemId;
+  outputQuantity?: number;
+  craftingFailureReason?: string;
+  craftingRequirements?: DebugCraftingRequirementTelemetryRow[];
+  consumedCraftingItems?: DebugCraftingConsumedItemTelemetryRow[];
+  crownCost?: number;
+  inventoryFreeSlotsBefore?: number;
+  inventoryFreeSlotsAfter?: number;
+  eligibleItemCount?: number;
+  successfulItemCount?: number;
+  partialItemCount?: number;
+  failedItemCount?: number;
 };
 
 export type DebugTelemetryTick = {

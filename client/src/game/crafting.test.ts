@@ -8,6 +8,7 @@ import {
   getSortedCraftingRecipeStatuses,
   isPartyLeaderNearSmith,
 } from "./crafting";
+import { startDebugTelemetryRecording } from "./debugTelemetry";
 import { createCompanion, createNpc } from "./entities";
 import { ITEM_DEFINITIONS } from "./items";
 import {
@@ -19,7 +20,7 @@ import {
 import { createInitialQuestStates } from "./questSystem";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
-import type { ItemId } from "./types";
+import type { DebugTelemetryEvent, ItemId } from "./types";
 import { getCurrencyBalance, setCurrencyBalanceForDebug } from "./wallet";
 
 describe("Smith crafting", () => {
@@ -42,6 +43,84 @@ describe("Smith crafting", () => {
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(6);
   });
 
+  it("records crafting attempt and success telemetry while debug recording", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["softwood", 5],
+      ["slime_gel_t1", 2],
+      ["crafting_string", 1],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+    state = startDebugTelemetryRecording(state);
+
+    const result = craftRecipe(state, "training_sword");
+    const events = getDebugTelemetryEvents(result.state);
+    const successEvent = events.find((event) => event.type === "craft_succeeded");
+
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["craft_attempted", "craft_succeeded"]),
+    );
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "craft_attempted",
+          entityId: "leader",
+          craftingRecipeId: "training_sword",
+          outputItemId: "training_sword",
+          outputQuantity: 1,
+          crownCost: 4,
+          previousCurrencyBalance: 10,
+          nextCurrencyBalance: 10,
+          craftingRequirements: expect.arrayContaining([
+            expect.objectContaining({
+              kind: "item",
+              itemId: "softwood",
+              ownedQuantity: 5,
+              requiredQuantity: 5,
+              isMet: true,
+            }),
+          ]),
+        }),
+      ]),
+    );
+    expect(successEvent).toMatchObject({
+      craftingRecipeId: "training_sword",
+      outputItemId: "training_sword",
+      crownCost: 4,
+      previousCurrencyBalance: 10,
+      nextCurrencyBalance: 6,
+    });
+    expect(successEvent?.consumedCraftingItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "item", itemId: "softwood", quantity: 5 }),
+        expect.objectContaining({
+          kind: "item",
+          itemId: "slime_gel_t1",
+          quantity: 2,
+        }),
+        expect.objectContaining({
+          kind: "item",
+          itemId: "crafting_string",
+          quantity: 1,
+        }),
+      ]),
+    );
+  });
+
+  it("does not record crafting telemetry when debug recording is off", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["softwood", 5],
+      ["slime_gel_t1", 2],
+      ["crafting_string", 1],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+
+    const result = craftRecipe(state, "training_sword");
+
+    expect(result.state.debugTelemetry?.events ?? []).toEqual([]);
+  });
+
   it("fails without consuming anything when required materials are missing", () => {
     let state = createCraftingState();
     state = addItems(state, [
@@ -59,6 +138,47 @@ describe("Smith crafting", () => {
     });
     expect(result.state.inventory).toEqual(state.inventory);
     expect(result.state.wallet).toEqual(state.wallet);
+  });
+
+  it("records failed crafting telemetry without mutating inventory or wallet", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["softwood", 5],
+      ["crafting_string", 1],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+    state = startDebugTelemetryRecording(state);
+
+    const result = craftRecipe(state, "training_sword");
+
+    expect(result.result).toEqual({
+      status: "failed",
+      recipeId: "training_sword",
+      reason: "missing_materials",
+    });
+    expect(result.state.inventory).toEqual(state.inventory);
+    expect(result.state.wallet).toEqual(state.wallet);
+    expect(getDebugTelemetryEvents(result.state)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "craft_attempted",
+          craftingRecipeId: "training_sword",
+        }),
+        expect.objectContaining({
+          type: "craft_failed",
+          craftingRecipeId: "training_sword",
+          craftingFailureReason: "missing_materials",
+          craftingRequirements: expect.arrayContaining([
+            expect.objectContaining({
+              itemId: "slime_gel_t1",
+              ownedQuantity: 0,
+              requiredQuantity: 2,
+              isMet: false,
+            }),
+          ]),
+        }),
+      ]),
+    );
   });
 
   it("fails without consuming anything when Crowns are insufficient", () => {
@@ -134,6 +254,53 @@ describe("Smith crafting", () => {
       reason: "invalid_recipe",
     });
     expect(result.state).toBe(state);
+  });
+
+  it("records invalid recipe and output failure telemetry", () => {
+    const invalidRecipeState = startDebugTelemetryRecording(createCraftingState());
+
+    const invalidRecipeResult = craftRecipe(invalidRecipeState, "missing_recipe");
+
+    expect(getDebugTelemetryEvents(invalidRecipeResult.state)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "craft_failed",
+          craftingRecipeId: "missing_recipe",
+          craftingFailureReason: "invalid_recipe",
+        }),
+      ]),
+    );
+
+    const brokenRecipe = {
+      id: "broken_output",
+      outputItemId: "missing_item",
+      outputQuantity: 1,
+      costs: [],
+      crownCost: 0,
+    } as unknown as CraftingRecipe;
+
+    CRAFTING_RECIPES.push(brokenRecipe);
+
+    try {
+      const invalidOutputState = startDebugTelemetryRecording(createCraftingState());
+      const invalidOutputResult = craftRecipe(invalidOutputState, "broken_output");
+
+      expect(getDebugTelemetryEvents(invalidOutputResult.state)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "craft_attempted",
+            craftingRecipeId: "broken_output",
+          }),
+          expect.objectContaining({
+            type: "craft_failed",
+            craftingRecipeId: "broken_output",
+            craftingFailureReason: "invalid_output",
+          }),
+        ]),
+      );
+    } finally {
+      CRAFTING_RECIPES.pop();
+    }
   });
 
   it("fails safely when a recipe output definition is invalid", () => {
@@ -675,6 +842,38 @@ describe("Smith crafting", () => {
       "success",
     );
   });
+
+  it("records the previous equipment consumed by a level 15 upgrade", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["iron_sword", 1],
+      ["iron_ore", 20],
+      ["crawler_plate_t2", 2],
+      ["wolf_fang_t2", 2],
+      ["iron_nails", 6],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
+    state = startDebugTelemetryRecording(state);
+
+    const result = craftRecipe(state, "steel_sword");
+    const successEvent = getDebugTelemetryEvents(result.state).find(
+      (event) => event.type === "craft_succeeded",
+    );
+
+    expect(result.result.status).toBe("success");
+    expect(successEvent?.consumedCraftingItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "equipment",
+          itemId: "iron_sword",
+          itemDisplayName: "Iron Sword",
+          quantity: 1,
+          equipmentType: "one_handed_sword",
+          levelRequirement: 10,
+        }),
+      ]),
+    );
+  });
 });
 
 function createCraftingState(options: {
@@ -719,6 +918,10 @@ function getPlannedCraftedEquipmentIds(): ItemId[] {
         [1, 5, 10, 15].includes(itemDefinition.levelRequirement ?? 1),
     )
     .map((itemDefinition) => itemDefinition.id);
+}
+
+function getDebugTelemetryEvents(state: GameState): DebugTelemetryEvent[] {
+  return state.debugTelemetry?.events ?? [];
 }
 
 function expectRecipeGroupOrder(
