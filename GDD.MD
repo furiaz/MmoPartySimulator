@@ -422,7 +422,7 @@ Projectile travel and enemy attack windup are prototype readability layers for c
 
 Companion combat may use derived combat stats for prototype attack power, defense, max health, evasion, block, magic power, healing power, magic defense, accuracy, critical hits, healing, shields, barriers, absorbs, mitigation, and passive health regeneration.
 
-Current prototype skill runtime may apply temporary combat state such as shields, barriers, absorbs, damage mitigation, mana shields, frost armor, Overcharge, party class buffs, gather buffs, healing over time, lifesteal, Runic Focus, forced evasion, fake death, next-attack damage bonuses, defense buffs, poison, burning, bleed, immobilize, disarm, curse, and temporary aggro drops.
+Current prototype skill runtime may apply temporary combat state such as shields, barriers, absorbs, damage mitigation, mana shields, frost armor, Overcharge, party class buffs, gather buffs, healing over time, lifesteal, Runic Focus, forced evasion, fake death, next-attack damage bonuses, defense buffs, poison, burning, bleed, immobilize, disarm, silence, taunt, and temporary aggro drops.
 
 Poison, burning, and bleed may deal periodic damage while active.
 
@@ -470,7 +470,7 @@ If all party members are defeated outside the hub, prototype world-wipe recovery
 
 Current prototype world-wipe recovery behavior:
 
-- does not trigger in Harbor Union Bastion
+- does not trigger in Harbor Union Bastion or Forward Bastion
 - rescues normal wild-map wipes to the closest unlocked rescue hub by route distance
 - rescues Slimeward dungeon floor wipes directly to Slimeward Camp
 - may present a pending rescue choice if multiple unlocked rescue hubs are equally valid
@@ -808,7 +808,7 @@ Current merchant behavior:
 - current prototype Merchant Buy pricing uses lower prices for Beginner skill books and higher prices for first-class skill books
 - Merchant Buy validates merchant identity, quest unlock state, stock membership, price, wallet balance, item category, and inventory capacity
 - purchased items are added to shared party inventory
-- Merchant Buy may filter stock by group, secondary item type or slot, and party equipment compatibility
+- Merchant Buy may filter stock by group, secondary item type or slot, minimum level requirement, maximum level requirement, and party equipment compatibility
 - party-compatible filtering applies to equipment compatibility and does not hide consumables or skill books
 - current Merchant Buy stock groups include flasks, food, books, weapons, offhands, cloth armor, leather armor, mail armor, plate armor, and accessories
 - current secondary Merchant Buy filters may separate weapons and offhands by equipment type, armor by slot, and accessories by charm type
@@ -931,6 +931,8 @@ Current armor level requirement intent:
 - Cloth and Leather Tier 1 armor may be available from level 1.
 - Mail Tier 1 armor may require level 5.
 - Plate Tier 1 armor may require level 10.
+- Current level 10 armor coverage includes cloth, leather, mail, and plate prototype armor options.
+- Current Tier 2 prototype equipment definitions may use level 15 and level 20 requirements for scaled weapons, offhands, and armor.
 
 Current prototype armor sets may include:
 
@@ -938,10 +940,15 @@ Current prototype armor sets may include:
 - Scholar cloth armor
 - Scout leather armor
 - Stalker leather armor
+- Trailrunner leather armor
+- Ravager leather armor
 - Guard mail armor
 - Vanguard mail armor
+- Wardmail armor
+- Ironmarch armor
 - Bulwark plate armor
 - Warplate armor
+- Tier 2 level 15 and level 20 cloth, leather, mail, and plate armor variants
 
 Current prototype accessory examples include:
 
@@ -1381,6 +1388,7 @@ Current prototype quests:
   - Quest id: find_slimeward_camp
   - Objectives: inspect the Slimeward Camp teleporter, defeat 4 Mosslings in Imp Fen, collect 4 Teleporter Stabilizer quest drops in Imp Fen, repair the Slimeward Camp teleporter, and unlock the Slimeward Camp route
   - Rewards: 25 Crowns, 10 character XP
+  - Unlocks: The Azure Trial
 
 - The Azure Trial
   - Quest id: azure_trial
@@ -2125,11 +2133,11 @@ The game begins on a newly discovered continent.
 
 The player arrives by boat.
 
-A central port town acts as the main hub.
+A central port town acts as the first main hub.
 
-The current prototype hub is Harbor Union Bastion, a small safe port/peninsula settlement with placeholder town entities and decorative non-simulation structure visuals.
+Current prototype hub maps are Harbor Union Bastion and Forward Bastion, safe settlements with placeholder town entities and decorative non-simulation structure visuals.
 
-Current prototype hub:
+Current Harbor Union Bastion prototype hub:
 
 - Harbor Union Bastion is the first prototype hub map.
 - It is a safe port/peninsula settlement.
@@ -2144,6 +2152,17 @@ Current prototype hub:
 - The healing fountain restores party member health and refills equipped flask charges when party members are in range.
 - The prototype hub should not spawn hostile enemies for now.
 - The prototype hub must not implement full town systems, interiors, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, crafting, recruitment, smithing, or NPC relationship systems unless explicitly requested.
+
+Current Forward Bastion prototype hub:
+
+- Forward Bastion is the second prototype hub map.
+- It is a safe forward settlement connected between the Third Wild Zone and Fourth Wild Zone.
+- It currently includes placeholder services, decorative structure visuals, a healing fountain, and physical route teleports.
+- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bounty Board, and dog NPCs.
+- The Class Mentor may appear in Forward Bastion through current quest-aware hub NPC data.
+- The Bounty Board and Smith remain placeholder hub NPCs unless explicitly expanded.
+- Forward Bastion should not spawn hostile enemies for now.
+- Forward Bastion must not implement full town systems, interiors, bounty systems, smithing, crafting, recruitment, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, or NPC relationship systems unless explicitly requested.
 
 The expedition expands outward into regions such as:
 
@@ -2184,7 +2203,8 @@ Current prototype/debug map routes are:
 - `hub` <-> `map-1`
 - `map-1` <-> `map-2`
 - `map-2` <-> `map-3`
-- `map-3` <-> `map-4`
+- `map-3` <-> `hub-2`
+- `hub-2` <-> `map-4`
 - `hub` -> `slimeward-camp`
 - `map-3` <-> `slimeward-camp`
 - `slimeward-camp` <-> `slimeward-floor-1`
@@ -2197,6 +2217,8 @@ Current non-working starter routes:
 
 - `map-1` -> `map-2`
 - `map-2` -> `map-3`
+- `hub-2` north route placeholder
+- `hub-2` east route placeholder
 - `slimeward-camp` broken exit placeholder
 - `slimeward-floor-2` -> `slimeward-camp` until the Slimeward boss chest has collected loot
 
@@ -2205,6 +2227,7 @@ World Travel and AI route selection should use only working teleports.
 Current readable prototype/debug map names:
 
 - `hub`: Harbor Union Bastion
+- `hub-2`: Forward Bastion
 - `map-1`: First Wild Zone
 - `map-2`: Second Wild Zone
 - `map-3`: Third Wild Zone
@@ -2238,6 +2261,11 @@ Current Slimeward dungeon prototype behavior:
 - Dungeon POI selection guides the party through ordered enemy packs, floor exits, the boss chest, and the final exit.
 - Slimeward floor enemies do not respawn.
 - The Azure Mass is the current prototype Slimeward boss.
+- The Azure Mass triggers prototype phase waves at 75%, 50%, and 25% health remaining.
+- Current phase waves spawn 3, 4, and 5 Slimeward enemies respectively, with one authored Superior slime in each wave.
+- When an Azure Mass phase starts, the boss temporarily flees living companions inside the boss room.
+- While the flee window is active, autonomous companion targeting suppresses The Azure Mass so companions can retarget through normal behavior, including toward spawned phase slimes.
+- Direct player commands against The Azure Mass are preserved by the flee retargeting behavior unless another normal validity rule blocks the command.
 - After The Azure Mass is defeated, a dungeon chest becomes available on Slimeward Floor 2.
 - The boss chest grants prototype loot to the shared inventory.
 - If inventory space is available, the boss chest enables the Slimeward Floor 2 exit.

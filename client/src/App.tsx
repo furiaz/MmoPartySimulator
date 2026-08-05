@@ -15,6 +15,7 @@ import {
   type GuidePopupId,
 } from "./guidePopupDefinitions";
 import type {
+  AtlasSubpage,
   GameMenuTab,
   PartyManagementSection,
   PartyMenuSection,
@@ -31,6 +32,7 @@ import {
   getQuestTurnInErrorText,
 } from "./questUiHelpers";
 import { QuestTrackerPanel } from "./QuestTrackerPanel";
+import { BankPanel } from "./BankPanel";
 import type { PixiRendererPerformanceSample } from "./worldRenderer/PixiWorldRendererHelpers";
 
 import {
@@ -46,6 +48,8 @@ import {
   clearDebugTelemetry,
   closeSlimewardDungeonChestUi,
   continueSlimewardDungeonChest,
+  craftRecipe,
+  debugAddCraftingMaterialsAndEnemyDropsToInventory,
   debugAddCompanionToParty,
   debugAddEnemiesToCurrentSubzone,
   debugAddPrototypeConsumablesToInventory,
@@ -106,7 +110,6 @@ import {
   isActiveResource,
   isMerchantUnlockedForQuests,
   isMerchantNpc,
-  quickExchangeParts,
   recordMerchantInteractionClosed,
   recordMerchantInteractionOpened,
   recordMerchantLockedForQuest,
@@ -115,11 +118,16 @@ import {
   readSkillBook,
   restoreGameStateFromSave,
   buildNavigationClickAccessibility,
+  depositAllToBank,
+  depositInventorySlotToBank,
+  isBankChestNpc,
+  isPartyLeaderNearBankChest,
   getNavigationClickCellKey,
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
   resolveWorldWipeRecoveryChoice,
   setAutoModeEnabled,
+  setBankAutoRoutingMode,
   setPartyLeader,
   setCompanionLegacySkillEnabled,
   setPartyMemberRole,
@@ -131,15 +139,21 @@ import {
   startGameLoop,
   startDebugTelemetryRecording,
   stopDebugTelemetryRecording,
+  toggleBankSlotLock,
+  toggleInventoryBankLock,
   unequipItemFromCompanion,
   unequipFlaskFromCompanion,
+  withdrawBankSlotToInventory,
   updateEntity,
   updateCompanionConsumableBehavior,
   updateCompanionSkillBehavior,
   type ActiveCombatProjectile,
+  type BankAutoRoutingMode,
   type ClassPath,
   type Companion,
   type CompanionAoeChannelState,
+  type CraftingFailureReason,
+  type CraftingRecipeId,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
   type ConsumableBehaviorUpdate,
@@ -235,7 +249,15 @@ const cameraSettleFactor = 0.08;
 const cameraSnapDistance = 0.35;
 const cameraDeadZoneWidthRatio = 0.34;
 const cameraDeadZoneHeightRatio = 0.3;
-const wildernessMapIds = new Set(["map-1", "map-2", "map-3", "map-4"]);
+const wildernessMapIds = new Set([
+  "map-1",
+  "map-2",
+  "map-3",
+  "map-4",
+  "map-5",
+  "map-6",
+  "map-7",
+]);
 const poiSearchScopeLabels: Record<PoiSearchScope, string> = {
   free_travel: "Free Travel",
   zone_only: "Zone Only",
@@ -286,7 +308,7 @@ type NavigationClickAccessibilityCache = {
 
 type MerchantPanel = "buy" | "sell";
 type QuestGiverPanel = "available" | "current";
-type NpcInteractionKind = "merchant" | "quest_giver";
+type NpcInteractionKind = "merchant" | "quest_giver" | "smith" | "bank_chest";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -304,6 +326,7 @@ const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
   all: "All",
   flasks: "Flasks",
   food: "Food",
+  supplies: "Supplies",
   books: "Books",
   weapons: "Weapons",
   offhands: "Offhands",
@@ -318,6 +341,7 @@ const merchantBuyFilters: MerchantBuyFilter[] = [
   "all",
   "flasks",
   "food",
+  "supplies",
   "books",
   "weapons",
   "offhands",
@@ -408,6 +432,7 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   class_mentor: "Class Mentor",
   bounty_board: "Bounty Board",
   smith: "Smith",
+  bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
   quest_guide: "Quest Guide",
@@ -448,6 +473,43 @@ const skillBookFailureMessages: Record<ReadSkillBookFailureReason, string> = {
   skill_maxed: "Skill is already maxed",
   inventory_remove_failed: "Book could not be consumed",
 };
+
+const craftingFailureMessages: Record<CraftingFailureReason, string> = {
+  invalid_recipe: "Recipe unavailable",
+  invalid_output: "Recipe output unavailable",
+  leader_not_near_smith: "Requires Smithy",
+  missing_materials: "Missing materials",
+  insufficient_crowns: "Not enough Crowns",
+  inventory_full: "Inventory is full",
+  inventory_remove_failed: "Crafting failed",
+  currency_remove_failed: "Crafting failed",
+  inventory_add_failed: "Crafting failed",
+};
+
+function getBankTransferFailureMessage(reason: string): string {
+  switch (reason) {
+    case "not_near_bank":
+      return "Requires Bank Chest";
+    case "remote_view_only":
+      return "Remote Bank is view only";
+    case "source_empty":
+      return "Slot is empty";
+    case "source_locked":
+      return "Slot is locked";
+    case "destination_locked":
+      return "Destination is locked";
+    case "quest_item":
+      return "Quest items cannot be deposited";
+    case "bank_full":
+      return "Bank is full!";
+    case "inventory_full":
+      return "Inventory full";
+    case "invalid_quantity":
+      return "Invalid quantity";
+    default:
+      return "Bank action failed";
+  }
+}
 
 type ViewportSize = {
   width: number;
@@ -582,6 +644,14 @@ function isHubVisualMap(mapId: string | undefined): boolean {
 function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
   if (npc.npcRole === "merchant") {
     return "merchant";
+  }
+
+  if (npc.npcRole === "smith") {
+    return "smith";
+  }
+
+  if (npc.npcRole === "bank_chest") {
+    return "bank_chest";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -1652,6 +1722,14 @@ function MerchantBuyPanel({
         <div className="merchant-buy-detail" aria-label="Selected stock item">
           {selectedEntry && selectedItemDefinition ? (
             <>
+              {INVENTORY_ITEM_ICON_SRC[selectedItemDefinition.id] ? (
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="merchant-detail-item-icon"
+                  src={INVENTORY_ITEM_ICON_SRC[selectedItemDefinition.id]}
+                />
+              ) : null}
               <div>
                 <span className="merchant-detail-kicker">
                   {merchantBuyFilterLabels[selectedEntry.group]}
@@ -2004,6 +2082,10 @@ function getMerchantItemTagText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantSlotText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Shared Inventory";
+  }
+
   if (itemDefinition.category === "skill_book") {
     return "Skill Book";
   }
@@ -2026,6 +2108,10 @@ function getMerchantSlotText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantTypeText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Material";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     return SKILL_DEFINITIONS[itemDefinition.skillBookSkillId].displayName;
   }
@@ -2044,6 +2130,10 @@ function getMerchantTypeText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantRequirementText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "No requirement";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     const skill = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
 
@@ -2064,6 +2154,10 @@ function getMerchantRequirementText(itemDefinition: ItemDefinition): string {
 }
 
 function getMerchantModifierText(itemDefinition: ItemDefinition): string {
+  if (itemDefinition.category === "material") {
+    return "Used by crafting recipes.";
+  }
+
   if (itemDefinition.category === "skill_book" && itemDefinition.skillBookSkillId) {
     const skill = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
 
@@ -2366,6 +2460,8 @@ function App() {
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
   const [activeGameMenuTab, setActiveGameMenuTab] =
     useState<GameMenuTab | null>(null);
+  const [activeAtlasSubpage, setActiveAtlasSubpage] =
+    useState<AtlasSubpage>("quests");
   const [activePartyManagementSection, setActivePartyManagementSection] =
     useState<PartyManagementSection>("role");
   const [activePartyMenuSection, setActivePartyMenuSection] =
@@ -2392,6 +2488,13 @@ function App() {
   const [merchantResultMessage, setMerchantResultMessage] =
     useState<string | null>(null);
   const [inventoryResultMessage, setInventoryResultMessage] =
+    useState<string | null>(null);
+  const [craftingResultMessage, setCraftingResultMessage] =
+    useState<string | null>(null);
+  const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
+    null,
+  );
+  const [bankResultMessage, setBankResultMessage] =
     useState<string | null>(null);
   const [activeQuestGiverNpcId, setActiveQuestGiverNpcId] = useState<
     string | null
@@ -2735,6 +2838,12 @@ function App() {
     activeMerchantNpcId && isMerchantNpc(gameState.entities[activeMerchantNpcId])
       ? gameState.entities[activeMerchantNpcId]
       : null;
+  const activeBankChest =
+    activeBankChestNpcId && isBankChestNpc(gameState.entities[activeBankChestNpcId])
+      ? gameState.entities[activeBankChestNpcId]
+      : null;
+  const activeBankCanManage =
+    Boolean(activeBankChest) && isPartyLeaderNearBankChest(gameState);
   const activeMerchantLocked =
     Boolean(activeMerchant) && !isMerchantUnlockedForQuests(gameState);
   const activeQuestGiver =
@@ -2774,6 +2883,7 @@ function App() {
         ) ?? null;
   const shouldShowWalletToast =
     !activeMerchant &&
+    !activeBankChest &&
     !activeQuestGiver &&
     (gameState.wallet.visibleUntil ?? 0) > currentTime;
   const shouldShowCurrencyGainFeedback =
@@ -2809,6 +2919,9 @@ function App() {
 
   const openMerchantInteraction = useCallback((npc: NpcEntity) => {
     setPendingNpcInteractionId(null);
+    setCraftingResultMessage(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
     setActiveQuestGiverNpcId(null);
     setActiveQuestGiverPanel(null);
     setSelectedQuestGiverQuestId(null);
@@ -2831,6 +2944,9 @@ function App() {
 
   const openQuestGiverInteraction = useCallback((npc: NpcEntity) => {
     setPendingNpcInteractionId(null);
+    setCraftingResultMessage(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
     setActiveMerchantNpcId(null);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(null);
@@ -2840,6 +2956,42 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+  }, []);
+
+  const openSmithInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setCraftingResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("crafts");
+    void npc;
+  }, []);
+
+  const openBankChestInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setCraftingResultMessage(null);
+    setActiveBankChestNpcId(npc.id);
+    setBankResultMessage(null);
   }, []);
 
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
@@ -2852,8 +3004,23 @@ function App() {
 
     if (interactionKind === "quest_giver") {
       openQuestGiverInteraction(npc);
+      return;
     }
-  }, [openMerchantInteraction, openQuestGiverInteraction]);
+
+    if (interactionKind === "smith") {
+      openSmithInteraction(npc);
+      return;
+    }
+
+    if (interactionKind === "bank_chest") {
+      openBankChestInteraction(npc);
+    }
+  }, [
+    openBankChestInteraction,
+    openMerchantInteraction,
+    openQuestGiverInteraction,
+    openSmithInteraction,
+  ]);
 
   const closeNpcInteractions = useCallback(() => {
     const merchantNpcId = activeMerchantNpcId;
@@ -2862,6 +3029,8 @@ function App() {
     setActiveMerchantNpcId(null);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
     setActiveQuestGiverNpcId(null);
     setActiveQuestGiverPanel(null);
     setSelectedQuestGiverQuestId(null);
@@ -2937,13 +3106,19 @@ function App() {
   function resetUiForLoadedGame() {
     setIsGameMenuOpen(false);
     setActiveGameMenuTab(null);
+    setActiveAtlasSubpage("quests");
     setActiveMerchantNpcId(null);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setCraftingResultMessage(null);
     setActiveQuestGiverNpcId(null);
     setActiveQuestGiverPanel(null);
     setSelectedQuestGiverQuestId(null);
     setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
     setPendingNpcInteractionId(null);
     setEntityHoverTooltip(null);
     setDirectCommandFeedback(null);
@@ -3265,10 +3440,15 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeMerchantNpcId, activeQuestGiverNpcId, closeNpcInteractions]);
+  }, [
+    activeBankChestNpcId,
+    activeMerchantNpcId,
+    activeQuestGiverNpcId,
+    closeNpcInteractions,
+  ]);
 
   useEffect(() => {
-    if (!activeMerchantNpcId && !activeQuestGiverNpcId) {
+    if (!activeMerchantNpcId && !activeQuestGiverNpcId && !activeBankChestNpcId) {
       return;
     }
 
@@ -3286,11 +3466,21 @@ function App() {
     document.addEventListener("pointerdown", handlePointerDown);
 
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [activeMerchantNpcId, activeQuestGiverNpcId, closeNpcInteractions]);
+  }, [
+    activeBankChestNpcId,
+    activeMerchantNpcId,
+    activeQuestGiverNpcId,
+    closeNpcInteractions,
+  ]);
 
   useEffect(() => {
     if (!leader) {
-      if (activeMerchantNpcId || activeQuestGiverNpcId || pendingNpcInteractionId) {
+      if (
+        activeMerchantNpcId ||
+        activeQuestGiverNpcId ||
+        activeBankChestNpcId ||
+        pendingNpcInteractionId
+      ) {
         const timeoutId = window.setTimeout(closeNpcInteractions, 0);
 
         return () => window.clearTimeout(timeoutId);
@@ -3298,7 +3488,8 @@ function App() {
       return;
     }
 
-    const activeNpcId = activeMerchantNpcId ?? activeQuestGiverNpcId;
+    const activeNpcId =
+      activeMerchantNpcId ?? activeQuestGiverNpcId ?? activeBankChestNpcId;
     const activeNpc =
       activeNpcId && gameState.entities[activeNpcId]?.kind === "npc"
         ? gameState.entities[activeNpcId]
@@ -3343,6 +3534,7 @@ function App() {
     }
   }, [
     activeMerchantNpcId,
+    activeBankChestNpcId,
     activeQuestGiverNpcId,
     gameState.entities,
     closeNpcInteractions,
@@ -3726,6 +3918,10 @@ function App() {
     setGameState(debugAddPrototypeConsumablesToInventory);
   }
 
+  function addCraftingMaterialsAndEnemyDrops() {
+    setGameState(debugAddCraftingMaterialsAndEnemyDropsToInventory);
+  }
+
   function finishCurrentQuestForDebug() {
     setGameState((state) =>
       debugFinishCurrentQuest(state, getDisplayQuest(state.quests)?.questId),
@@ -3922,6 +4118,34 @@ function App() {
 
   function selectGameMenuTab(tab: GameMenuTab | null) {
     setActiveGameMenuTab(tab);
+
+    if (tab === "atlas") {
+      setActiveAtlasSubpage("quests");
+    }
+  }
+
+  function selectAtlasSubpage(subpage: AtlasSubpage) {
+    setActiveAtlasSubpage(subpage);
+    setCraftingResultMessage(null);
+  }
+
+  function craftSelectedRecipe(recipeId: CraftingRecipeId) {
+    const crafting = craftRecipe(gameState, recipeId);
+
+    if (crafting.result.status === "success") {
+      queueSaveAfterStateChange("Crafting saved");
+      setCraftingResultMessage(
+        `Crafted ${crafting.result.displayName}${
+          crafting.result.outputQuantity > 1
+            ? ` x${crafting.result.outputQuantity}`
+            : ""
+        }`,
+      );
+    } else {
+      setCraftingResultMessage(craftingFailureMessages[crafting.result.reason]);
+    }
+
+    setGameState(crafting.state);
   }
 
   function setWorldTravelRoute(targetMapId: DebugMapId) {
@@ -4006,45 +4230,6 @@ function App() {
     );
   }
 
-  function exchangeMerchantJunk() {
-    if (!activeMerchantNpcId) {
-      return;
-    }
-
-    if (!isMerchantUnlockedForQuests(gameState)) {
-      setMerchantResultMessage("Merchant unlocks during Outfit the Expedition");
-      setGameState((state) =>
-        recordMerchantLockedForQuest(
-          state,
-          activeMerchantNpcId,
-          "merchant_exchange_locked",
-        ),
-      );
-      return;
-    }
-
-    setActiveMerchantPanel(null);
-    const selectedState = recordMerchantMenuSelected(
-      gameState,
-      activeMerchantNpcId,
-      "quick_exchange_parts",
-    );
-    const exchange = quickExchangeParts(selectedState, activeMerchantNpcId);
-
-    if (exchange.result.status === "success") {
-      queueSaveAfterStateChange("Merchant exchange saved");
-      setMerchantResultMessage(
-        `Exchanged junk for ${exchange.result.totalExchangeValue} Crowns`,
-      );
-    } else if (exchange.result.status === "no_items") {
-      setMerchantResultMessage("No junk to exchange");
-    } else {
-      setMerchantResultMessage("Quick exchange failed");
-    }
-
-    setGameState(exchange.state);
-  }
-
   function buyMerchantStockItem(itemId: ItemId) {
     if (!activeMerchantNpcId) {
       return;
@@ -4062,6 +4247,71 @@ function App() {
     }
 
     setGameState(purchase.state);
+  }
+
+  function depositInventorySlot(slotIndex: number, quantity: number) {
+    const transfer = depositInventorySlotToBank(gameState, slotIndex, quantity);
+
+    if (transfer.result.status === "success") {
+      queueSaveAfterStateChange("Bank deposit saved");
+      setBankResultMessage(`Deposited x${transfer.result.movedQuantity}`);
+    } else if (transfer.result.status === "partial") {
+      queueSaveAfterStateChange("Bank deposit saved");
+      setBankResultMessage(`Deposited x${transfer.result.movedQuantity}`);
+    } else if (transfer.result.status === "failed") {
+      setBankResultMessage(getBankTransferFailureMessage(transfer.result.reason));
+    }
+
+    setGameState(transfer.state);
+  }
+
+  function withdrawBankSlot(slotIndex: number, quantity: number) {
+    const transfer = withdrawBankSlotToInventory(gameState, slotIndex, quantity);
+
+    if (transfer.result.status === "success") {
+      queueSaveAfterStateChange("Bank withdraw saved");
+      setBankResultMessage(`Withdrew x${transfer.result.movedQuantity}`);
+    } else if (transfer.result.status === "partial") {
+      queueSaveAfterStateChange("Bank withdraw saved");
+      setBankResultMessage(`Withdrew x${transfer.result.movedQuantity}`);
+    } else if (transfer.result.status === "failed") {
+      setBankResultMessage(getBankTransferFailureMessage(transfer.result.reason));
+    }
+
+    setGameState(transfer.state);
+  }
+
+  function depositAllInventoryItems() {
+    const deposit = depositAllToBank(gameState);
+
+    if (deposit.movedQuantity > 0) {
+      queueSaveAfterStateChange("Bank deposit saved");
+      setBankResultMessage(
+        deposit.stoppedBecauseFull ? "Bank is full!" : "Items Deposited!",
+      );
+    } else {
+      setBankResultMessage(
+        deposit.stoppedBecauseFull ? "Bank is full!" : "No items deposited",
+      );
+    }
+
+    setGameState(deposit.state);
+  }
+
+  function toggleBankInventoryLock(slotIndex: number) {
+    queueSaveAfterStateChange("Bank locks saved");
+    setGameState((state) => toggleInventoryBankLock(state, slotIndex));
+  }
+
+  function toggleBankStorageLock(slotIndex: number) {
+    queueSaveAfterStateChange("Bank locks saved");
+    setGameState((state) => toggleBankSlotLock(state, slotIndex));
+  }
+
+  function changeBankAutoRoutingMode(mode: BankAutoRoutingMode) {
+    queueSaveAfterStateChange("Bank routing saved");
+    setBankResultMessage(null);
+    setGameState((state) => setBankAutoRoutingMode(state, mode));
   }
 
   function selectQuestGiverPanel(panel: QuestGiverPanel) {
@@ -4654,13 +4904,6 @@ function App() {
               >
                 Sell
               </button>
-              <button
-                disabled={activeMerchantLocked}
-                onClick={exchangeMerchantJunk}
-                type="button"
-              >
-                Quick Exchange Junk
-              </button>
               <button onClick={closeMerchantInteraction} type="button">
                 Leave
               </button>
@@ -4682,6 +4925,34 @@ function App() {
                 </aside>
               )
             ) : null}
+          </section>
+        ) : null}
+
+        {activeBankChest ? (
+          <section
+            className="bank-interaction npc-interaction"
+            aria-label="Bank chest"
+          >
+            <div className="merchant-menu bank-menu">
+              <div className="merchant-menu-header">
+                <h2>{activeBankChest.displayName}</h2>
+                <span>{activeBankCanManage ? "Nearby" : "Too far"}</span>
+              </div>
+              <button onClick={closeNpcInteractions} type="button">
+                Leave
+              </button>
+            </div>
+            <BankPanel
+              canManage={activeBankCanManage}
+              resultMessage={bankResultMessage}
+              state={gameState}
+              onDeposit={depositInventorySlot}
+              onDepositAll={depositAllInventoryItems}
+              onSetAutoRoutingMode={changeBankAutoRoutingMode}
+              onToggleBankLock={toggleBankStorageLock}
+              onToggleInventoryLock={toggleBankInventoryLock}
+              onWithdraw={withdrawBankSlot}
+            />
           </section>
         ) : null}
 
@@ -4963,6 +5234,7 @@ function App() {
           <Suspense fallback={null}>
             <LazyGameMenu
               activeTab={activeGameMenuTab}
+              activeAtlasSubpage={activeAtlasSubpage}
               activeManagementSection={activePartyManagementSection}
               activePartySection={activePartyMenuSection}
               inventory={inventory}
@@ -4977,6 +5249,7 @@ function App() {
               worldTravelTargetMapId={gameState.worldTravelTargetMapId}
               selectedCompanionId={selectedMenuCompanionId}
               selectedQuestId={selectedMenuQuestId}
+              craftingResultMessage={craftingResultMessage}
               totalPartyLevel={totalPartyLevel}
               onAllocateStatPoint={allocateStatPoint}
               onChangeLeader={changePartyLeader}
@@ -4992,8 +5265,10 @@ function App() {
               onSelectCompanion={setSelectedCompanionId}
               onSelectManagementSection={setActivePartyManagementSection}
               onSelectPartySection={setActivePartyMenuSection}
+              onSelectAtlasSubpage={selectAtlasSubpage}
               onSelectQuest={setSelectedQuestId}
               onSelectTab={selectGameMenuTab}
+              onCraftRecipe={craftSelectedRecipe}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onUnequipEquipment={unequipEquipment}
@@ -5088,6 +5363,9 @@ function App() {
                   <button onClick={addTestCrowns}>+100 Crowns</button>
                   <button onClick={addPrototypeConsumables}>
                     Add Prototype Consumables
+                  </button>
+                  <button onClick={addCraftingMaterialsAndEnemyDrops}>
+                    Add Craft Materials x20
                   </button>
                   <button onClick={finishCurrentQuestForDebug}>
                     Finish Current Quest

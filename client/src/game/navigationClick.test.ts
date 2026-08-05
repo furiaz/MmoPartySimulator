@@ -160,7 +160,7 @@ describe("resolveNavigationClickTarget", () => {
     expect(resolveNavigationClickTarget(surroundedState, { x: 4, y: 3 })).toBeNull();
   });
 
-  it("rejects map one Lower Shore clicks while the Secure the Landing gate is closed", () => {
+  it("rejects Zone 1 Lowbank clicks while the Secure the Landing gate is closed", () => {
     const state = createState({
       leaderPosition: { x: 7, y: 29 },
       map: createDebugMap(MAP_ONE_ID),
@@ -182,7 +182,7 @@ describe("resolveNavigationClickTarget", () => {
     expect(consumeGamePerformanceMetrics().pathDistanceQueries).toBe(0);
   });
 
-  it("allows map one Lower Shore clicks after the Secure the Landing gate opens", () => {
+  it("allows Zone 1 Lowbank clicks after the Secure the Landing gate opens", () => {
     const state = createState({
       leaderPosition: { x: 7, y: 29 },
       map: createDebugMapForQuestState(MAP_ONE_ID, {

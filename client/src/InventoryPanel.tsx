@@ -5,6 +5,7 @@ import {
   EQUIPMENT_SLOT_LABELS,
   EQUIPMENT_TYPE_LABELS,
   getItemDefinition,
+  getItemDisplayName,
   getQuestItemInventoryEntries,
   formatCurrencyDisplay,
   getCompanionSkillRank,
@@ -36,7 +37,7 @@ function getInventorySlotTitle(slot: PartyInventory["slots"][number]): string {
   const itemDefinition = getItemDefinition(slot.itemId);
 
   return [
-    itemDefinition.displayName,
+    getItemDisplayName(itemDefinition),
     `Category ${itemDefinition.category}`,
     `Quantity ${slot.quantity}/${itemDefinition.maxStack}`,
     getEquipmentDetailText(itemDefinition),
@@ -182,7 +183,7 @@ export function InventoryPanel({
       ) : selectedSlot && selectedItemDefinition ? (
         <div className="inventory-item-action-panel">
           <div>
-            <strong>{selectedItemDefinition.displayName}</strong>
+            <strong>{getItemDisplayName(selectedItemDefinition)}</strong>
             <span>
               {selectedItemDefinition.category === "skill_book" &&
               selectedSkillBookSkill
@@ -310,7 +311,7 @@ export function InventoryPanel({
                 />
               )}
               <span className="inventory-slot-name">
-                {itemDefinition.displayName}
+                {getItemDisplayName(itemDefinition)}
               </span>
               <span className="inventory-slot-quantity">x{slot.quantity}</span>
             </div>

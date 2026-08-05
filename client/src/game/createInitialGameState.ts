@@ -14,6 +14,7 @@ import {
   targetDummyId,
   targetDummyPosition,
 } from "./debugMap";
+import { createEmptyPartyBank } from "./bank";
 import {
   addItemToInventoryState,
   createEmptyPartyInventory,
@@ -60,6 +61,7 @@ export function createInitialGameState(): GameState {
   ].reduce(addEntity, {
     entities: {},
     inventory: createEmptyPartyInventory(),
+    bank: createEmptyPartyBank(),
     wallet: createEmptyPartyWallet(),
     map: debugMap,
     currentMapId: HUB_MAP_ID,

@@ -2,7 +2,7 @@ import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { getLootTierForLevel, rollEnemyDropTable } from "./dropTables";
 import { getEnemyDropArchetypeId } from "./enemyArchetypes";
 import { addItemToInventoryState } from "./inventory";
-import { getItemDefinition } from "./items";
+import { getItemDefinition, getItemDisplayName } from "./items";
 import {
   addCombatFeedback,
   type GameState,
@@ -143,7 +143,9 @@ function completeDropVisualEvent(
 ): GameState {
   const enemy = state.entities[event.enemyId];
   const itemDefinition = event.itemId ? getItemDefinition(event.itemId) : null;
-  const displayName = event.displayName ?? itemDefinition?.displayName ?? "Quest Item";
+  const displayName = event.displayName ?? (
+    itemDefinition ? getItemDisplayName(itemDefinition) : "Quest Item"
+  );
   const isQuestItemDrop = event.kind === "quest_item";
   let nextState = appendDropVisualTelemetry(state, event, {
     type: isQuestItemDrop
@@ -192,7 +194,7 @@ function completeDropVisualEvent(
     entityId: enemy?.id ?? event.enemyId,
     text:
       itemAdd.result.addedQuantity > 0
-        ? itemDefinition.displayName
+        ? getItemDisplayName(itemDefinition)
         : "Inventory Full",
     now,
   });
@@ -276,7 +278,9 @@ function appendDropVisualTelemetry(
     enemyVariant: event.enemyVariant,
     enemyPosition: event.position,
     itemId: event.itemId,
-    itemDisplayName: event.displayName ?? itemDefinition?.displayName,
+    itemDisplayName: event.displayName ?? (
+      itemDefinition ? getItemDisplayName(itemDefinition) : undefined
+    ),
     itemCategory: itemDefinition?.category ?? (event.kind === "quest_item" ? "quest" : undefined),
     targetSlot: itemDefinition?.equipmentSlot,
     equipmentType: itemDefinition?.equipmentType,
@@ -307,7 +311,9 @@ function appendDropTelemetry(
     enemyArchetypeId:
       telemetry.enemyArchetypeId ?? getEnemyDropArchetypeId(enemy),
     enemyPosition: enemy.position,
-    itemDisplayName: itemDefinition?.displayName,
+    itemDisplayName: itemDefinition
+      ? getItemDisplayName(itemDefinition)
+      : undefined,
     itemCategory: itemDefinition?.category,
     targetSlot: itemDefinition?.equipmentSlot,
     equipmentType: itemDefinition?.equipmentType,

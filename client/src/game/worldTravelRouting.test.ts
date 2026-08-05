@@ -5,9 +5,15 @@ import {
   HUB_TWO_TO_MAP_FOUR_TELEPORTER_ID,
   HUB_TWO_TO_MAP_THREE_TELEPORTER_ID,
   HUB_TO_SLIMEWARD_CAMP_TELEPORTER_ID,
+  MAP_FIVE_ID,
+  MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID,
   MAP_FOUR_TO_HUB_TWO_TELEPORTER_ID,
+  MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
+  MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID,
   MAP_THREE_ID,
   MAP_THREE_TO_HUB_TWO_TELEPORTER_ID,
   MAP_THREE_TO_SLIMEWARD_CAMP_TELEPORTER_ID,
@@ -50,6 +56,20 @@ describe("world travel routing", () => {
     );
 
     expect(teleport?.id).toBe(HUB_TWO_TO_MAP_FOUR_TELEPORTER_ID);
+  });
+
+  it("routes from map 4 through the new Zone 5-7 stretch", () => {
+    const routingState = createRoutingState(createUnlockedMainRouteTeleportStates());
+
+    expect(
+      getNextWorldTravelTeleport(routingState, MAP_FOUR_ID, MAP_SEVEN_ID)?.id,
+    ).toBe(MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID);
+    expect(
+      getNextWorldTravelTeleport(routingState, MAP_FIVE_ID, MAP_SEVEN_ID)?.id,
+    ).toBe(MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID);
+    expect(
+      getNextWorldTravelTeleport(routingState, MAP_SIX_ID, MAP_SEVEN_ID)?.id,
+    ).toBe(MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID);
   });
 
   it("routes map 4 back toward the first hub through Forward Bastion", () => {

@@ -7,6 +7,7 @@ import {
 } from "./entities";
 import { PROTOTYPE_CONSUMABLE_ITEM_IDS } from "./consumables";
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
+import { ITEM_DEFINITIONS } from "./items";
 import { pruneMissingEntityRuntimeState } from "./mapRuntimeCleanup";
 import {
   clearSlimewardDungeonRuntime,
@@ -24,7 +25,10 @@ import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
 import { syncCompanionDerivedMaxHealth } from "./stats";
 import { getSubzoneAtPosition } from "./subzoneSystem";
-import { addItemToInventoryState } from "./inventory";
+import {
+  addItemToInventoryState,
+  getAvailableInventorySlots,
+} from "./inventory";
 import {
   getCharacterXpToNextLevel,
   grantCharacterXpToCompanion,
@@ -60,6 +64,7 @@ import type {
   EncounterArea,
   Enemy,
   GameEntity,
+  ItemId,
   Position,
   ResourceEntity,
   ZoneSubzone,
@@ -72,6 +77,7 @@ const DEBUG_ENEMY_HEALTH = 3;
 const DEBUG_RESOURCE_DURABILITY = 5;
 const DEBUG_RESOURCE_QUANTITY = 3;
 const DEBUG_TEST_ITEM_QUANTITY = 1;
+const DEBUG_CRAFTING_TEST_ITEM_QUANTITY = 20;
 const DEBUG_TEST_CROWNS_AMOUNT = 100;
 const DEFAULT_DEBUG_OPTIONS = {
   superSpeedEnabled: false,
@@ -616,6 +622,66 @@ export function debugAddPrototypeConsumablesToInventory(state: GameState): GameS
       ).state,
     state,
   );
+}
+
+export function debugAddCraftingMaterialsAndEnemyDropsToInventory(
+  state: GameState,
+): GameState {
+  const itemIds = getDebugCraftingMaterialAndEnemyDropItemIds();
+  const inventoryFreeSlotsBefore = getAvailableInventorySlots(state.inventory);
+  let nextState = state;
+  let successfulItemCount = 0;
+  let partialItemCount = 0;
+  let failedItemCount = 0;
+  let addedQuantity = 0;
+  let overflowQuantity = 0;
+
+  for (const itemId of itemIds) {
+    const result = addItemToInventoryState(
+      nextState,
+      itemId,
+      DEBUG_CRAFTING_TEST_ITEM_QUANTITY,
+      "debug",
+    );
+    nextState = result.state;
+    addedQuantity += result.result.addedQuantity;
+    overflowQuantity += result.result.overflowQuantity;
+
+    if (result.result.status === "success") {
+      successfulItemCount += 1;
+    } else if (result.result.status === "partial") {
+      partialItemCount += 1;
+    } else {
+      failedItemCount += 1;
+    }
+  }
+
+  return appendDebugTelemetryEvent(nextState, {
+    type: "debug_crafting_materials_added",
+    entityId: "debug_tools",
+    eligibleItemCount: itemIds.length,
+    requestedQuantity: DEBUG_CRAFTING_TEST_ITEM_QUANTITY,
+    addedQuantity,
+    overflowQuantity,
+    successfulItemCount,
+    partialItemCount,
+    failedItemCount,
+    inventoryUsedSlots: nextState.inventory.slots.length,
+    inventoryCapacity: nextState.inventory.capacity,
+    inventoryFreeSlotsBefore,
+    inventoryFreeSlotsAfter: getAvailableInventorySlots(nextState.inventory),
+  });
+}
+
+function getDebugCraftingMaterialAndEnemyDropItemIds(): ItemId[] {
+  return Object.values(ITEM_DEFINITIONS)
+    .filter(
+      (itemDefinition) =>
+        itemDefinition.stackable &&
+        (itemDefinition.category === "material" ||
+          itemDefinition.category === "junk"),
+    )
+    .map((itemDefinition) => itemDefinition.id);
 }
 
 export function debugResetSlimewardDungeon(state: GameState): GameState {

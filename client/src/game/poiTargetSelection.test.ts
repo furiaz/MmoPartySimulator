@@ -60,7 +60,7 @@ describe("POI target selection", () => {
     });
   });
 
-  it("orders hub Merchant quick exchange, quest giver work, and idle options", () => {
+  it("orders hub quest giver work before idle while ignoring auto Merchant quick exchange", () => {
     const leader = createLeader({ x: 7, y: 20 });
     let state = createGameState(
       HUB_MAP_ID,
@@ -85,20 +85,88 @@ describe("POI target selection", () => {
       createEmptyReservations(),
     );
 
-    expect(selection.localTarget?.poiId).toBe(npcIds[1]);
-    expect(selection.localTarget?.interactionRange).toBe(1.5);
+    expect(selection.localTarget?.poiId).toBe(npcIds[0]);
+    expect(selection.localTarget?.interactionRange).toBe(2);
     expect(selection.consideredTargets.map((target) => target.poiId)).toEqual([
-      npcIds[1],
       npcIds[0],
       "hub-idle-city-point",
     ]);
-    expect(selection.consideredTargets[0].interactionRange).toBe(1.5);
-    expect(selection.consideredTargets[1].interactionRange).toBe(2);
+    expect(selection.consideredTargets[0].interactionRange).toBe(2);
     expect(selection.consideredTargets.map((target) => target.priority)).toEqual([
-      10,
       30,
       100,
     ]);
+  });
+
+  it("guides active merchant item objectives to the Merchant without quick exchange priority", () => {
+    const leader = createLeader({ x: 7, y: 20 });
+    let state = createGameState(
+      HUB_MAP_ID,
+      [leader, ...createHubNpcs()],
+      {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          outfit_the_expedition: "active",
+        }),
+      },
+    );
+    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+
+    const selection = selectPoiTarget(
+      state,
+      {
+        type: "complete_current_quest",
+        questId: "outfit_the_expedition",
+        objectiveId: "buy_first_aid_skill_book",
+        reason: "active quest objective",
+      },
+      createEmptyReservations(),
+    );
+
+    expect(selection.localTarget).toMatchObject({
+      poiId: npcIds[1],
+      category: "npc",
+      targetEntityId: npcIds[1],
+      reason: "active quest merchant objective",
+      objectiveId: "buy_first_aid_skill_book",
+    });
+    expect(selection.consideredTargets[0].reason).not.toBe(
+      "merchant quick exchange",
+    );
+  });
+
+  it("guides active craft objectives to the Smith", () => {
+    const leader = createLeader({ x: 7, y: 20 });
+    const smith = createNpc(npcIds[2], { x: 21, y: 15 }, "Smith", "smith");
+    const state = createGameState(
+      HUB_MAP_ID,
+      [leader, ...createHubNpcs(), smith],
+      {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          smiths_first_work: "active",
+        }),
+      },
+    );
+
+    const selection = selectPoiTarget(
+      state,
+      {
+        type: "complete_current_quest",
+        questId: "smiths_first_work",
+        objectiveId: "craft_plain_charm",
+        reason: "active quest objective",
+      },
+      createEmptyReservations(),
+    );
+
+    expect(selection.localTarget).toMatchObject({
+      poiId: npcIds[2],
+      category: "npc",
+      targetEntityId: npcIds[2],
+      reason: "active quest smith objective",
+      objectiveId: "craft_plain_charm",
+    });
   });
 
   it("uses the World Travel route helper result for travel targets", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HUB_MAP_ID, MAP_ONE_ID, MAP_TWO_ID, npcIds } from "./debugMap";
 import { createCompanion, createEnemy, createNpc } from "./entities";
 import { addItemToInventoryState } from "./inventory";
+import { setBankAutoRoutingMode } from "./bank";
 import { getQuickExchangeItems } from "./merchant";
 import { consumeGamePerformanceMetrics } from "./performanceMetrics";
 import { updatePoiSystem } from "./poiSystem";
@@ -98,7 +99,7 @@ function createActiveRepairQuestStates() {
 }
 
 describe("POI system interaction movement", () => {
-  it("uses an approach position for auto merchant interaction intent", () => {
+  it("uses an approach position for auto quest interaction intent", () => {
     const leader = createCompanion("leader", { x: 1, y: 5 }, "leader", "fighter");
     const merchant = createNpc(npcIds[1], { x: 5, y: 5 }, "Merchant", "merchant");
     const questGiver = createNpc(npcIds[0], { x: 6, y: 5 }, "Quest Giver", "quest_giver");
@@ -119,17 +120,20 @@ describe("POI system interaction movement", () => {
       partyLeaderId: leader.id,
       quests,
     });
-    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+    state = setBankAutoRoutingMode(
+      addItemToInventoryState(state, "wolf_pelt", 1, "debug").state,
+      "deposit_body_parts",
+    );
 
     const nextState = updatePoiSystem(state);
 
     expect(nextState.localPoiTarget).toMatchObject({
-      poiId: merchant.id,
-      interactionRange: 1.5,
+      poiId: questGiver.id,
+      interactionRange: 2,
     });
     expect(nextState.partyIntent?.executionIntent?.targetPosition).toEqual({
-      x: 4,
-      y: 5,
+      x: 6,
+      y: 4,
     });
     expect(nextState.partyIntent?.executionIntent?.targetPosition).not.toEqual(
       merchant.position,
@@ -169,13 +173,13 @@ describe("POI system interaction movement", () => {
     expect(firstMetrics.pathDistanceQueries).toBeGreaterThan(0);
     expect(secondMetrics.pathDistanceQueries).toBe(0);
     expect(reusedState.partyIntent?.executionIntent?.targetPosition).toEqual({
-      x: 4,
-      y: 5,
+      x: 6,
+      y: 4,
     });
     expect(reusedState.localPoiTarget).toMatchObject({
       interactionStandActorId: leader.id,
-      interactionStandPosition: { x: 4, y: 5 },
-      interactionStandTargetPosition: merchant.position,
+      interactionStandPosition: { x: 6, y: 4 },
+      interactionStandTargetPosition: questGiver.position,
     });
   });
 
@@ -200,7 +204,10 @@ describe("POI system interaction movement", () => {
       partyLeaderId: leader.id,
       quests,
     });
-    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+    state = setBankAutoRoutingMode(
+      addItemToInventoryState(state, "wolf_pelt", 1, "debug").state,
+      "deposit_body_parts",
+    );
 
     const selectedState = updatePoiSystem(state);
     const reachedState = {
@@ -217,6 +224,9 @@ describe("POI system interaction movement", () => {
     const nextState = updatePoiSystem(reachedState);
 
     expect(getQuickExchangeItems(nextState)).toEqual([]);
+    expect(nextState.bank.slots).toEqual([
+      { itemId: "wolf_pelt", quantity: 1, slotIndex: 0 },
+    ]);
   });
 
   it("processes a hub interaction when separation leaves the leader near the cached stand position", () => {
@@ -240,7 +250,10 @@ describe("POI system interaction movement", () => {
       partyLeaderId: leader.id,
       quests,
     });
-    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+    state = setBankAutoRoutingMode(
+      addItemToInventoryState(state, "wolf_pelt", 1, "debug").state,
+      "deposit_body_parts",
+    );
 
     const selectedState = updatePoiSystem(state);
     const separatedState = {
@@ -249,7 +262,7 @@ describe("POI system interaction movement", () => {
         ...selectedState.entities,
         [leader.id]: {
           ...selectedState.entities[leader.id],
-          position: { x: 3.2, y: 5 },
+          position: { x: 5.2, y: 4 },
         },
       },
     };
@@ -257,6 +270,9 @@ describe("POI system interaction movement", () => {
     const nextState = updatePoiSystem(separatedState);
 
     expect(getQuickExchangeItems(nextState)).toEqual([]);
+    expect(nextState.bank.slots).toEqual([
+      { itemId: "wolf_pelt", quantity: 1, slotIndex: 0 },
+    ]);
   });
 
   it("does not process a cached hub interaction stand position for a moved target", () => {
@@ -291,8 +307,8 @@ describe("POI system interaction movement", () => {
           ...selectedState.entities[leader.id],
           position: { x: 3.2, y: 5 },
         },
-        [merchant.id]: {
-          ...selectedState.entities[merchant.id],
+        [questGiver.id]: {
+          ...selectedState.entities[questGiver.id],
           position: { x: 5.5, y: 5 },
         },
       },
@@ -331,15 +347,15 @@ describe("POI system interaction movement", () => {
     const nextState = updatePoiSystem({
       ...selectedState,
       reservedPositionsByEntityId: {
-        other: { x: 4, y: 5 },
+        other: { x: 6, y: 4 },
       },
     });
     const metrics = consumeGamePerformanceMetrics();
 
     expect(metrics.pathDistanceQueries).toBeGreaterThan(0);
     expect(nextState.partyIntent?.executionIntent?.targetPosition).toEqual({
-      x: 5,
-      y: 4,
+      x: 6,
+      y: 6,
     });
   });
 });

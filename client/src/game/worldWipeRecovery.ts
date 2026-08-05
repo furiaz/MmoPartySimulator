@@ -9,8 +9,11 @@ import {
   hubTwoCompanionStartPositions,
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
+  MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
   SLIMEWARD_CAMP_ID,
@@ -439,6 +442,9 @@ function isCurrentFreeRescueMap(mapId: DebugMapId): boolean {
     mapId === MAP_THREE_ID ||
     mapId === HUB_TWO_MAP_ID ||
     mapId === MAP_FOUR_ID ||
+    mapId === MAP_FIVE_ID ||
+    mapId === MAP_SIX_ID ||
+    mapId === MAP_SEVEN_ID ||
     mapId === SLIMEWARD_CAMP_ID ||
     mapId === SLIMEWARD_FLOOR_ONE_ID ||
     mapId === SLIMEWARD_FLOOR_TWO_ID

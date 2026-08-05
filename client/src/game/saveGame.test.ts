@@ -8,6 +8,7 @@ import {
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
 import { addItemToInventoryState } from "./inventory";
+import { createInitialQuestStates } from "./questSystem";
 import {
   applyOfflineFarmingProgress,
   createSavedGame,
@@ -124,6 +125,71 @@ describe("save game serialization", () => {
         (entity) => entity.kind === "resource" && entity.resourceType === "wood",
       ),
     ).toBe(true);
+  });
+
+  it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
+    const progressedQuests = createInitialQuestStates();
+    progressedQuests.outfit_the_expedition = {
+      ...progressedQuests.outfit_the_expedition,
+      status: "completed",
+    };
+    progressedQuests.stolen_field_supplies = {
+      ...progressedQuests.stolen_field_supplies,
+      status: "active",
+    };
+    const progressedSave = createSavedGame(
+      {
+        ...createTestGameState(),
+        quests: progressedQuests,
+      },
+      NOW_MS,
+    );
+    delete (progressedSave.state.quests as Partial<
+      typeof progressedSave.state.quests
+    >).smiths_first_work;
+
+    const progressedRestore = restoreGameStateFromSave(progressedSave);
+
+    expect(progressedRestore.ok).toBe(true);
+    if (progressedRestore.ok) {
+      expect(progressedRestore.state.quests.smiths_first_work.status).toBe(
+        "completed",
+      );
+      expect(progressedRestore.state.quests.stolen_field_supplies.status).toBe(
+        "active",
+      );
+    }
+
+    const tutorialQuests = createInitialQuestStates();
+    tutorialQuests.outfit_the_expedition = {
+      ...tutorialQuests.outfit_the_expedition,
+      status: "completed",
+    };
+    const tutorialSave = createSavedGame(
+      {
+        ...createTestGameState(),
+        quests: tutorialQuests,
+      },
+      NOW_MS,
+    );
+    delete (tutorialSave.state.quests as Partial<typeof tutorialSave.state.quests>)
+      .smiths_first_work;
+
+    const tutorialRestore = restoreGameStateFromSave(tutorialSave);
+
+    expect(tutorialRestore.ok).toBe(true);
+    if (tutorialRestore.ok) {
+      expect(tutorialRestore.state.quests.smiths_first_work.status).toBe(
+        "available",
+      );
+      expect(
+        tutorialRestore.state.quests.smiths_first_work.objectiveProgress
+          .craft_plain_charm,
+      ).toMatchObject({
+        currentCount: 0,
+        completed: false,
+      });
+    }
   });
 
   it("restores Forward Bastion saves with deterministic map data", () => {

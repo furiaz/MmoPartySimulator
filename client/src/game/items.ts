@@ -88,6 +88,26 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
     stackable: true,
     maxStack: 250,
   },
+  crafting_string: {
+    id: "crafting_string",
+    displayName: "String",
+    category: "material",
+    description: "Basic crafting supply for early Smith recipes.",
+    rarity: "common",
+    tier: 1,
+    stackable: true,
+    maxStack: 250,
+  },
+  iron_nails: {
+    id: "iron_nails",
+    displayName: "Iron Nails",
+    category: "material",
+    description: "Basic crafting supply for early Smith recipes.",
+    rarity: "common",
+    tier: 1,
+    stackable: true,
+    maxStack: 250,
+  },
   minor_recovery_flask: {
     id: "minor_recovery_flask",
     displayName: "Minor Recovery Flask",
@@ -956,7 +976,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   slime_gel_t1: {
     id: "slime_gel_t1",
-    displayName: "Tier 1 Slime Gel",
+    displayName: "Slime Gel",
     category: "junk",
     description: "Common slime junk for quick exchange.",
     rarity: "common",
@@ -967,7 +987,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   slime_core_t1: {
     id: "slime_core_t1",
-    displayName: "Tier 1 Slime Core",
+    displayName: "Slime Core",
     category: "junk",
     description: "Rare slime junk for quick exchange.",
     rarity: "common",
@@ -978,7 +998,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   bat_wing_t1: {
     id: "bat_wing_t1",
-    displayName: "Tier 1 Bat Wing",
+    displayName: "Bat Wing",
     category: "junk",
     description: "Common bat junk for quick exchange.",
     rarity: "common",
@@ -989,7 +1009,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   bat_ear_t1: {
     id: "bat_ear_t1",
-    displayName: "Tier 1 Bat Ear",
+    displayName: "Bat Ear",
     category: "junk",
     description: "Rare bat junk for quick exchange.",
     rarity: "common",
@@ -1000,7 +1020,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   spider_silk_t1: {
     id: "spider_silk_t1",
-    displayName: "Tier 1 Spider Silk",
+    displayName: "Spider Silk",
     category: "junk",
     description: "Common spider junk for quick exchange.",
     rarity: "common",
@@ -1011,7 +1031,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   spider_fang_t1: {
     id: "spider_fang_t1",
-    displayName: "Tier 1 Spider Fang",
+    displayName: "Spider Fang",
     category: "junk",
     description: "Rare spider junk for quick exchange.",
     rarity: "common",
@@ -1022,7 +1042,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   goblin_ear_t1: {
     id: "goblin_ear_t1",
-    displayName: "Tier 1 Goblin Ear",
+    displayName: "Goblin Ear",
     category: "junk",
     description: "Common goblin junk for quick exchange.",
     rarity: "common",
@@ -1033,7 +1053,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   goblin_tooth_t1: {
     id: "goblin_tooth_t1",
-    displayName: "Tier 1 Goblin Tooth",
+    displayName: "Goblin Tooth",
     category: "junk",
     description: "Rare goblin junk for quick exchange.",
     rarity: "common",
@@ -1044,7 +1064,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   imp_horn_chip_t1: {
     id: "imp_horn_chip_t1",
-    displayName: "Tier 1 Imp Horn Chip",
+    displayName: "Imp Horn Chip",
     category: "junk",
     description: "Common imp junk for quick exchange.",
     rarity: "common",
@@ -1055,7 +1075,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   imp_tail_t1: {
     id: "imp_tail_t1",
-    displayName: "Tier 1 Imp Tail",
+    displayName: "Imp Tail",
     category: "junk",
     description: "Rare imp junk for quick exchange.",
     rarity: "common",
@@ -1066,7 +1086,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   wolf_pelt: {
     id: "wolf_pelt",
-    displayName: "Tier 1 Wolf Pelt",
+    displayName: "Wolf Pelt",
     category: "junk",
     description: "Common wolf junk for quick exchange.",
     rarity: "common",
@@ -1077,7 +1097,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   wolf_fang: {
     id: "wolf_fang",
-    displayName: "Tier 1 Wolf Fang",
+    displayName: "Wolf Fang",
     category: "junk",
     description: "Rare wolf junk for quick exchange.",
     rarity: "common",
@@ -1088,7 +1108,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   crawler_pebble_t1: {
     id: "crawler_pebble_t1",
-    displayName: "Tier 1 Crawler Pebble",
+    displayName: "Crawler Pebble",
     category: "junk",
     description: "Common crawler junk for quick exchange.",
     rarity: "common",
@@ -1099,7 +1119,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   crawler_plate_t1: {
     id: "crawler_plate_t1",
-    displayName: "Tier 1 Crawler Plate",
+    displayName: "Crawler Plate",
     category: "junk",
     description: "Rare crawler junk for quick exchange.",
     rarity: "common",
@@ -1110,7 +1130,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   moss_tuft_t1: {
     id: "moss_tuft_t1",
-    displayName: "Tier 1 Moss Tuft",
+    displayName: "Moss Tuft",
     category: "junk",
     description: "Common mossling junk for quick exchange.",
     rarity: "common",
@@ -1121,7 +1141,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   mossling_cap_t1: {
     id: "mossling_cap_t1",
-    displayName: "Tier 1 Mossling Cap",
+    displayName: "Mossling Cap",
     category: "junk",
     description: "Rare mossling junk for quick exchange.",
     rarity: "common",
@@ -1132,7 +1152,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   goblin_ear_t2: {
     id: "goblin_ear_t2",
-    displayName: "Tier 2 Goblin Ear",
+    displayName: "Goblin Ear",
     category: "junk",
     description: "Common tier 2 goblin junk for quick exchange.",
     rarity: "common",
@@ -1143,7 +1163,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   goblin_tooth_t2: {
     id: "goblin_tooth_t2",
-    displayName: "Tier 2 Goblin Tooth",
+    displayName: "Goblin Tooth",
     category: "junk",
     description: "Rare tier 2 goblin junk for quick exchange.",
     rarity: "common",
@@ -1154,7 +1174,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   wisp_ash_t2: {
     id: "wisp_ash_t2",
-    displayName: "Tier 2 Wisp Ash",
+    displayName: "Wisp Ash",
     category: "junk",
     description: "Common wisp junk for quick exchange.",
     rarity: "common",
@@ -1165,7 +1185,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   wisp_ember_t2: {
     id: "wisp_ember_t2",
-    displayName: "Tier 2 Wisp Ember",
+    displayName: "Wisp Ember",
     category: "junk",
     description: "Rare wisp junk for quick exchange.",
     rarity: "common",
@@ -1176,7 +1196,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   orc_hide: {
     id: "orc_hide",
-    displayName: "Tier 2 Orc Hide",
+    displayName: "Orc Hide",
     category: "junk",
     description: "Common orc junk for quick exchange.",
     rarity: "common",
@@ -1187,7 +1207,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
   },
   orc_tusk: {
     id: "orc_tusk",
-    displayName: "Tier 2 Orc Tusk",
+    displayName: "Orc Tusk",
     category: "junk",
     description: "Rare orc junk for quick exchange.",
     rarity: "common",
@@ -1195,6 +1215,138 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
     stackable: true,
     maxStack: 250,
     sellValue: 28,
+  },
+  bat_wing_t2: {
+    id: "bat_wing_t2",
+    displayName: "Bat Wing",
+    category: "junk",
+    description: "Common tier 2 bat junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 6,
+  },
+  bat_ear_t2: {
+    id: "bat_ear_t2",
+    displayName: "Bat Ear",
+    category: "junk",
+    description: "Rare tier 2 bat junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 20,
+  },
+  spider_silk_t2: {
+    id: "spider_silk_t2",
+    displayName: "Spider Silk",
+    category: "junk",
+    description: "Common tier 2 spider junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 6,
+  },
+  spider_fang_t2: {
+    id: "spider_fang_t2",
+    displayName: "Spider Fang",
+    category: "junk",
+    description: "Rare tier 2 spider junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 20,
+  },
+  imp_horn_chip_t2: {
+    id: "imp_horn_chip_t2",
+    displayName: "Imp Horn Chip",
+    category: "junk",
+    description: "Common tier 2 imp junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 6,
+  },
+  imp_tail_t2: {
+    id: "imp_tail_t2",
+    displayName: "Imp Tail",
+    category: "junk",
+    description: "Rare tier 2 imp junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 22,
+  },
+  wolf_pelt_t2: {
+    id: "wolf_pelt_t2",
+    displayName: "Wolf Pelt",
+    category: "junk",
+    description: "Common tier 2 wolf junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 7,
+  },
+  wolf_fang_t2: {
+    id: "wolf_fang_t2",
+    displayName: "Wolf Fang",
+    category: "junk",
+    description: "Rare tier 2 wolf junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 24,
+  },
+  crawler_pebble_t2: {
+    id: "crawler_pebble_t2",
+    displayName: "Crawler Pebble",
+    category: "junk",
+    description: "Common tier 2 crawler junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 7,
+  },
+  crawler_plate_t2: {
+    id: "crawler_plate_t2",
+    displayName: "Crawler Plate",
+    category: "junk",
+    description: "Rare tier 2 crawler junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 24,
+  },
+  moss_tuft_t2: {
+    id: "moss_tuft_t2",
+    displayName: "Moss Tuft",
+    category: "junk",
+    description: "Common tier 2 mossling junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 7,
+  },
+  mossling_cap_t2: {
+    id: "mossling_cap_t2",
+    displayName: "Mossling Cap",
+    category: "junk",
+    description: "Rare tier 2 mossling junk for quick exchange.",
+    rarity: "common",
+    tier: 2,
+    stackable: true,
+    maxStack: 250,
+    sellValue: 24,
   },
   training_sword: {
     id: "training_sword",
@@ -4055,6 +4207,16 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
 
 export function getItemDefinition(itemId: ItemId): ItemDefinition {
   return ITEM_DEFINITIONS[itemId];
+}
+
+export function getItemDisplayName(item: ItemId | ItemDefinition): string {
+  const itemDefinition = typeof item === "string"
+    ? getItemDefinition(item)
+    : item;
+
+  return itemDefinition.category === "junk" && itemDefinition.tier
+    ? `${itemDefinition.displayName} (Tier ${itemDefinition.tier})`
+    : itemDefinition.displayName;
 }
 
 export function getItemDefinitionForResourceType(

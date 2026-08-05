@@ -55,7 +55,15 @@ export type EnemyTypeId =
   | "ash_wisp"
   | "mossling"
   | "wolf"
-  | "orc";
+  | "orc"
+  | "ember_imp"
+  | "iron_crawler"
+  | "briar_wolf"
+  | "mire_spider"
+  | "night_bat"
+  | "elder_mossling"
+  | "cinder_wisp"
+  | "orc_warmaster";
 
 export type EnemyArchetypeDefinition = {
   id: EnemyArchetypeId;
@@ -185,6 +193,10 @@ export type ResourceItemId =
   | "iron_ore"
   | "redleaf_herb";
 
+export type CraftingSupplyItemId =
+  | "crafting_string"
+  | "iron_nails";
+
 export type ItemCategory =
   | "material"
   | "consumable"
@@ -305,8 +317,20 @@ export type JunkItemId =
   | "crawler_plate_t1"
   | "moss_tuft_t1"
   | "mossling_cap_t1"
+  | "bat_wing_t2"
+  | "bat_ear_t2"
+  | "spider_silk_t2"
+  | "spider_fang_t2"
   | "goblin_ear_t2"
   | "goblin_tooth_t2"
+  | "imp_horn_chip_t2"
+  | "imp_tail_t2"
+  | "wolf_pelt_t2"
+  | "wolf_fang_t2"
+  | "crawler_pebble_t2"
+  | "crawler_plate_t2"
+  | "moss_tuft_t2"
+  | "mossling_cap_t2"
   | "wisp_ash_t2"
   | "wisp_ember_t2"
   | "orc_tusk"
@@ -574,6 +598,7 @@ export type SkillBookItemId =
 
 export type ItemId =
   | ResourceItemId
+  | CraftingSupplyItemId
   | JunkItemId
   | EquipmentItemId
   | ConsumableItemId
@@ -709,12 +734,59 @@ export type HubDepartureFoodWarningState = {
 export type InventorySlot = {
   itemId: ItemId;
   quantity: number;
+  slotIndex?: number;
 };
 
 export type PartyInventory = {
   capacity: number;
   slots: InventorySlot[];
+  lockedSlotIndices?: number[];
 };
+
+export type BankAutoRoutingMode =
+  | "keep_inventory"
+  | "deposit_body_parts"
+  | "deposit_all";
+
+export type BankSlot = InventorySlot;
+
+export type PartyBank = {
+  capacity: number;
+  slots: BankSlot[];
+  lockedSlotIndices: number[];
+  autoRoutingMode: BankAutoRoutingMode;
+};
+
+export type BankTransferFailureReason =
+  | "not_near_bank"
+  | "remote_view_only"
+  | "source_empty"
+  | "source_locked"
+  | "destination_locked"
+  | "invalid_item"
+  | "quest_item"
+  | "invalid_quantity"
+  | "bank_full"
+  | "inventory_full";
+
+export type BankTransferResult =
+  | {
+      status: "success" | "partial";
+      itemId: ItemId;
+      requestedQuantity: number;
+      movedQuantity: number;
+      remainingQuantity: number;
+      previousSourceQuantity: number;
+      nextSourceQuantity: number;
+    }
+  | {
+      status: "failed";
+      itemId?: ItemId;
+      requestedQuantity: number;
+      movedQuantity: 0;
+      remainingQuantity: number;
+      reason: BankTransferFailureReason;
+    };
 
 export type DungeonChestRuntimeState = {
   status: "hidden" | "available" | "opened" | "collected";
@@ -760,15 +832,18 @@ export type InventoryMutationSource =
   | "equipment"
   | "combat_loot"
   | "quest_reward"
+  | "crafting"
   | "merchant"
   | "consumable"
   | "skill_book"
   | "chest"
+  | "bank"
   | "unknown";
 
 export type CurrencyMutationSource =
   | "debug"
   | "quest_reward"
+  | "crafting"
   | "merchant"
   | "chest"
   | "world_wipe_recovery"
@@ -819,6 +894,9 @@ export type DebugMapId =
   | "map-2"
   | "map-3"
   | "map-4"
+  | "map-5"
+  | "map-6"
+  | "map-7"
   | "slimeward-camp"
   | "slimeward-floor-1"
   | "slimeward-floor-2";
@@ -1887,6 +1965,10 @@ export type DebugTelemetryEventType =
   | "quick_exchange_completed"
   | "quick_exchange_failed"
   | "quick_exchange_no_items"
+  | "craft_attempted"
+  | "craft_succeeded"
+  | "craft_failed"
+  | "debug_crafting_materials_added"
   | "skill_selected"
   | "skill_used"
   | "skill_skipped"
@@ -1973,6 +2055,28 @@ export type DebugTelemetryEntitySnapshot = {
   blockerId?: string;
   blockerKind?: EntityKind | "wall" | "bounds" | "reserved" | "unknown";
   navigation?: DebugNavigationTelemetry;
+};
+
+export type DebugCraftingRequirementTelemetryRow = {
+  kind: "item" | "equipment";
+  itemId?: ItemId;
+  equipmentType?: EquipmentType;
+  armorFamily?: ArmorFamily;
+  levelRequirement?: number;
+  displayName: string;
+  ownedQuantity: number;
+  requiredQuantity: number;
+  isMet: boolean;
+};
+
+export type DebugCraftingConsumedItemTelemetryRow = {
+  kind: "item" | "equipment";
+  itemId: ItemId;
+  itemDisplayName: string;
+  quantity: number;
+  equipmentType?: EquipmentType;
+  armorFamily?: ArmorFamily;
+  levelRequirement?: number;
 };
 
 export type DebugTelemetryEvent = {
@@ -2123,6 +2227,19 @@ export type DebugTelemetryEvent = {
   objectiveId?: string;
   objectiveProgress?: number;
   objectiveRequiredCount?: number;
+  craftingRecipeId?: string;
+  outputItemId?: ItemId;
+  outputQuantity?: number;
+  craftingFailureReason?: string;
+  craftingRequirements?: DebugCraftingRequirementTelemetryRow[];
+  consumedCraftingItems?: DebugCraftingConsumedItemTelemetryRow[];
+  crownCost?: number;
+  inventoryFreeSlotsBefore?: number;
+  inventoryFreeSlotsAfter?: number;
+  eligibleItemCount?: number;
+  successfulItemCount?: number;
+  partialItemCount?: number;
+  failedItemCount?: number;
 };
 
 export type DebugTelemetryTick = {
@@ -2394,6 +2511,7 @@ export type NpcEntity = BaseEntity & {
     | "bounty_board"
     | "merchant"
     | "smith"
+    | "bank_chest"
     | "dog"
     | "test_blade"
     | "quest_guide"

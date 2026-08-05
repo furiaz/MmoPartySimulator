@@ -2,8 +2,11 @@ import {
   debugMapDefinitions,
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
+  MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
   type DebugMapId,
@@ -16,6 +19,9 @@ const prototypeRegionMapIds: DebugMapId[] = [
   MAP_THREE_ID,
   HUB_TWO_MAP_ID,
   MAP_FOUR_ID,
+  MAP_FIVE_ID,
+  MAP_SIX_ID,
+  MAP_SEVEN_ID,
 ];
 
 export function WorldPanel({
@@ -54,7 +60,7 @@ export function WorldPanel({
             const isCurrentMap = mapId === currentMapId;
             const isActiveRoute = mapId === worldTravelTargetMapId;
             const actionLabel = isCurrentMap
-              ? "Current Map"
+              ? "Current Zone"
               : isActiveRoute
                 ? "Route Active"
                 : "Set Route";

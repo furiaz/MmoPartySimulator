@@ -1,19 +1,23 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
+import { CLASS_DEFINITIONS } from "./classes";
 import {
   addItemToInventoryState,
-  countInventoryItem,
   getAvailableInventorySlots,
-  removeItemFromInventoryState,
+  getInventorySlotIndex,
+  isInventorySlotLocked,
+  removeItemFromInventorySlotState,
 } from "./inventory";
+import { getCraftingRecipeOutputItemIds } from "./crafting";
 import { getItemDefinition, ITEM_DEFINITIONS } from "./items";
 import {
   isMerchantUnlockedForQuests,
-  recordMerchantEquipmentPurchasedForQuests,
+  recordMerchantItemPurchasedForQuests,
   recordMerchantLockedForQuest,
 } from "./questSystem";
 import type { GameState } from "./state";
 import { EQUIPMENT_SLOT_LABELS, EQUIPMENT_TYPE_LABELS } from "./equipmentTypes";
 import { isClassAllowedForEquipment } from "./equipmentRules";
+import { SKILL_DEFINITIONS } from "./skills";
 import {
   addCurrencyToWalletState,
   canAfford,
@@ -35,6 +39,7 @@ export type MerchantMenuSelection = "buy" | "sell" | "quick_exchange_parts" | "l
 export type MerchantStockGroup =
   | "flasks"
   | "food"
+  | "supplies"
   | "books"
   | "weapons"
   | "offhands"
@@ -144,11 +149,13 @@ type QuickExchangeOptions = {
   removeItemFromInventory?: RemoveItemFromInventory;
 };
 
-const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
+const BASE_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "minor_recovery_flask", priceCrowns: 30, group: "flasks" },
   { itemId: "soldiers_recovery_flask", priceCrowns: 45, group: "flasks" },
   { itemId: "hearty_trail_rations", priceCrowns: 15, group: "food" },
   { itemId: "skirmisher_rations", priceCrowns: 15, group: "food" },
+  { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
+  { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
   { itemId: "throw_rock_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "kick_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "guard_up_skill_book", priceCrowns: 25, group: "books" },
@@ -377,6 +384,17 @@ const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "plain_charm", priceCrowns: 25, group: "accessories" },
 ];
 
+const craftableEquipmentItemIds = new Set(
+  getCraftingRecipeOutputItemIds().filter(
+    (itemId) => getItemDefinition(itemId).category === "equipment",
+  ),
+);
+
+const DEFAULT_MERCHANT_BUY_STOCK: MerchantStockEntry[] =
+  BASE_MERCHANT_BUY_STOCK.filter(
+    (entry) => !craftableEquipmentItemIds.has(entry.itemId),
+  );
+
 export function isMerchantNpc(entity: unknown): entity is NpcEntity {
   return Boolean(
     entity &&
@@ -473,6 +491,10 @@ export function isMerchantStockEntryCompatibleWithParty(
     return true;
   }
 
+  if (itemDefinition.category === "material") {
+    return true;
+  }
+
   if (itemDefinition.category !== "equipment") {
     return false;
   }
@@ -538,6 +560,7 @@ export function buyMerchantItem(
     !itemDefinition ||
     (itemDefinition.category !== "equipment" &&
       itemDefinition.category !== "consumable" &&
+      itemDefinition.category !== "material" &&
       itemDefinition.category !== "skill_book")
   ) {
     return createMerchantBuyFailure(
@@ -679,7 +702,7 @@ export function buyMerchantItem(
       nextCurrencyBalance: currencyResult.result.newBalance,
     },
   );
-  nextState = recordMerchantEquipmentPurchasedForQuests(nextState, itemId);
+  nextState = recordMerchantItemPurchasedForQuests(nextState, itemId, 1);
 
   return {
     state: nextState,
@@ -793,6 +816,20 @@ function getMerchantSecondaryFilterOption(
     };
   }
 
+  if (entry.group === "books" && itemDefinition.skillBookSkillId) {
+    const skillDefinition = SKILL_DEFINITIONS[itemDefinition.skillBookSkillId];
+    const classDefinition = skillDefinition
+      ? CLASS_DEFINITIONS[skillDefinition.classId]
+      : null;
+
+    return classDefinition
+      ? {
+          id: classDefinition.id,
+          label: classDefinition.displayName,
+        }
+      : null;
+  }
+
   return null;
 }
 
@@ -843,7 +880,7 @@ export function isQuickExchangeItemDefinition(
 export function getQuickExchangeItems(state: GameState): QuickExchangeItem[] {
   return getQuickExchangeItemDefinitions()
     .map((itemDefinition) => {
-      const quantity = countInventoryItem(state.inventory, itemDefinition.id);
+      const quantity = countUnlockedInventoryItem(state, itemDefinition.id);
       const valueEach = itemDefinition.sellValue ?? 0;
 
       return {
@@ -936,10 +973,12 @@ export function quickExchangeParts(
     );
   }
 
-  const removeItem = options.removeItemFromInventory ?? removeItemFromInventoryState;
+  const removeItem = options.removeItemFromInventory;
 
   for (const item of exchangeItems) {
-    const removal = removeItem(nextState, item.itemId, item.quantity, "merchant");
+    const removal = removeItem
+      ? removeItem(nextState, item.itemId, item.quantity, "merchant")
+      : removeUnlockedQuickExchangeItem(nextState, item.itemId, item.quantity);
 
     if (removal.result.status !== "success") {
       const failedState = appendMerchantItemTelemetry(
@@ -1039,6 +1078,73 @@ export function quickExchangeParts(
       totalExchangeValue,
       previousCrowns,
       newCrowns: currencyResult.result.newBalance,
+    },
+  };
+}
+
+function countUnlockedInventoryItem(state: GameState, itemId: ItemId): number {
+  return state.inventory.slots
+    .filter((slot, fallbackIndex) => {
+      const slotIndex = getInventorySlotIndex(slot, fallbackIndex);
+
+      return (
+        slot.itemId === itemId &&
+        !isInventorySlotLocked(state.inventory, slotIndex)
+      );
+    })
+    .reduce((total, slot) => total + slot.quantity, 0);
+}
+
+function removeUnlockedQuickExchangeItem(
+  state: GameState,
+  itemId: ItemId,
+  quantity: number,
+): { state: GameState; result: InventoryRemoveResult } {
+  let nextState = state;
+  let remainingQuantity = Math.floor(quantity);
+  let removedQuantity = 0;
+
+  for (const slot of [...state.inventory.slots]) {
+    if (remainingQuantity <= 0 || slot.itemId !== itemId) {
+      continue;
+    }
+
+    const fallbackIndex = nextState.inventory.slots.findIndex(
+      (candidate) => candidate === slot,
+    );
+    const slotIndex = getInventorySlotIndex(
+      slot,
+      fallbackIndex >= 0 ? fallbackIndex : 0,
+    );
+
+    if (isInventorySlotLocked(nextState.inventory, slotIndex)) {
+      continue;
+    }
+
+    const removal = removeItemFromInventorySlotState(
+      nextState,
+      slotIndex,
+      remainingQuantity,
+      "merchant",
+    );
+    nextState = removal.state;
+    removedQuantity += removal.result.removedQuantity;
+    remainingQuantity -= removal.result.removedQuantity;
+  }
+
+  return {
+    state: nextState,
+    result: {
+      status:
+        removedQuantity === quantity
+          ? "success"
+          : removedQuantity > 0
+            ? "partial"
+            : "failed_invalid",
+      itemId,
+      requestedQuantity: quantity,
+      removedQuantity,
+      remainingQuantity,
     },
   };
 }

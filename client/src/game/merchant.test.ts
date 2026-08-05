@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addEntity } from "./state";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { createCompanion, createNpc } from "./entities";
+import { toggleInventoryBankLock } from "./bank";
 import { createTestGameState } from "./testState";
 import { startDebugTelemetryRecording } from "./debugTelemetry";
 import {
@@ -76,6 +77,24 @@ describe("merchant quick exchange", () => {
       { itemId: "softwood", quantity: 5 },
       { itemId: "training_sword", quantity: 1 },
     ]);
+  });
+
+  it("skips locked inventory slots during manual quick exchange", () => {
+    let state = createMerchantState();
+    state = addItemToInventoryState(state, "slime_gel_t1", 2, "debug").state;
+    state = addItemToInventoryState(state, "wolf_pelt", 1, "debug").state;
+    state = toggleInventoryBankLock(state, 0);
+
+    const { state: nextState, result } = quickExchangeParts(state, MERCHANT_ID);
+
+    expect(result).toMatchObject({
+      status: "success",
+      totalExchangeValue: 4,
+    });
+    expect(nextState.inventory.slots).toEqual([
+      { itemId: "slime_gel_t1", quantity: 2, slotIndex: 0 },
+    ]);
+    expect(nextState.inventory.lockedSlotIndices).toEqual([0]);
   });
 
   it("fails safely if inventory removal fails", () => {
@@ -228,24 +247,9 @@ describe("merchant buy", () => {
           group: "books",
         }),
         expect.objectContaining({
-          itemId: "training_sword",
-          priceCrowns: 12,
-          group: "weapons",
-        }),
-        expect.objectContaining({
-          itemId: "steel_sword",
-          priceCrowns: 120,
-          group: "weapons",
-        }),
-        expect.objectContaining({
           itemId: "veteran_sword",
           priceCrowns: 180,
           group: "weapons",
-        }),
-        expect.objectContaining({
-          itemId: "reinforced_shield",
-          priceCrowns: 90,
-          group: "offhands",
         }),
         expect.objectContaining({
           itemId: "tower_shield",
@@ -253,84 +257,66 @@ describe("merchant buy", () => {
           group: "offhands",
         }),
         expect.objectContaining({
-          itemId: "bastion_cuirass",
-          priceCrowns: 140,
-          group: "plate",
-        }),
-        expect.objectContaining({
           itemId: "ironhold_cuirass",
           priceCrowns: 210,
           group: "plate",
         }),
-        expect.objectContaining({
-          itemId: "plain_charm",
-          priceCrowns: 25,
-          group: "accessories",
-        }),
+      ]),
+    );
+    expect(stock.map((stockEntry) => stockEntry.itemId)).not.toEqual(
+      expect.arrayContaining([
+        "training_sword",
+        "guard_coif",
+        "scout_cap",
+        "plain_charm",
+        "stalker_mask",
+        "vanguard_coif",
+        "iron_sword",
+        "steel_sword",
+        "reinforced_shield",
+        "bastion_cuirass",
+        "acolyte_robe",
+        "blessed_robe",
       ]),
     );
   });
 
-  it("prices armor stock by early Tier 1 unlock progression", () => {
+  it("keeps non-craftable equipment prices in merchant stock", () => {
     const stock = getMerchantBuyStock(createMerchantState(), MERCHANT_ID);
     const pricesByItemId = Object.fromEntries(
       stock.map((stockEntry) => [stockEntry.itemId, stockEntry.priceCrowns]),
     );
 
     expect(pricesByItemId).toMatchObject({
-      guard_coif: 26,
-      guard_hauberk: 35,
-      guard_legguards: 28,
-      guard_gloves: 24,
-      guard_boots: 24,
-      stalker_mask: 44,
-      stalker_vest: 60,
-      stalker_leggings: 50,
-      stalker_grips: 46,
-      stalker_boots: 44,
-      acolyte_robe: 82,
-      acolyte_pants: 62,
-      acolyte_wraps: 52,
-      acolyte_sandals: 52,
-      scholar_hood: 62,
-      scholar_robe: 82,
-      scholar_pants: 62,
-      scholar_gloves: 52,
-      scholar_sandals: 52,
-      steel_sword: 120,
       veteran_sword: 180,
-      reinforced_shield: 90,
       tower_shield: 135,
-      blessed_robe: 140,
       sanctuary_robe: 210,
-      pathfinder_jacket: 140,
       wayfarer_jacket: 210,
-      sentinel_hauberk: 140,
       ironward_hauberk: 210,
-      bastion_cuirass: 140,
       ironhold_cuirass: 210,
+      conqueror_cuirass: 210,
     });
   });
 
   it("buys stock equipment into shared inventory for Crowns", () => {
     let state = createMerchantState();
-    state = setCurrencyBalanceForDebug(state, "crowns", 100).state;
+    state = setCurrencyBalanceForDebug(state, "crowns", 200).state;
 
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "training_sword",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
       status: "success",
-      itemId: "training_sword",
-      priceCrowns: 12,
-      previousCrowns: 100,
-      newCrowns: 88,
+      itemId: "veteran_sword",
+      priceCrowns: 180,
+      previousCrowns: 200,
+      newCrowns: 20,
     });
-    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(88);
-    expect(countInventoryItem(nextState.inventory, "training_sword")).toBe(1);
+    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "veteran_sword")).toBe(1);
   });
 
   it("buys stock consumables into shared inventory for Crowns", () => {
@@ -375,6 +361,40 @@ describe("merchant buy", () => {
     expect(countInventoryItem(nextState.inventory, "first_aid_skill_book")).toBe(1);
   });
 
+  it("buys crafting supplies into shared inventory for Crowns", () => {
+    let state = createMerchantState();
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+
+    const { state: nextState, result } = buyMerchantItem(
+      state,
+      MERCHANT_ID,
+      "crafting_string",
+    );
+
+    expect(result).toMatchObject({
+      status: "success",
+      itemId: "crafting_string",
+      priceCrowns: 2,
+      previousCrowns: 10,
+      newCrowns: 8,
+    });
+    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(8);
+    expect(countInventoryItem(nextState.inventory, "crafting_string")).toBe(1);
+  });
+
+  it("includes crafting supplies in the supplies stock group", () => {
+    const state = createMerchantState();
+
+    const supplies = getFilteredMerchantBuyStock(state, MERCHANT_ID, {
+      mainFilter: "supplies",
+    });
+
+    expect(supplies).toEqual([
+      { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
+      { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
+    ]);
+  });
+
   it("does not mutate state when Crowns are insufficient", () => {
     let state = createMerchantState();
     state = setCurrencyBalanceForDebug(state, "crowns", 5).state;
@@ -382,7 +402,7 @@ describe("merchant buy", () => {
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "training_sword",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
@@ -397,7 +417,7 @@ describe("merchant buy", () => {
 
   it("does not mutate state when inventory is full", () => {
     let state = createMerchantState();
-    state = setCurrencyBalanceForDebug(state, "crowns", 100).state;
+    state = setCurrencyBalanceForDebug(state, "crowns", 200).state;
 
     for (let index = 0; index < state.inventory.capacity; index += 1) {
       state = addItemToInventoryState(state, "training_sword", 1, "debug").state;
@@ -406,14 +426,14 @@ describe("merchant buy", () => {
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "plain_charm",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
       status: "failed",
       reason: "inventory_full",
-      previousCrowns: 100,
-      newCrowns: 100,
+      previousCrowns: 200,
+      newCrowns: 200,
     });
     expect(nextState.inventory).toEqual(state.inventory);
     expect(nextState.wallet).toEqual(state.wallet);
@@ -480,12 +500,12 @@ describe("merchant buy", () => {
 
   it("records buy telemetry while debug recording is active", () => {
     let state = startDebugTelemetryRecording(createMerchantState());
-    state = setCurrencyBalanceForDebug(state, "crowns", 100).state;
+    state = setCurrencyBalanceForDebug(state, "crowns", 200).state;
 
     const { state: nextState } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "training_sword",
+      "veteran_sword",
     );
 
     expect(nextState.debugTelemetry?.events.map((event) => event.type)).toEqual(
@@ -501,10 +521,10 @@ describe("merchant buy", () => {
         expect.objectContaining({
           type: "merchant_buy_completed",
           entityId: MERCHANT_ID,
-          itemId: "training_sword",
-          currencyAmount: 12,
-          previousCurrencyBalance: 100,
-          nextCurrencyBalance: 88,
+          itemId: "veteran_sword",
+          currencyAmount: 180,
+          previousCurrencyBalance: 200,
+          nextCurrencyBalance: 20,
         }),
       ]),
     );
@@ -522,17 +542,17 @@ describe("merchant buy", () => {
       getMerchantSecondaryFilterOptions(stock, "weapons"),
     ).toEqual(
       expect.arrayContaining([
-        { id: "training_sword", label: "Training Sword" },
+        { id: "bow", label: "Bow" },
         { id: "one_handed_sword", label: "One-Handed Sword" },
       ]),
     );
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "weapons",
-        secondaryFilter: "training_sword",
+        secondaryFilter: "one_handed_sword",
         partyCompatibleOnly: true,
       }).map((entry) => entry.itemId),
-    ).toEqual(["training_sword"]);
+    ).toEqual([]);
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "weapons",
@@ -550,7 +570,38 @@ describe("merchant buy", () => {
         secondaryFilter: "one_handed_sword",
         partyCompatibleOnly: true,
       }).map((entry) => entry.itemId),
-    ).toEqual(["iron_sword", "steel_sword", "veteran_sword"]);
+    ).toEqual(["veteran_sword"]);
+  });
+
+  it("filters merchant books by class", () => {
+    const state = createMerchantStateWithParty();
+    const stock = getMerchantBuyStock(state, MERCHANT_ID);
+
+    expect(getMerchantSecondaryFilterOptions(stock, "books")).toEqual(
+      expect.arrayContaining([
+        { id: "beginner", label: "Beginner" },
+        { id: "blade", label: "Blade" },
+        { id: "aegis", label: "Aegis" },
+      ]),
+    );
+    expect(
+      getFilteredMerchantBuyStock(state, MERCHANT_ID, {
+        mainFilter: "books",
+        secondaryFilter: "beginner",
+      }).map((entry) => entry.itemId),
+    ).toContain("first_aid_skill_book");
+    expect(
+      getFilteredMerchantBuyStock(state, MERCHANT_ID, {
+        mainFilter: "books",
+        secondaryFilter: "blade",
+      }).map((entry) => entry.itemId),
+    ).toContain("duelist_challenge_skill_book");
+    expect(
+      getFilteredMerchantBuyStock(state, MERCHANT_ID, {
+        mainFilter: "books",
+        secondaryFilter: "blade",
+      }).map((entry) => entry.itemId),
+    ).not.toContain("first_aid_skill_book");
   });
 
   it("filters merchant stock by level requirement range", () => {
@@ -563,7 +614,7 @@ describe("merchant buy", () => {
         minLevelRequirement: 15,
         maxLevelRequirement: 20,
       }).map((entry) => entry.itemId),
-    ).toEqual(["steel_sword", "veteran_sword"]);
+    ).toEqual(["veteran_sword"]);
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "weapons",
@@ -571,7 +622,7 @@ describe("merchant buy", () => {
         minLevelRequirement: 15,
         maxLevelRequirement: 15,
       }).map((entry) => entry.itemId),
-    ).toEqual(["steel_sword"]);
+    ).toEqual([]);
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "plate",
@@ -582,9 +633,10 @@ describe("merchant buy", () => {
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "weapons",
-        maxLevelRequirement: 1,
+        secondaryFilter: "one_handed_sword",
+        maxLevelRequirement: 10,
       }).map((entry) => entry.itemId),
-    ).toEqual(["training_sword"]);
+    ).toEqual([]);
   });
 });
 

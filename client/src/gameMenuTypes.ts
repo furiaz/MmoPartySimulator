@@ -2,9 +2,11 @@ export type GameMenuTab =
   | "party"
   | "partyManagement"
   | "inventory"
-  | "quests"
+  | "atlas"
   | "world"
   | "options";
+
+export type AtlasSubpage = "quests" | "crafts" | "bank";
 
 export type PartyMenuSection =
   | "stats"

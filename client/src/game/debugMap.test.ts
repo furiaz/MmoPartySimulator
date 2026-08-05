@@ -6,9 +6,19 @@ import {
   HUB_TWO_MAP_ID,
   HUB_TWO_TO_MAP_FOUR_TELEPORTER_ID,
   HUB_TWO_TO_MAP_THREE_TELEPORTER_ID,
+  MAP_FIVE_ID,
+  MAP_FIVE_TO_MAP_FOUR_TELEPORTER_ID,
+  MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID,
   MAP_FOUR_ID,
+  MAP_FOUR_TO_HUB_TWO_TELEPORTER_ID,
+  MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID,
   MAP_ONE_ROWS,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SEVEN_TO_MAP_SIX_TELEPORTER_ID,
+  MAP_SIX_ID,
+  MAP_SIX_TO_MAP_FIVE_TELEPORTER_ID,
+  MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID,
   MAP_THREE_ID,
   MAP_THREE_ROWS,
   MAP_THREE_TO_HUB_TWO_TELEPORTER_ID,
@@ -35,6 +45,11 @@ import {
   mapFourSubzoneNameLabels,
   mapFourResourceStartData,
   mapFourSubzones,
+  mapFiveEnemyStartPositions,
+  mapFiveEnemyStartData,
+  mapFiveSubzoneNameLabels,
+  mapFiveResourceStartData,
+  mapFiveSubzones,
   mapOneEnemyStartPositions,
   mapOneEnemyStartData,
   mapOneSubzoneNameLabels,
@@ -57,6 +72,16 @@ import {
   mapTwoSubzoneNameLabels,
   mapTwoResourceStartData,
   mapTwoSubzones,
+  mapSevenEnemyStartPositions,
+  mapSevenEnemyStartData,
+  mapSevenResourceStartData,
+  mapSevenSubzoneNameLabels,
+  mapSevenSubzones,
+  mapSixEnemyStartPositions,
+  mapSixEnemyStartData,
+  mapSixSubzoneNameLabels,
+  mapSixResourceStartData,
+  mapSixSubzones,
   SLIMEWARD_CAMP_ID,
   targetDummyPosition,
 } from "./debugMap";
@@ -73,6 +98,9 @@ const wildernessMaps = [
     enemyPositions: mapOneEnemyStartPositions,
     resources: mapOneResourceStartData,
     labels: mapOneSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 48,
+    expectedResourceCount: 9,
   },
   {
     mapId: MAP_TWO_ID,
@@ -81,6 +109,9 @@ const wildernessMaps = [
     enemyPositions: mapTwoEnemyStartPositions,
     resources: mapTwoResourceStartData,
     labels: mapTwoSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 48,
+    expectedResourceCount: 8,
   },
   {
     mapId: MAP_THREE_ID,
@@ -89,6 +120,9 @@ const wildernessMaps = [
     enemyPositions: mapThreeEnemyStartPositions,
     resources: mapThreeResourceStartData,
     labels: mapThreeSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 48,
+    expectedResourceCount: 8,
   },
   {
     mapId: MAP_FOUR_ID,
@@ -97,6 +131,42 @@ const wildernessMaps = [
     enemyPositions: mapFourEnemyStartPositions,
     resources: mapFourResourceStartData,
     labels: mapFourSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 22,
+    expectedResourceCount: 8,
+  },
+  {
+    mapId: MAP_FIVE_ID,
+    subzones: mapFiveSubzones,
+    enemies: mapFiveEnemyStartData,
+    enemyPositions: mapFiveEnemyStartPositions,
+    resources: mapFiveResourceStartData,
+    labels: mapFiveSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 18,
+    expectedResourceCount: 9,
+  },
+  {
+    mapId: MAP_SIX_ID,
+    subzones: mapSixSubzones,
+    enemies: mapSixEnemyStartData,
+    enemyPositions: mapSixEnemyStartPositions,
+    resources: mapSixResourceStartData,
+    labels: mapSixSubzoneNameLabels,
+    expectedSubzoneCount: 3,
+    expectedEnemyCount: 18,
+    expectedResourceCount: 9,
+  },
+  {
+    mapId: MAP_SEVEN_ID,
+    subzones: mapSevenSubzones,
+    enemies: mapSevenEnemyStartData,
+    enemyPositions: mapSevenEnemyStartPositions,
+    resources: mapSevenResourceStartData,
+    labels: mapSevenSubzoneNameLabels,
+    expectedSubzoneCount: 2,
+    expectedEnemyCount: 10,
+    expectedResourceCount: 6,
   },
 ] as const;
 
@@ -133,10 +203,41 @@ describe("debug maps", () => {
       columns: WILDERNESS_MAP_COLUMNS,
       rows: WILDERNESS_MAP_ROWS,
     });
+    expect(createDebugMap(MAP_FIVE_ID)).toMatchObject({
+      columns: WILDERNESS_MAP_COLUMNS,
+      rows: MAP_ONE_ROWS,
+    });
+    expect(createDebugMap(MAP_SIX_ID)).toMatchObject({
+      columns: WILDERNESS_MAP_COLUMNS,
+      rows: MAP_ONE_ROWS,
+    });
+    expect(createDebugMap(MAP_SEVEN_ID)).toMatchObject({
+      columns: WILDERNESS_MAP_COLUMNS,
+      rows: WILDERNESS_MAP_ROWS,
+    });
     expect(createDebugMap(HUB_TWO_MAP_ID)).toMatchObject({
       columns: 132,
       rows: 72,
     });
+  });
+
+  it("uses finalized zone display names and simple subzone labels", () => {
+    expect(debugMapDefinitions[MAP_ONE_ID].displayName).toBe("Mosswake Shore");
+    expect(debugMapDefinitions[MAP_TWO_ID].displayName).toBe("Briarwood Rise");
+    expect(debugMapDefinitions[MAP_THREE_ID].displayName).toBe("Azurefen Hollow");
+    expect(debugMapDefinitions[MAP_FOUR_ID].displayName).toBe("Ashwatch Approach");
+    expect(debugMapDefinitions[MAP_FIVE_ID].displayName).toBe("Emberbriar Crossing");
+    expect(debugMapDefinitions[MAP_SIX_ID].displayName).toBe("Nightmire Canopy");
+    expect(debugMapDefinitions[MAP_SEVEN_ID].displayName).toBe("Twilight of the Fallen");
+    expect(mapOneSubzones.map((subzone) => subzone.displayName)).toEqual([
+      "Shore",
+      "Glade",
+      "Lowbank",
+    ]);
+    expect(mapSevenSubzones.map((subzone) => subzone.displayName)).toEqual([
+      "Plaza",
+      "Garden",
+    ]);
   });
 
   it("places the remade hub dock, base, NPCs, fountain, and teleport on reachable floor", () => {
@@ -236,6 +337,7 @@ describe("debug maps", () => {
       "quest_giver",
       "merchant",
       "smith",
+      "bank_chest",
       "bounty_board",
       "dog",
       "dog",
@@ -252,6 +354,31 @@ describe("debug maps", () => {
         (teleport) => teleport.position,
       ),
     ]);
+  });
+
+  it("links Zones 5-7 after Zone 4 without adding direct Forward Bastion exits", () => {
+    expect(
+      debugMapDefinitions[HUB_TWO_MAP_ID].teleports.some((teleport) =>
+        [MAP_FIVE_ID, MAP_SIX_ID, MAP_SEVEN_ID].includes(teleport.targetMapId),
+      ),
+    ).toBe(false);
+    expect(debugMapDefinitions[MAP_FOUR_ID].teleports.map((teleport) => teleport.id))
+      .toEqual([
+        MAP_FOUR_TO_HUB_TWO_TELEPORTER_ID,
+        MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID,
+      ]);
+    expect(debugMapDefinitions[MAP_FIVE_ID].teleports.map((teleport) => teleport.id))
+      .toEqual([
+        MAP_FIVE_TO_MAP_FOUR_TELEPORTER_ID,
+        MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID,
+      ]);
+    expect(debugMapDefinitions[MAP_SIX_ID].teleports.map((teleport) => teleport.id))
+      .toEqual([
+        MAP_SIX_TO_MAP_FIVE_TELEPORTER_ID,
+        MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID,
+      ]);
+    expect(debugMapDefinitions[MAP_SEVEN_ID].teleports.map((teleport) => teleport.id))
+      .toEqual([MAP_SEVEN_TO_MAP_SIX_TELEPORTER_ID]);
   });
 
   it("keeps Forward Bastion building collision as invisible footprint outlines", () => {
@@ -295,20 +422,12 @@ describe("debug maps", () => {
 
   it("keeps wilderness enemies and resources on reachable open floor", () => {
     for (const wildernessMap of wildernessMaps) {
-      if (wildernessMap.mapId === MAP_ONE_ID) {
-        expect(wildernessMap.enemyPositions).toHaveLength(48);
-        expect(wildernessMap.resources).toHaveLength(9);
-      } else if (
-        wildernessMap.mapId === MAP_TWO_ID ||
-        wildernessMap.mapId === MAP_THREE_ID
-      ) {
-        expect(wildernessMap.enemyPositions).toHaveLength(48);
-        expect(wildernessMap.resources).toHaveLength(8);
-      } else {
-        expect(wildernessMap.enemyPositions.length).toBeGreaterThanOrEqual(18);
-        expect(wildernessMap.enemyPositions.length).toBeLessThanOrEqual(22);
-        expect(wildernessMap.resources).toHaveLength(8);
-      }
+      expect(wildernessMap.enemyPositions).toHaveLength(
+        wildernessMap.expectedEnemyCount,
+      );
+      expect(wildernessMap.resources).toHaveLength(
+        wildernessMap.expectedResourceCount,
+      );
       assertMapPlacements(wildernessMap.mapId, [
         ...wildernessMap.enemyPositions,
         ...wildernessMap.resources.map((resource) => resource.position),
@@ -343,7 +462,7 @@ describe("debug maps", () => {
   it("defines the authored subzone layout for each wilderness map", () => {
     for (const wildernessMap of wildernessMaps) {
       expect(wildernessMap.subzones).toHaveLength(
-        3,
+        wildernessMap.expectedSubzoneCount,
       );
       expect(createDebugMap(wildernessMap.mapId).subzones).toBe(wildernessMap.subzones);
     }
@@ -363,7 +482,7 @@ describe("debug maps", () => {
     }
   });
 
-  it("quest-gates the Shore Fringe to Mossy Glade passage for Secure the Landing", () => {
+  it("quest-gates the Shore to Glade passage for Secure the Landing", () => {
     const closedMap = createDebugMap(MAP_ONE_ID);
     const openMap = createDebugMapForQuestState(
       MAP_ONE_ID,
@@ -394,7 +513,7 @@ describe("debug maps", () => {
     expect(getNavigationDistance(openMap, { x: 50, y: 29 }, { x: 54, y: 29 }, 80)).not.toBeNull();
   });
 
-  it("quest-gates the Old Grove to Wolf Causeway passage for the Grove Runner repair", () => {
+  it("quest-gates the Thicket to Causeway passage for the Grove Runner repair", () => {
     const closedMap = createDebugMap(MAP_TWO_ID);
     const openMap = createDebugMapForQuestState(
       MAP_TWO_ID,
@@ -728,7 +847,7 @@ describe("debug maps", () => {
       ).toBe(true);
     }
 
-    expect(crawlerShelf.displayName).toBe("Crawler Shelf");
+    expect(crawlerShelf.displayName).toBe("Shelf");
   });
 
   it("keeps one map one enemy near each resource node", () => {

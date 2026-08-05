@@ -1,11 +1,14 @@
 import { InventoryPanel } from "./InventoryPanel";
 import { QuestsPanel } from "./QuestPanels";
 import { WorldPanel } from "./WorldPanel";
+import { BankPanel } from "./BankPanel";
 import type {
+  AtlasSubpage,
   GameMenuTab,
   PartyManagementSection,
   PartyMenuSection,
 } from "./gameMenuTypes";
+import { CraftingPanel } from "./CraftingPanel";
 import {
   PartyManagementPanel,
   PartyMenuPanel,
@@ -22,10 +25,12 @@ import type {
   DebugMapId,
   PrimaryStatId,
   SkillId,
+  CraftingRecipeId,
 } from "./game";
 
 export function GameMenu({
   activeTab,
+  activeAtlasSubpage,
   activeManagementSection,
   activePartySection,
   gameState,
@@ -40,6 +45,7 @@ export function GameMenu({
   worldTravelTargetMapId,
   selectedCompanionId,
   selectedQuestId,
+  craftingResultMessage,
   totalPartyLevel,
   onAllocateStatPoint,
   onChangeLeader,
@@ -55,8 +61,10 @@ export function GameMenu({
   onSelectCompanion,
   onSelectManagementSection,
   onSelectPartySection,
+  onSelectAtlasSubpage,
   onSelectQuest,
   onSelectTab,
+  onCraftRecipe,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
   onUnequipEquipment,
@@ -68,6 +76,7 @@ export function GameMenu({
   onManualSave,
 }: {
   activeTab: GameMenuTab | null;
+  activeAtlasSubpage: AtlasSubpage;
   activeManagementSection: PartyManagementSection;
   activePartySection: PartyMenuSection;
   gameState: GameState;
@@ -82,6 +91,7 @@ export function GameMenu({
   worldTravelTargetMapId: DebugMapId | null;
   selectedCompanionId: string | null;
   selectedQuestId: QuestId | null;
+  craftingResultMessage?: string | null;
   totalPartyLevel: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
   onChangeLeader: (companionId: string) => void;
@@ -111,8 +121,10 @@ export function GameMenu({
   onSelectCompanion: (companionId: string) => void;
   onSelectManagementSection: (section: PartyManagementSection) => void;
   onSelectPartySection: (section: PartyMenuSection) => void;
+  onSelectAtlasSubpage: (subpage: AtlasSubpage) => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectTab: (tab: GameMenuTab | null) => void;
+  onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
   onUnequipEquipment: (companionId: string, targetSlot: EquipmentSlot) => void;
@@ -124,7 +136,14 @@ export function GameMenu({
   onManualSave: () => void;
 }) {
   return (
-    <aside className="game-menu-panel" aria-label="Game menu">
+    <aside
+      className={`game-menu-panel${
+        activeTab === "atlas" && activeAtlasSubpage === "bank"
+          ? " bank-menu-panel"
+          : ""
+      }`}
+      aria-label="Game menu"
+    >
           <nav className="game-menu-tabs" aria-label="Menu sections">
             <button
               className={activeTab === "party" ? "active" : ""}
@@ -148,11 +167,11 @@ export function GameMenu({
               Inventory
             </button>
             <button
-              className={activeTab === "quests" ? "active" : ""}
-              onClick={() => onSelectTab("quests")}
+              className={activeTab === "atlas" ? "active" : ""}
+              onClick={() => onSelectTab("atlas")}
               type="button"
             >
-              Quests
+              Atlas
             </button>
             <button
               className={activeTab === "world" ? "active" : ""}
@@ -216,11 +235,16 @@ export function GameMenu({
                   onReadSkillBook={onReadSkillBook}
                   onOpenEquipmentManagement={onOpenEquipmentManagement}
                 />
-              ) : activeTab === "quests" ? (
-                <QuestsPanel
+              ) : activeTab === "atlas" ? (
+                <AtlasPanel
+                  activeSubpage={activeAtlasSubpage}
+                  craftingResultMessage={craftingResultMessage}
+                  gameState={gameState}
                   quests={quests}
                   selectedQuestId={selectedQuestId}
+                  onCraftRecipe={onCraftRecipe}
                   onSelectQuest={onSelectQuest}
+                  onSelectSubpage={onSelectAtlasSubpage}
                 />
               ) : activeTab === "world" ? (
                 <WorldPanel
@@ -240,6 +264,72 @@ export function GameMenu({
             </div>
           ) : null}
     </aside>
+  );
+}
+
+function AtlasPanel({
+  activeSubpage,
+  craftingResultMessage,
+  gameState,
+  quests,
+  selectedQuestId,
+  onCraftRecipe,
+  onSelectQuest,
+  onSelectSubpage,
+}: {
+  activeSubpage: AtlasSubpage;
+  craftingResultMessage?: string | null;
+  gameState: GameState;
+  quests: GameState["quests"];
+  selectedQuestId: QuestId | null;
+  onCraftRecipe: (recipeId: CraftingRecipeId) => void;
+  onSelectQuest: (questId: QuestId) => void;
+  onSelectSubpage: (subpage: AtlasSubpage) => void;
+}) {
+  return (
+    <section className="atlas-panel" aria-label="Atlas">
+      <nav className="atlas-subtabs" aria-label="Atlas pages">
+        <button
+          className={activeSubpage === "quests" ? "active" : ""}
+          onClick={() => onSelectSubpage("quests")}
+          type="button"
+        >
+          Quests
+        </button>
+        <button
+          className={activeSubpage === "crafts" ? "active" : ""}
+          onClick={() => onSelectSubpage("crafts")}
+          type="button"
+        >
+          Crafts
+        </button>
+        <button
+          className={activeSubpage === "bank" ? "active" : ""}
+          onClick={() => onSelectSubpage("bank")}
+          type="button"
+        >
+          Bank
+        </button>
+      </nav>
+      {activeSubpage === "quests" ? (
+        <QuestsPanel
+          quests={quests}
+          selectedQuestId={selectedQuestId}
+          onSelectQuest={onSelectQuest}
+        />
+      ) : activeSubpage === "crafts" ? (
+        <CraftingPanel
+          resultMessage={craftingResultMessage}
+          state={gameState}
+          onCraft={onCraftRecipe}
+        />
+      ) : (
+        <BankPanel
+          canManage={false}
+          state={gameState}
+        />
+      )}
+    </section>
   );
 }
 

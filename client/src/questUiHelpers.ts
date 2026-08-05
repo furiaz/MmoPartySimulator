@@ -210,8 +210,20 @@ export function getObjectiveLabel(
       : "Equip Item";
   }
 
-  if (objective.type === "buy_merchant_equipment") {
-    return "Buy Equipment";
+  if (objective.type === "buy_merchant_item") {
+    const itemDefinition = objective.itemId
+      ? getItemDefinition(objective.itemId)
+      : null;
+
+    return itemDefinition ? `Buy ${itemDefinition.displayName}` : "Buy Item";
+  }
+
+  if (objective.type === "craft_item") {
+    const itemDefinition = objective.itemId
+      ? getItemDefinition(objective.itemId)
+      : null;
+
+    return itemDefinition ? `Craft ${itemDefinition.displayName}` : "Craft Item";
   }
 
   if (objective.type === "reach_poi") {
@@ -313,19 +325,31 @@ function formatQuestMapName(mapId: QuestObjectiveDefinition["targetMapId"]): str
   }
 
   if (mapId === "map-1") {
-    return "First Wild Zone";
+    return "Mosswake Shore";
   }
 
   if (mapId === "map-2") {
-    return "Second Wild Zone";
+    return "Briarwood Rise";
   }
 
   if (mapId === "map-3") {
-    return "Third Wild Zone";
+    return "Azurefen Hollow";
   }
 
   if (mapId === "map-4") {
-    return "Fourth Wild Zone";
+    return "Ashwatch Approach";
+  }
+
+  if (mapId === "map-5") {
+    return "Emberbriar Crossing";
+  }
+
+  if (mapId === "map-6") {
+    return "Nightmire Canopy";
+  }
+
+  if (mapId === "map-7") {
+    return "Twilight of the Fallen";
   }
 
   return "Region";

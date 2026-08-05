@@ -69,6 +69,7 @@ const firstClassCharacterBasePath = "/assets/Characters";
 const testEnemyBasePath = "/assets/Characters/Test-Enemy";
 const testEnemyTwoBasePath = "/assets/Characters/Test-Enemy2";
 const prototypeEnemyBasePath = "/assets/Characters/Prototype-Enemies";
+const generatedEnemyPlaceholderPath = "/assets/Generated/enemy-placeholders/items";
 const slimewardDungeonAssetPath = "/assets/Generated/Dungeon Generation";
 const bossSlimeTestAssetPath = "/assets/Characters/BossSlimeTest";
 const testNpcBasePath = "/assets/Characters/Test-NPC";
@@ -342,6 +343,17 @@ const prototypeEnemyVisualAssets: Partial<Record<EnemyTypeId, SpriteVisualAsset>
   goblin_shaman: createStaticEnemySprite(`${prototypeEnemyBasePath}/thorn-shaman-se.png`),
   ash_wisp: createStaticEnemySprite(`${prototypeEnemyBasePath}/ash-wisp-se.png`),
   mossling: createStaticEnemySprite(`${prototypeEnemyBasePath}/mossling-se.png`),
+  ember_imp: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/ember_imp.png`),
+  iron_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/iron_crawler.png`),
+  briar_wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/briar_wolf.png`),
+  mire_spider: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/mire_spider.png`),
+  night_bat: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/night_bat.png`),
+  elder_mossling: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/elder_mossling.png`),
+  cinder_wisp: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/cinder_wisp.png`),
+  orc_warmaster: createStaticEnemySprite(
+    `${generatedEnemyPlaceholderPath}/orc_warmaster.png`,
+    { width: 64, height: 64 },
+  ),
 };
 
 export const CLASS_PORTRAIT_SRC: Record<ClassId, string> = {

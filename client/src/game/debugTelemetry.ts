@@ -332,6 +332,23 @@ function getTelemetryEventKey(event: DebugTelemetryEvent): string {
     event.questId ?? "",
     event.objectiveId ?? "",
     event.reason ?? "",
+    event.craftingRecipeId ?? "",
+    event.outputItemId ?? "",
+    event.outputQuantity ?? "",
+    event.craftingFailureReason ?? "",
+    event.craftingRequirements
+      ? JSON.stringify(event.craftingRequirements)
+      : "",
+    event.consumedCraftingItems
+      ? JSON.stringify(event.consumedCraftingItems)
+      : "",
+    event.crownCost ?? "",
+    event.inventoryFreeSlotsBefore ?? "",
+    event.inventoryFreeSlotsAfter ?? "",
+    event.eligibleItemCount ?? "",
+    event.successfulItemCount ?? "",
+    event.partialItemCount ?? "",
+    event.failedItemCount ?? "",
     event.currencyId ?? "",
     event.currencyDisplayName ?? "",
     event.currencyAmount ?? "",

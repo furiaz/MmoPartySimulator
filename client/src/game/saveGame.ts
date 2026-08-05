@@ -1,5 +1,10 @@
 import { createDebugMapForQuestState, debugMapDefinitions } from "./debugMap";
+import {
+  sanitizeBankAutoRoutingMode,
+  sanitizePartyBank,
+} from "./bank";
 import { addItemToInventoryState } from "./inventory";
+import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import {
   getLevelGapXpModifier,
@@ -7,6 +12,11 @@ import {
   grantCharacterXpToCompanion,
 } from "./leveling";
 import { getPartyLeader } from "./partySystem";
+import {
+  createInitialQuestStates,
+  QUEST_DEFINITIONS,
+  QUEST_ORDER,
+} from "./questSystem";
 import { sanitizeProgressionForCompanion } from "./skillProgression";
 import { getSubzoneAtPosition } from "./subzoneSystem";
 import type { GameState } from "./state";
@@ -19,6 +29,7 @@ import type {
   ResourceLocation,
   ZoneSubzone,
 } from "./types";
+import type { QuestId, QuestState, QuestStatus } from "./questTypes";
 
 export const SAVE_VERSION = 1;
 export const MAX_OFFLINE_FARMING_MS = 30 * 60 * 1000;
@@ -60,7 +71,15 @@ type OfflineFarmingProfile = {
   resourceRatePerMinute: number;
 };
 
-const WILD_MAP_IDS: DebugMapId[] = ["map-1", "map-2", "map-3", "map-4"];
+const WILD_MAP_IDS: DebugMapId[] = [
+  "map-1",
+  "map-2",
+  "map-3",
+  "map-4",
+  "map-5",
+  "map-6",
+  "map-7",
+];
 
 const OFFLINE_FARMING_PROFILES: Record<string, OfflineFarmingProfile> = {
   "map-1:shore-fringe": { enemyRatePerMinute: 10, resourceRatePerMinute: 2.4 },
@@ -75,6 +94,14 @@ const OFFLINE_FARMING_PROFILES: Record<string, OfflineFarmingProfile> = {
   "map-4:north-center": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.1 },
   "map-4:north-east": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.6 },
   "map-4:south-east": { enemyRatePerMinute: 3, resourceRatePerMinute: 1.5 },
+  "map-5:crossing": { enemyRatePerMinute: 2.8, resourceRatePerMinute: 1.4 },
+  "map-5:burrows": { enemyRatePerMinute: 2.6, resourceRatePerMinute: 1.7 },
+  "map-5:thornfield": { enemyRatePerMinute: 2.4, resourceRatePerMinute: 1.7 },
+  "map-6:mire": { enemyRatePerMinute: 2.2, resourceRatePerMinute: 1.4 },
+  "map-6:canopy": { enemyRatePerMinute: 2, resourceRatePerMinute: 1.6 },
+  "map-6:oldroot": { enemyRatePerMinute: 1.8, resourceRatePerMinute: 1.6 },
+  "map-7:plaza": { enemyRatePerMinute: 1.5, resourceRatePerMinute: 1.3 },
+  "map-7:garden": { enemyRatePerMinute: 1.3, resourceRatePerMinute: 1.5 },
 };
 
 const COMBAT_ROLE_WEIGHTS: Record<PartyMemberRole, number> = {
@@ -317,7 +344,8 @@ export function applyOfflineFarmingProgress(
 
 export function sanitizeGameStateForSave(state: GameState): GameState {
   const currentMapId = state.currentMapId ?? "hub";
-  const map = createDebugMapForQuestState(currentMapId, state.quests);
+  const quests = sanitizeQuestStates(state.quests);
+  const map = createDebugMapForQuestState(currentMapId, quests);
   const entities = Object.fromEntries(
     Object.entries(state.entities).map(([id, entity]) => [id, sanitizeEntityForSave(entity, state.partyLeaderId)]),
   );
@@ -328,8 +356,16 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   return {
     ...state,
     entities,
+    inventory: sanitizePartyInventory(state.inventory),
+    bank: {
+      ...sanitizePartyBank(state.bank),
+      autoRoutingMode: sanitizeBankAutoRoutingMode(
+        state.bank?.autoRoutingMode,
+      ),
+    },
     currentMapId,
     map,
+    quests,
     activeTeleport: null,
     partyIntent: null,
     leaderIntent: null,
@@ -395,6 +431,137 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     lastHealthRegenAtByCompanionId: {},
     lastTargetDummyRegenAtByEnemyId: {},
     debugTelemetry: undefined,
+  };
+}
+
+function sanitizeQuestStates(
+  quests: Partial<Record<QuestId, QuestState>>,
+): Record<QuestId, QuestState> {
+  const initialQuests = createInitialQuestStates();
+  const didSaveHaveSmithQuest = Boolean(quests.smiths_first_work);
+  const sanitizedEntries = QUEST_ORDER.map((questId) => {
+    const definition = QUEST_DEFINITIONS[questId];
+    const fallbackQuest = initialQuests[questId];
+    const savedQuest = quests[questId];
+    const status = sanitizeQuestStatus(savedQuest?.status, fallbackQuest.status);
+    const objectiveProgress = Object.fromEntries(
+      definition.objectives.map((objective) => {
+        const requiredCount = objective.requiredCount ?? 1;
+        const savedProgress = isRecord(savedQuest?.objectiveProgress)
+          ? savedQuest?.objectiveProgress[objective.id]
+          : undefined;
+        const shouldCompleteMissingObjective =
+          (status === "ready_to_turn_in" || status === "completed") &&
+          !savedProgress;
+        const savedCurrentCount = savedProgress?.currentCount;
+        const currentCount =
+          typeof savedCurrentCount === "number" &&
+          Number.isFinite(savedCurrentCount)
+          ? Math.min(
+              requiredCount,
+              Math.max(0, Math.floor(savedCurrentCount)),
+            )
+          : shouldCompleteMissingObjective
+            ? requiredCount
+            : 0;
+        const completed = Boolean(savedProgress?.completed) ||
+          shouldCompleteMissingObjective ||
+          currentCount >= requiredCount;
+
+        return [
+          objective.id,
+          {
+            objectiveId: objective.id,
+            currentCount,
+            completed,
+          },
+        ];
+      }),
+    );
+
+    return [
+      questId,
+      {
+        ...fallbackQuest,
+        ...savedQuest,
+        questId,
+        status,
+        completedCycle: Number.isFinite(savedQuest?.completedCycle)
+          ? Math.max(0, Math.floor(savedQuest?.completedCycle ?? 0))
+          : fallbackQuest.completedCycle,
+        rewardClaimedCycle:
+          savedQuest?.rewardClaimedCycle === null ||
+          Number.isFinite(savedQuest?.rewardClaimedCycle)
+            ? savedQuest?.rewardClaimedCycle === null
+              ? null
+              : Math.max(0, Math.floor(savedQuest?.rewardClaimedCycle ?? 0))
+            : fallbackQuest.rewardClaimedCycle,
+        objectiveProgress,
+      },
+    ];
+  });
+  const sanitizedQuests = Object.fromEntries(sanitizedEntries) as Record<
+    QuestId,
+    QuestState
+  >;
+
+  if (!didSaveHaveSmithQuest) {
+    const outfitStatus = sanitizedQuests.outfit_the_expedition.status;
+    const stolenStatus = quests.stolen_field_supplies?.status;
+
+    if (outfitStatus === "completed" && stolenStatus && stolenStatus !== "locked") {
+      sanitizedQuests.smiths_first_work = completeSanitizedQuest(
+        sanitizedQuests.smiths_first_work,
+      );
+    } else if (
+      outfitStatus === "completed" &&
+      sanitizedQuests.smiths_first_work.status === "locked"
+    ) {
+      sanitizedQuests.smiths_first_work = {
+        ...sanitizedQuests.smiths_first_work,
+        status: "available",
+      };
+    }
+  }
+
+  return sanitizedQuests;
+}
+
+function sanitizeQuestStatus(
+  status: QuestStatus | undefined,
+  fallback: QuestStatus,
+): QuestStatus {
+  return status === "locked" ||
+    status === "available" ||
+    status === "active" ||
+    status === "ready_to_turn_in" ||
+    status === "completed"
+    ? status
+    : fallback;
+}
+
+function completeSanitizedQuest(quest: QuestState): QuestState {
+  const definition = QUEST_DEFINITIONS[quest.questId];
+
+  return {
+    ...quest,
+    status: "completed",
+    completedCycle: Math.max(1, quest.completedCycle),
+    rewardClaimedCycle: Math.max(1, quest.rewardClaimedCycle ?? 0),
+    objectiveProgress: Object.fromEntries(
+      definition.objectives.map((objective) => {
+        const requiredCount = objective.requiredCount ?? 1;
+
+        return [
+          objective.id,
+          {
+            objectiveId: objective.id,
+            currentCount: requiredCount,
+            completed: true,
+          },
+        ];
+      }),
+    ),
   };
 }
 

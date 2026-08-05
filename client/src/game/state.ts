@@ -24,6 +24,7 @@ import type {
   PartyInventory,
   PartyWallet,
   PartyFormationState,
+  PartyBank,
   PartyMemberRole,
   Position,
   DropVisualEvent,
@@ -153,6 +154,7 @@ export type {
 export type GameState = {
   entities: Record<string, GameEntity>;
   inventory: PartyInventory;
+  bank: PartyBank;
   wallet: PartyWallet;
   currentMapId?: DebugMapId;
   map?: GameMap;

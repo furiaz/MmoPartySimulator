@@ -28,6 +28,12 @@ export const MAP_THREE_TO_HUB_TWO_TELEPORTER_ID = "map-3-to-hub-2";
 export const HUB_TWO_TO_MAP_THREE_TELEPORTER_ID = "hub-2-to-map-3";
 export const HUB_TWO_TO_MAP_FOUR_TELEPORTER_ID = "hub-2-to-map-4";
 export const MAP_FOUR_TO_HUB_TWO_TELEPORTER_ID = "map-4-to-hub-2";
+export const MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID = "map-4-to-map-5";
+export const MAP_FIVE_TO_MAP_FOUR_TELEPORTER_ID = "map-5-to-map-4";
+export const MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID = "map-5-to-map-6";
+export const MAP_SIX_TO_MAP_FIVE_TELEPORTER_ID = "map-6-to-map-5";
+export const MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID = "map-6-to-map-7";
+export const MAP_SEVEN_TO_MAP_SIX_TELEPORTER_ID = "map-7-to-map-6";
 export const HUB_TWO_NORTH_ROUTE_TELEPORTER_ID = "hub-2-north-route";
 export const HUB_TWO_EAST_ROUTE_TELEPORTER_ID = "hub-2-east-route";
 export const TELEPORTER_RANGE = 10;
@@ -37,6 +43,9 @@ export const MAP_ONE_ID: DebugMapId = "map-1";
 export const MAP_TWO_ID: DebugMapId = "map-2";
 export const MAP_THREE_ID: DebugMapId = "map-3";
 export const MAP_FOUR_ID: DebugMapId = "map-4";
+export const MAP_FIVE_ID: DebugMapId = "map-5";
+export const MAP_SIX_ID: DebugMapId = "map-6";
+export const MAP_SEVEN_ID: DebugMapId = "map-7";
 export const SLIMEWARD_CAMP_ID: DebugMapId = "slimeward-camp";
 export const SLIMEWARD_FLOOR_ONE_ID: DebugMapId = "slimeward-floor-1";
 export const SLIMEWARD_FLOOR_TWO_ID: DebugMapId = "slimeward-floor-2";
@@ -97,6 +106,7 @@ export const npcIds = [
   "hub-quest-giver",
   "hub-merchant",
   "hub-smith",
+  "hub-bank-chest",
   "hub-dog",
   "hub-test-blade",
 ];
@@ -142,6 +152,12 @@ export const mapOneHubTeleporterPosition: Position = { x: 5, y: 29 };
 export const mapTwoReturnTeleporterPosition: Position = { x: 5, y: 29 };
 export const mapThreeReturnTeleporterPosition: Position = { x: 5, y: 29 };
 export const mapFourReturnTeleporterPosition: Position = { x: 5, y: 12 };
+export const mapFourForwardTeleporterPosition: Position = { x: 154, y: 12 };
+export const mapFiveReturnTeleporterPosition: Position = { x: 5, y: 12 };
+export const mapFiveForwardTeleporterPosition: Position = { x: 154, y: 29 };
+export const mapSixReturnTeleporterPosition: Position = { x: 5, y: 29 };
+export const mapSixForwardTeleporterPosition: Position = { x: 154, y: 16 };
+export const mapSevenReturnTeleporterPosition: Position = { x: 5, y: 16 };
 export const HUB_HEALING_FOUNTAIN_RANGE = 5;
 export const HUB_TWO_HEALING_FOUNTAIN_RANGE = 5;
 export const hubHealingFountains: HealingFountain[] = [
@@ -233,6 +249,48 @@ const mapFourHubTwoArrivalPositions: Position[] = [
   { x: 66, y: 63 },
 ];
 
+const mapFourMapFiveArrivalPositions: Position[] = [
+  { x: 7, y: 12 },
+  { x: 8, y: 12 },
+  { x: 7, y: 13 },
+  { x: 8, y: 13 },
+];
+
+const mapFiveMapFourArrivalPositions: Position[] = [
+  { x: 154, y: 12 },
+  { x: 153, y: 12 },
+  { x: 154, y: 13 },
+  { x: 153, y: 13 },
+];
+
+const mapFiveMapSixArrivalPositions: Position[] = [
+  { x: 7, y: 29 },
+  { x: 8, y: 29 },
+  { x: 7, y: 30 },
+  { x: 8, y: 30 },
+];
+
+const mapSixMapFiveArrivalPositions: Position[] = [
+  { x: 154, y: 29 },
+  { x: 153, y: 29 },
+  { x: 154, y: 30 },
+  { x: 153, y: 30 },
+];
+
+const mapSixMapSevenArrivalPositions: Position[] = [
+  { x: 7, y: 16 },
+  { x: 8, y: 16 },
+  { x: 7, y: 17 },
+  { x: 8, y: 17 },
+];
+
+const mapSevenMapSixArrivalPositions: Position[] = [
+  { x: 154, y: 16 },
+  { x: 153, y: 16 },
+  { x: 154, y: 17 },
+  { x: 153, y: 17 },
+];
+
 export const slimewardCampArrivalPositions: Position[] = [
   { x: 12, y: 17 },
   { x: 13, y: 17 },
@@ -289,12 +347,18 @@ export const hubNpcStartData = [
   },
   {
     id: npcIds[3],
+    position: { x: 61, y: 32 },
+    displayName: "Bank Chest",
+    npcRole: "bank_chest",
+  },
+  {
+    id: npcIds[4],
     position: { x: 58, y: 33 },
     displayName: "Dog",
     npcRole: "dog",
   },
   {
-    id: npcIds[4],
+    id: npcIds[5],
     position: { x: 73, y: 42 },
     displayName: "Test Blade",
     npcRole: "test_blade",
@@ -326,6 +390,12 @@ export const hubTwoNpcStartData = [
     position: { x: 90, y: 48 },
     displayName: "Smith",
     npcRole: "smith",
+  },
+  {
+    id: "hub-2-bank-chest",
+    position: { x: 72, y: 35 },
+    displayName: "Bank Chest",
+    npcRole: "bank_chest",
   },
   {
     id: "hub-2-bounty-board",
@@ -421,6 +491,45 @@ const MAP_FOUR_PASSAGES: ZoneSubzonePassage[] = [
   },
 ];
 
+const MAP_FIVE_PASSAGES: ZoneSubzonePassage[] = [
+  {
+    id: "crossing-to-burrows",
+    fromSubzoneId: "crossing",
+    toSubzoneId: "burrows",
+    position: { x: 52, y: 29 },
+  },
+  {
+    id: "burrows-to-thornfield",
+    fromSubzoneId: "burrows",
+    toSubzoneId: "thornfield",
+    position: { x: 105, y: 29 },
+  },
+];
+
+const MAP_SIX_PASSAGES: ZoneSubzonePassage[] = [
+  {
+    id: "mire-to-canopy",
+    fromSubzoneId: "mire",
+    toSubzoneId: "canopy",
+    position: { x: 52, y: 29 },
+  },
+  {
+    id: "canopy-to-oldroot",
+    fromSubzoneId: "canopy",
+    toSubzoneId: "oldroot",
+    position: { x: 105, y: 29 },
+  },
+];
+
+const MAP_SEVEN_PASSAGES: ZoneSubzonePassage[] = [
+  {
+    id: "plaza-to-garden",
+    fromSubzoneId: "plaza",
+    toSubzoneId: "garden",
+    position: { x: 80, y: 16 },
+  },
+];
+
 const MAP_TWO_COMPACT_PASSAGES: ZoneSubzonePassage[] = [
   {
     id: "scout-rise-to-old-grove",
@@ -466,10 +575,13 @@ const MAP_FOUR_COMPACT_PASSAGES: ZoneSubzonePassage[] = [
   },
 ];
 
+const MAP_FIVE_COMPACT_PASSAGES = MAP_FIVE_PASSAGES;
+const MAP_SIX_COMPACT_PASSAGES = MAP_SIX_PASSAGES;
+
 const mapOneSourceSubzones: ZoneSubzone[] = [
   {
     id: "shore-fringe",
-    displayName: "Shore Fringe",
+    displayName: "Shore",
     bounds: { x: 1, y: 1, width: 51, height: 55 },
     levelRange: { min: 1, max: 1 },
     enemyTypeIds: ["slime"],
@@ -486,7 +598,7 @@ const mapOneSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "mossy-glade",
-    displayName: "Mossy Glade",
+    displayName: "Glade",
     bounds: { x: 53, y: 1, width: 52, height: 55 },
     levelRange: { min: 2, max: 2 },
     enemyTypeIds: ["cave_bat"],
@@ -503,7 +615,7 @@ const mapOneSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "lower-shore",
-    displayName: "Lower Shore",
+    displayName: "Lowbank",
     bounds: { x: 106, y: 1, width: 53, height: 55 },
     levelRange: { min: 3, max: 3 },
     enemyTypeIds: ["forest_spider"],
@@ -523,7 +635,7 @@ const mapOneSourceSubzones: ZoneSubzone[] = [
 const mapTwoSourceSubzones: ZoneSubzone[] = [
   {
     id: "south-center",
-    displayName: "Scout Rise",
+    displayName: "Outskirts",
     bounds: { x: 1, y: 1, width: 51, height: 55 },
     levelRange: { min: 3, max: 4 },
     enemyTypeIds: ["forest_spider", "goblin_scout"],
@@ -539,7 +651,7 @@ const mapTwoSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "south-east",
-    displayName: "Old Grove",
+    displayName: "Thicket",
     bounds: { x: 53, y: 1, width: 52, height: 55 },
     levelRange: { min: 4, max: 5 },
     enemyTypeIds: ["goblin_scout", "bog_imp"],
@@ -556,7 +668,7 @@ const mapTwoSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "north-east",
-    displayName: "Wolf Causeway",
+    displayName: "Causeway",
     bounds: { x: 106, y: 1, width: 53, height: 55 },
     levelRange: { min: 5, max: 7 },
     enemyTypeIds: ["bog_imp", "wolf", "goblin_thrower"],
@@ -576,7 +688,7 @@ const mapTwoSourceSubzones: ZoneSubzone[] = [
 const mapThreeSourceSubzones: ZoneSubzone[] = [
   {
     id: "south-west",
-    displayName: "Broken Thicket",
+    displayName: "Fen",
     bounds: { x: 1, y: 1, width: 51, height: 55 },
     levelRange: { min: 8, max: 9 },
     enemyTypeIds: ["stone_crawler", "mossling"],
@@ -592,7 +704,7 @@ const mapThreeSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "north-west",
-    displayName: "Crawler Shelf",
+    displayName: "Shelf",
     bounds: { x: 53, y: 1, width: 52, height: 55 },
     levelRange: { min: 9, max: 10 },
     enemyTypeIds: ["stone_crawler", "goblin_shaman"],
@@ -609,7 +721,7 @@ const mapThreeSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "south-center",
-    displayName: "Imp Fen",
+    displayName: "Depths",
     bounds: { x: 106, y: 1, width: 53, height: 55 },
     levelRange: { min: 10, max: 10 },
     enemyTypeIds: ["mossling", "goblin_shaman"],
@@ -629,7 +741,7 @@ const mapThreeSourceSubzones: ZoneSubzone[] = [
 const mapFourSourceSubzones: ZoneSubzone[] = [
   {
     id: "north-center",
-    displayName: "Shaman Watch",
+    displayName: "Watch",
     bounds: { x: 53, y: 1, width: 52, height: 23 },
     levelRange: { min: 10, max: 11 },
     enemyTypeIds: ["goblin_shaman", "ash_wisp"],
@@ -642,7 +754,7 @@ const mapFourSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "north-east",
-    displayName: "Ash Hollow",
+    displayName: "Hollow",
     bounds: { x: 106, y: 1, width: 53, height: 23 },
     levelRange: { min: 10, max: 11 },
     enemyTypeIds: ["goblin_shaman", "ash_wisp"],
@@ -656,7 +768,7 @@ const mapFourSourceSubzones: ZoneSubzone[] = [
   },
   {
     id: "south-east",
-    displayName: "Orc Approach",
+    displayName: "Camp",
     bounds: { x: 106, y: 25, width: 53, height: 22 },
     levelRange: { min: 11, max: 12 },
     enemyTypeIds: ["ash_wisp", "orc"],
@@ -670,6 +782,149 @@ const mapFourSourceSubzones: ZoneSubzone[] = [
   },
 ];
 
+const mapFiveSourceSubzones: ZoneSubzone[] = [
+  {
+    id: "crossing",
+    displayName: "Crossing",
+    bounds: { x: 1, y: 1, width: 51, height: 55 },
+    levelRange: { min: 13, max: 13 },
+    enemyTypeIds: ["ember_imp"],
+    encounterAreas: [
+      { id: "crossing-north-sparks", subzoneId: "crossing", center: { x: 27, y: 16 }, radius: 21, leashRadius: 23 },
+      { id: "crossing-south-sparks", subzoneId: "crossing", center: { x: 28, y: 42 }, radius: 21, leashRadius: 23 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[0], subzoneId: "crossing", position: { x: 8, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[1], subzoneId: "crossing", position: { x: 46, y: 7 }, resourceType: "ore", tier: 2 },
+      { id: resourceIds[2], subzoneId: "crossing", position: { x: 12, y: 8 }, resourceType: "herb", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("crossing", MAP_FIVE_PASSAGES),
+  },
+  {
+    id: "burrows",
+    displayName: "Burrows",
+    bounds: { x: 53, y: 1, width: 52, height: 55 },
+    levelRange: { min: 14, max: 14 },
+    enemyTypeIds: ["iron_crawler"],
+    encounterAreas: [
+      { id: "burrows-north-shells", subzoneId: "burrows", center: { x: 79, y: 16 }, radius: 22, leashRadius: 24 },
+      { id: "burrows-south-shells", subzoneId: "burrows", center: { x: 80, y: 42 }, radius: 22, leashRadius: 24 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[3], subzoneId: "burrows", position: { x: 58, y: 50 }, resourceType: "ore", tier: 2 },
+      { id: resourceIds[4], subzoneId: "burrows", position: { x: 100, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[5], subzoneId: "burrows", position: { x: 101, y: 7 }, resourceType: "herb", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("burrows", MAP_FIVE_PASSAGES),
+  },
+  {
+    id: "thornfield",
+    displayName: "Thornfield",
+    bounds: { x: 106, y: 1, width: 53, height: 55 },
+    levelRange: { min: 15, max: 15 },
+    enemyTypeIds: ["briar_wolf"],
+    encounterAreas: [
+      { id: "thornfield-north-pack", subzoneId: "thornfield", center: { x: 132, y: 16 }, radius: 22, leashRadius: 24 },
+      { id: "thornfield-south-pack", subzoneId: "thornfield", center: { x: 133, y: 42 }, radius: 22, leashRadius: 24 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[6], subzoneId: "thornfield", position: { x: 110, y: 50 }, resourceType: "herb", tier: 2 },
+      { id: resourceIds[7], subzoneId: "thornfield", position: { x: 155, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[8], subzoneId: "thornfield", position: { x: 110, y: 7 }, resourceType: "ore", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("thornfield", MAP_FIVE_PASSAGES),
+  },
+];
+
+const mapSixSourceSubzones: ZoneSubzone[] = [
+  {
+    id: "mire",
+    displayName: "Mire",
+    bounds: { x: 1, y: 1, width: 51, height: 55 },
+    levelRange: { min: 16, max: 16 },
+    enemyTypeIds: ["mire_spider"],
+    encounterAreas: [
+      { id: "mire-north-webs", subzoneId: "mire", center: { x: 27, y: 16 }, radius: 21, leashRadius: 23 },
+      { id: "mire-south-webs", subzoneId: "mire", center: { x: 28, y: 42 }, radius: 21, leashRadius: 23 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[9], subzoneId: "mire", position: { x: 8, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[10], subzoneId: "mire", position: { x: 46, y: 7 }, resourceType: "herb", tier: 2 },
+      { id: resourceIds[11], subzoneId: "mire", position: { x: 12, y: 8 }, resourceType: "ore", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("mire", MAP_SIX_PASSAGES),
+  },
+  {
+    id: "canopy",
+    displayName: "Canopy",
+    bounds: { x: 53, y: 1, width: 52, height: 55 },
+    levelRange: { min: 17, max: 17 },
+    enemyTypeIds: ["night_bat"],
+    encounterAreas: [
+      { id: "canopy-north-roost", subzoneId: "canopy", center: { x: 79, y: 16 }, radius: 22, leashRadius: 24 },
+      { id: "canopy-south-roost", subzoneId: "canopy", center: { x: 80, y: 42 }, radius: 22, leashRadius: 24 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[12], subzoneId: "canopy", position: { x: 58, y: 50 }, resourceType: "ore", tier: 2 },
+      { id: resourceIds[13], subzoneId: "canopy", position: { x: 100, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[14], subzoneId: "canopy", position: { x: 101, y: 7 }, resourceType: "herb", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("canopy", MAP_SIX_PASSAGES),
+  },
+  {
+    id: "oldroot",
+    displayName: "Oldroot",
+    bounds: { x: 106, y: 1, width: 53, height: 55 },
+    levelRange: { min: 18, max: 18 },
+    enemyTypeIds: ["elder_mossling"],
+    encounterAreas: [
+      { id: "oldroot-north-ring", subzoneId: "oldroot", center: { x: 132, y: 16 }, radius: 22, leashRadius: 24 },
+      { id: "oldroot-south-ring", subzoneId: "oldroot", center: { x: 133, y: 42 }, radius: 22, leashRadius: 24 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[15], subzoneId: "oldroot", position: { x: 110, y: 50 }, resourceType: "herb", tier: 2 },
+      { id: resourceIds[16], subzoneId: "oldroot", position: { x: 155, y: 50 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[17], subzoneId: "oldroot", position: { x: 110, y: 7 }, resourceType: "ore", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("oldroot", MAP_SIX_PASSAGES),
+  },
+];
+
+export const mapSevenSubzones: ZoneSubzone[] = [
+  {
+    id: "plaza",
+    displayName: "Plaza",
+    bounds: { x: 1, y: 1, width: 79, height: 28 },
+    levelRange: { min: 19, max: 19 },
+    enemyTypeIds: ["cinder_wisp"],
+    encounterAreas: [
+      { id: "plaza-ember-ring", subzoneId: "plaza", center: { x: 40, y: 16 }, radius: 25, leashRadius: 29 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[0], subzoneId: "plaza", position: { x: 14, y: 8 }, resourceType: "herb", tier: 2 },
+      { id: resourceIds[1], subzoneId: "plaza", position: { x: 66, y: 8 }, resourceType: "ore", tier: 2 },
+      { id: resourceIds[2], subzoneId: "plaza", position: { x: 75, y: 25 }, resourceType: "wood", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("plaza", MAP_SEVEN_PASSAGES),
+  },
+  {
+    id: "garden",
+    displayName: "Garden",
+    bounds: { x: 81, y: 1, width: 78, height: 28 },
+    levelRange: { min: 20, max: 20 },
+    enemyTypeIds: ["orc_warmaster"],
+    encounterAreas: [
+      { id: "garden-war-camp", subzoneId: "garden", center: { x: 120, y: 16 }, radius: 25, leashRadius: 29 },
+    ],
+    resourceLocations: [
+      { id: resourceIds[3], subzoneId: "garden", position: { x: 85, y: 26 }, resourceType: "wood", tier: 2 },
+      { id: resourceIds[4], subzoneId: "garden", position: { x: 146, y: 8 }, resourceType: "ore", tier: 2 },
+      { id: resourceIds[5], subzoneId: "garden", position: { x: 152, y: 26 }, resourceType: "herb", tier: 2 },
+    ],
+    passages: getPassagesForSubzone("garden", MAP_SEVEN_PASSAGES),
+  },
+];
+
 const MAP_TWO_COMPACT_OFFSETS: Record<string, Position> = {
 };
 
@@ -680,6 +935,9 @@ const MAP_FOUR_COMPACT_OFFSETS: Record<string, Position> = {
   "north-east": { x: -52, y: 0 },
   "south-east": { x: 0, y: -24 },
 };
+
+const MAP_FIVE_COMPACT_OFFSETS: Record<string, Position> = {};
+const MAP_SIX_COMPACT_OFFSETS: Record<string, Position> = {};
 
 export const mapOneSubzones: ZoneSubzone[] = mapOneSourceSubzones;
 
@@ -701,39 +959,76 @@ export const mapFourSubzones: ZoneSubzone[] = compactSubzones(
   MAP_FOUR_COMPACT_PASSAGES,
 );
 
+export const mapFiveSubzones: ZoneSubzone[] = compactSubzones(
+  mapFiveSourceSubzones,
+  MAP_FIVE_COMPACT_OFFSETS,
+  MAP_FIVE_COMPACT_PASSAGES,
+);
+
+export const mapSixSubzones: ZoneSubzone[] = compactSubzones(
+  mapSixSourceSubzones,
+  MAP_SIX_COMPACT_OFFSETS,
+  MAP_SIX_COMPACT_PASSAGES,
+);
+
 const mapOneSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
-  { id: "map-1-shore-fringe-entry-label", subzoneId: "shore-fringe", text: "Shore Fringe", position: { x: 14, y: 29 } },
-  { id: "map-1-shore-fringe-glade-label", subzoneId: "shore-fringe", text: "Shore Fringe", position: { x: 46, y: 29 } },
-  { id: "map-1-mossy-glade-shore-label", subzoneId: "mossy-glade", text: "Mossy Glade", position: { x: 58, y: 29 } },
-  { id: "map-1-mossy-glade-shore-exit-label", subzoneId: "mossy-glade", text: "Mossy Glade", position: { x: 100, y: 29 } },
-  { id: "map-1-lower-shore-glade-label", subzoneId: "lower-shore", text: "Lower Shore", position: { x: 110, y: 29 } },
-  { id: "map-1-lower-shore-exit-label", subzoneId: "lower-shore", text: "Lower Shore", position: { x: 145, y: 29 } },
+  { id: "map-1-shore-fringe-entry-label", subzoneId: "shore-fringe", text: "Shore", position: { x: 14, y: 29 } },
+  { id: "map-1-shore-fringe-glade-label", subzoneId: "shore-fringe", text: "Shore", position: { x: 46, y: 29 } },
+  { id: "map-1-mossy-glade-shore-label", subzoneId: "mossy-glade", text: "Glade", position: { x: 58, y: 29 } },
+  { id: "map-1-mossy-glade-shore-exit-label", subzoneId: "mossy-glade", text: "Glade", position: { x: 100, y: 29 } },
+  { id: "map-1-lower-shore-glade-label", subzoneId: "lower-shore", text: "Lowbank", position: { x: 110, y: 29 } },
+  { id: "map-1-lower-shore-exit-label", subzoneId: "lower-shore", text: "Lowbank", position: { x: 145, y: 29 } },
 ];
 
 const mapTwoSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
-  { id: "map-2-scout-rise-entry-label", subzoneId: "south-center", text: "Scout Rise", position: { x: 10, y: 29 } },
-  { id: "map-2-scout-rise-old-label", subzoneId: "south-center", text: "Scout Rise", position: { x: 45, y: 29 } },
-  { id: "map-2-old-grove-scout-label", subzoneId: "south-east", text: "Old Grove", position: { x: 59, y: 29 } },
-  { id: "map-2-old-grove-wolf-label", subzoneId: "south-east", text: "Old Grove", position: { x: 99, y: 29 } },
-  { id: "map-2-wolf-causeway-old-label", subzoneId: "north-east", text: "Wolf Causeway", position: { x: 112, y: 29 } },
-  { id: "map-2-wolf-causeway-exit-label", subzoneId: "north-east", text: "Wolf Causeway", position: { x: 151, y: 29 } },
+  { id: "map-2-scout-rise-entry-label", subzoneId: "south-center", text: "Outskirts", position: { x: 10, y: 29 } },
+  { id: "map-2-scout-rise-old-label", subzoneId: "south-center", text: "Outskirts", position: { x: 45, y: 29 } },
+  { id: "map-2-old-grove-scout-label", subzoneId: "south-east", text: "Thicket", position: { x: 59, y: 29 } },
+  { id: "map-2-old-grove-wolf-label", subzoneId: "south-east", text: "Thicket", position: { x: 99, y: 29 } },
+  { id: "map-2-wolf-causeway-old-label", subzoneId: "north-east", text: "Causeway", position: { x: 112, y: 29 } },
+  { id: "map-2-wolf-causeway-exit-label", subzoneId: "north-east", text: "Causeway", position: { x: 151, y: 29 } },
 ];
 
 const mapThreeSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
-  { id: "map-3-broken-thicket-entry-label", subzoneId: "south-west", text: "Broken Thicket", position: { x: 10, y: 29 } },
-  { id: "map-3-broken-thicket-crawler-label", subzoneId: "south-west", text: "Broken Thicket", position: { x: 45, y: 29 } },
-  { id: "map-3-crawler-shelf-broken-label", subzoneId: "north-west", text: "Crawler Shelf", position: { x: 59, y: 29 } },
-  { id: "map-3-crawler-shelf-imp-label", subzoneId: "north-west", text: "Crawler Shelf", position: { x: 99, y: 29 } },
-  { id: "map-3-imp-fen-crawler-label", subzoneId: "south-center", text: "Imp Fen", position: { x: 112, y: 29 } },
-  { id: "map-3-imp-fen-exit-label", subzoneId: "south-center", text: "Imp Fen", position: { x: 151, y: 29 } },
+  { id: "map-3-broken-thicket-entry-label", subzoneId: "south-west", text: "Fen", position: { x: 10, y: 29 } },
+  { id: "map-3-broken-thicket-crawler-label", subzoneId: "south-west", text: "Fen", position: { x: 45, y: 29 } },
+  { id: "map-3-crawler-shelf-broken-label", subzoneId: "north-west", text: "Shelf", position: { x: 59, y: 29 } },
+  { id: "map-3-crawler-shelf-imp-label", subzoneId: "north-west", text: "Shelf", position: { x: 99, y: 29 } },
+  { id: "map-3-imp-fen-crawler-label", subzoneId: "south-center", text: "Depths", position: { x: 112, y: 29 } },
+  { id: "map-3-imp-fen-exit-label", subzoneId: "south-center", text: "Depths", position: { x: 151, y: 29 } },
 ];
 
 const mapFourSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
-  { id: "map-4-shaman-watch-entry-label", subzoneId: "north-center", text: "Shaman Watch", position: { x: 60, y: 12 } },
-  { id: "map-4-shaman-watch-ash-label", subzoneId: "north-center", text: "Shaman Watch", position: { x: 100, y: 12 } },
-  { id: "map-4-ash-hollow-shaman-label", subzoneId: "north-east", text: "Ash Hollow", position: { x: 110, y: 12 } },
-  { id: "map-4-orc-approach-ash-label", subzoneId: "south-east", text: "Orc Approach", position: { x: 132, y: 27 } },
-  { id: "map-4-ash-hollow-orc-label", subzoneId: "north-east", text: "Ash Hollow", position: { x: 132, y: 21 } },
+  { id: "map-4-shaman-watch-entry-label", subzoneId: "north-center", text: "Watch", position: { x: 60, y: 12 } },
+  { id: "map-4-shaman-watch-ash-label", subzoneId: "north-center", text: "Watch", position: { x: 100, y: 12 } },
+  { id: "map-4-ash-hollow-shaman-label", subzoneId: "north-east", text: "Hollow", position: { x: 110, y: 12 } },
+  { id: "map-4-orc-approach-ash-label", subzoneId: "south-east", text: "Camp", position: { x: 132, y: 27 } },
+  { id: "map-4-ash-hollow-orc-label", subzoneId: "north-east", text: "Hollow", position: { x: 132, y: 21 } },
+];
+
+const mapFiveSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
+  { id: "map-5-crossing-entry-label", subzoneId: "crossing", text: "Crossing", position: { x: 10, y: 29 } },
+  { id: "map-5-crossing-burrows-label", subzoneId: "crossing", text: "Crossing", position: { x: 45, y: 29 } },
+  { id: "map-5-burrows-crossing-label", subzoneId: "burrows", text: "Burrows", position: { x: 59, y: 29 } },
+  { id: "map-5-burrows-thornfield-label", subzoneId: "burrows", text: "Burrows", position: { x: 99, y: 29 } },
+  { id: "map-5-thornfield-burrows-label", subzoneId: "thornfield", text: "Thornfield", position: { x: 112, y: 29 } },
+  { id: "map-5-thornfield-exit-label", subzoneId: "thornfield", text: "Thornfield", position: { x: 151, y: 29 } },
+];
+
+const mapSixSourceSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
+  { id: "map-6-mire-entry-label", subzoneId: "mire", text: "Mire", position: { x: 10, y: 29 } },
+  { id: "map-6-mire-canopy-label", subzoneId: "mire", text: "Mire", position: { x: 45, y: 29 } },
+  { id: "map-6-canopy-mire-label", subzoneId: "canopy", text: "Canopy", position: { x: 59, y: 29 } },
+  { id: "map-6-canopy-oldroot-label", subzoneId: "canopy", text: "Canopy", position: { x: 99, y: 29 } },
+  { id: "map-6-oldroot-canopy-label", subzoneId: "oldroot", text: "Oldroot", position: { x: 112, y: 29 } },
+  { id: "map-6-oldroot-exit-label", subzoneId: "oldroot", text: "Oldroot", position: { x: 151, y: 29 } },
+];
+
+export const mapSevenSubzoneNameLabels: ZoneSubzoneNameLabel[] = [
+  { id: "map-7-plaza-entry-label", subzoneId: "plaza", text: "Plaza", position: { x: 14, y: 16 } },
+  { id: "map-7-plaza-garden-label", subzoneId: "plaza", text: "Plaza", position: { x: 66, y: 16 } },
+  { id: "map-7-garden-plaza-label", subzoneId: "garden", text: "Garden", position: { x: 94, y: 16 } },
+  { id: "map-7-garden-end-label", subzoneId: "garden", text: "Garden", position: { x: 146, y: 16 } },
 ];
 
 export const mapOneSubzoneNameLabels: ZoneSubzoneNameLabel[] =
@@ -752,6 +1047,16 @@ export const mapThreeSubzoneNameLabels: ZoneSubzoneNameLabel[] = compactSubzoneN
 export const mapFourSubzoneNameLabels: ZoneSubzoneNameLabel[] = compactSubzoneNameLabels(
   mapFourSourceSubzoneNameLabels,
   MAP_FOUR_COMPACT_OFFSETS,
+);
+
+export const mapFiveSubzoneNameLabels: ZoneSubzoneNameLabel[] = compactSubzoneNameLabels(
+  mapFiveSourceSubzoneNameLabels,
+  MAP_FIVE_COMPACT_OFFSETS,
+);
+
+export const mapSixSubzoneNameLabels: ZoneSubzoneNameLabel[] = compactSubzoneNameLabels(
+  mapSixSourceSubzoneNameLabels,
+  MAP_SIX_COMPACT_OFFSETS,
 );
 
 const mapOneStressEnemyStartData: EnemyStartData[] = [
@@ -940,6 +1245,61 @@ const mapFourProgressionEnemyStartData: EnemyStartData[] = [
   { id: enemyIds[39], position: { x: 151, y: 40 }, enemyTypeId: "orc", subzoneId: "south-east", encounterAreaId: "orc-approach-camp" },
 ];
 
+const mapFiveProgressionEnemyStartData: EnemyStartData[] = [
+  { id: enemyIds[0], position: { x: 14, y: 12 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-north-sparks" },
+  { id: enemyIds[1], position: { x: 26, y: 8 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-north-sparks" },
+  { id: enemyIds[2], position: { x: 40, y: 16 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-north-sparks" },
+  { id: enemyIds[3], position: { x: 18, y: 42 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
+  { id: enemyIds[4], position: { x: 31, y: 48 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
+  { id: enemyIds[5], position: { x: 43, y: 39 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
+  { id: enemyIds[6], position: { x: 64, y: 12 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[7], position: { x: 79, y: 8 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[8], position: { x: 96, y: 16 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[9], position: { x: 66, y: 42 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[10], position: { x: 82, y: 48 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[11], position: { x: 99, y: 39 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[12], position: { x: 116, y: 12 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
+  { id: enemyIds[13], position: { x: 132, y: 8 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
+  { id: enemyIds[14], position: { x: 151, y: 16 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
+  { id: enemyIds[15], position: { x: 117, y: 42 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-south-pack" },
+  { id: enemyIds[16], position: { x: 134, y: 48 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-south-pack" },
+  { id: enemyIds[17], position: { x: 151, y: 39 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-south-pack" },
+];
+
+const mapSixProgressionEnemyStartData: EnemyStartData[] = [
+  { id: enemyIds[0], position: { x: 14, y: 12 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-north-webs" },
+  { id: enemyIds[1], position: { x: 26, y: 8 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-north-webs" },
+  { id: enemyIds[2], position: { x: 40, y: 16 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-north-webs" },
+  { id: enemyIds[3], position: { x: 18, y: 42 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-south-webs" },
+  { id: enemyIds[4], position: { x: 31, y: 48 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-south-webs" },
+  { id: enemyIds[5], position: { x: 43, y: 39 }, enemyTypeId: "mire_spider", subzoneId: "mire", encounterAreaId: "mire-south-webs" },
+  { id: enemyIds[6], position: { x: 64, y: 12 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-north-roost" },
+  { id: enemyIds[7], position: { x: 79, y: 8 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-north-roost" },
+  { id: enemyIds[8], position: { x: 96, y: 16 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-north-roost" },
+  { id: enemyIds[9], position: { x: 66, y: 42 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-south-roost" },
+  { id: enemyIds[10], position: { x: 82, y: 48 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-south-roost" },
+  { id: enemyIds[11], position: { x: 99, y: 39 }, enemyTypeId: "night_bat", subzoneId: "canopy", encounterAreaId: "canopy-south-roost" },
+  { id: enemyIds[12], position: { x: 116, y: 12 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-north-ring" },
+  { id: enemyIds[13], position: { x: 132, y: 8 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-north-ring" },
+  { id: enemyIds[14], position: { x: 151, y: 16 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-north-ring" },
+  { id: enemyIds[15], position: { x: 117, y: 42 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-south-ring" },
+  { id: enemyIds[16], position: { x: 134, y: 48 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-south-ring" },
+  { id: enemyIds[17], position: { x: 151, y: 39 }, enemyTypeId: "elder_mossling", subzoneId: "oldroot", encounterAreaId: "oldroot-south-ring" },
+];
+
+const mapSevenProgressionEnemyStartData: EnemyStartData[] = [
+  { id: enemyIds[0], position: { x: 16, y: 10 }, enemyTypeId: "cinder_wisp", subzoneId: "plaza", encounterAreaId: "plaza-ember-ring" },
+  { id: enemyIds[1], position: { x: 31, y: 8 }, enemyTypeId: "cinder_wisp", subzoneId: "plaza", encounterAreaId: "plaza-ember-ring" },
+  { id: enemyIds[2], position: { x: 48, y: 14 }, enemyTypeId: "cinder_wisp", subzoneId: "plaza", encounterAreaId: "plaza-ember-ring" },
+  { id: enemyIds[3], position: { x: 58, y: 20 }, enemyTypeId: "cinder_wisp", subzoneId: "plaza", encounterAreaId: "plaza-ember-ring" },
+  { id: enemyIds[4], position: { x: 27, y: 24 }, enemyTypeId: "cinder_wisp", subzoneId: "plaza", encounterAreaId: "plaza-ember-ring" },
+  { id: enemyIds[5], position: { x: 101, y: 11 }, enemyTypeId: "orc_warmaster", subzoneId: "garden", encounterAreaId: "garden-war-camp", combatBodyRadius: 1.1 },
+  { id: enemyIds[6], position: { x: 116, y: 8 }, enemyTypeId: "orc_warmaster", subzoneId: "garden", encounterAreaId: "garden-war-camp", combatBodyRadius: 1.1 },
+  { id: enemyIds[7], position: { x: 140, y: 13 }, enemyTypeId: "orc_warmaster", subzoneId: "garden", encounterAreaId: "garden-war-camp", combatBodyRadius: 1.1 },
+  { id: enemyIds[8], position: { x: 104, y: 24 }, enemyTypeId: "orc_warmaster", subzoneId: "garden", encounterAreaId: "garden-war-camp", combatBodyRadius: 1.1 },
+  { id: enemyIds[9], position: { x: 135, y: 24 }, enemyTypeId: "orc_warmaster", subzoneId: "garden", encounterAreaId: "garden-war-camp", combatBodyRadius: 1.1 },
+];
+
 export const mapThreeEnemyStartData: EnemyStartData[] = createEnemyStartData(
   mapThreeSubzones,
   mapThreeProgressionEnemyStartData,
@@ -948,6 +1308,21 @@ export const mapThreeEnemyStartData: EnemyStartData[] = createEnemyStartData(
 export const mapFourEnemyStartData: EnemyStartData[] = createEnemyStartData(
   mapFourSubzones,
   compactEnemyStartData(mapFourProgressionEnemyStartData, MAP_FOUR_COMPACT_OFFSETS),
+);
+
+export const mapFiveEnemyStartData: EnemyStartData[] = createEnemyStartData(
+  mapFiveSubzones,
+  compactEnemyStartData(mapFiveProgressionEnemyStartData, MAP_FIVE_COMPACT_OFFSETS),
+);
+
+export const mapSixEnemyStartData: EnemyStartData[] = createEnemyStartData(
+  mapSixSubzones,
+  compactEnemyStartData(mapSixProgressionEnemyStartData, MAP_SIX_COMPACT_OFFSETS),
+);
+
+export const mapSevenEnemyStartData: EnemyStartData[] = createEnemyStartData(
+  mapSevenSubzones,
+  mapSevenProgressionEnemyStartData,
 );
 
 export const mapOneEnemyStartPositions: Position[] = mapOneEnemyStartData.map(
@@ -966,6 +1341,18 @@ export const mapFourEnemyStartPositions: Position[] = mapFourEnemyStartData.map(
   (enemy) => enemy.position,
 );
 
+export const mapFiveEnemyStartPositions: Position[] = mapFiveEnemyStartData.map(
+  (enemy) => enemy.position,
+);
+
+export const mapSixEnemyStartPositions: Position[] = mapSixEnemyStartData.map(
+  (enemy) => enemy.position,
+);
+
+export const mapSevenEnemyStartPositions: Position[] = mapSevenEnemyStartData.map(
+  (enemy) => enemy.position,
+);
+
 export const mapOneResourceStartData: ResourceStartData[] =
   createResourceStartData(mapOneSubzones);
 
@@ -977,6 +1364,15 @@ export const mapThreeResourceStartData: ResourceStartData[] =
 
 export const mapFourResourceStartData: ResourceStartData[] =
   createResourceStartData(mapFourSubzones);
+
+export const mapFiveResourceStartData: ResourceStartData[] =
+  createResourceStartData(mapFiveSubzones);
+
+export const mapSixResourceStartData: ResourceStartData[] =
+  createResourceStartData(mapSixSubzones);
+
+export const mapSevenResourceStartData: ResourceStartData[] =
+  createResourceStartData(mapSevenSubzones);
 
 const SLIMEWARD_FLOOR_ONE_PASSAGES: ZoneSubzonePassage[] = [
   { id: "f1-room-1-to-room-2", fromSubzoneId: "f1-room-1", toSubzoneId: "f1-room-2", position: { x: 24, y: 20 } },
@@ -1334,6 +1730,33 @@ const MAP_FOUR_WALLS = dedupeWalls([
   ...createVerticalWall(105, 3, WILDERNESS_MAP_ROWS - 4, [[10, 14]]),
 ]);
 
+const MAP_FIVE_WALLS = dedupeWalls([
+  ...createPerimeterWalls(WILDERNESS_MAP_COLUMNS, MAP_ONE_ROWS),
+  ...createVerticalWall(52, 0, MAP_ONE_ROWS - 1, [[24, 34]]),
+  ...createVerticalWall(105, 0, MAP_ONE_ROWS - 1, [[24, 34]]),
+  ...createWallBlock(18, 30, 21, 24),
+  ...createWallBlock(72, 85, 10, 13),
+  ...createWallBlock(119, 131, 43, 46),
+]);
+
+const MAP_SIX_WALLS = dedupeWalls([
+  ...createPerimeterWalls(WILDERNESS_MAP_COLUMNS, MAP_ONE_ROWS),
+  ...createVerticalWall(52, 0, MAP_ONE_ROWS - 1, [[24, 34]]),
+  ...createVerticalWall(105, 0, MAP_ONE_ROWS - 1, [[24, 34]]),
+  ...createWallBlock(18, 28, 37, 40),
+  ...createWallBlock(68, 79, 19, 22),
+  ...createWallBlock(130, 143, 35, 38),
+]);
+
+const MAP_SEVEN_WALLS = dedupeWalls([
+  ...createPerimeterWalls(WILDERNESS_MAP_COLUMNS, WILDERNESS_MAP_ROWS),
+  ...createVerticalWall(80, 3, WILDERNESS_MAP_ROWS - 4, [[13, 19]]),
+  ...createWallBlock(38, 45, 3, 6),
+  ...createWallBlock(62, 70, 22, 25),
+  ...createWallBlock(89, 96, 5, 9),
+  ...createWallBlock(124, 130, 19, 22),
+]);
+
 const SLIMEWARD_CAMP_COLUMNS = 44;
 const SLIMEWARD_CAMP_ROWS = 30;
 const SLIMEWARD_FLOOR_ONE_COLUMNS = 136;
@@ -1452,8 +1875,8 @@ export const debugMapDefinitions: Record<
   },
   [MAP_ONE_ID]: {
     id: MAP_ONE_ID,
-    displayName: "First Wild Zone",
-    debugName: "map-1",
+    displayName: "Mosswake Shore",
+    debugName: "zone-1",
     columns: WILDERNESS_MAP_COLUMNS,
     rows: MAP_ONE_ROWS,
     walls: MAP_ONE_WALLS,
@@ -1483,8 +1906,8 @@ export const debugMapDefinitions: Record<
   },
   [MAP_TWO_ID]: {
     id: MAP_TWO_ID,
-    displayName: "Second Wild Zone",
-    debugName: "map-2",
+    displayName: "Briarwood Rise",
+    debugName: "zone-2",
     columns: WILDERNESS_MAP_COLUMNS,
     rows: MAP_TWO_ROWS,
     walls: MAP_TWO_WALLS,
@@ -1514,8 +1937,8 @@ export const debugMapDefinitions: Record<
   },
   [MAP_THREE_ID]: {
     id: MAP_THREE_ID,
-    displayName: "Third Wild Zone",
-    debugName: "map-3",
+    displayName: "Azurefen Hollow",
+    debugName: "zone-3",
     columns: WILDERNESS_MAP_COLUMNS,
     rows: MAP_THREE_ROWS,
     walls: MAP_THREE_WALLS,
@@ -1554,8 +1977,8 @@ export const debugMapDefinitions: Record<
   },
   [MAP_FOUR_ID]: {
     id: MAP_FOUR_ID,
-    displayName: "Fourth Wild Zone",
-    debugName: "map-4",
+    displayName: "Ashwatch Approach",
+    debugName: "zone-4",
     columns: WILDERNESS_MAP_COLUMNS,
     rows: WILDERNESS_MAP_ROWS,
     walls: MAP_FOUR_WALLS,
@@ -1570,7 +1993,96 @@ export const debugMapDefinitions: Record<
         sourceMapId: MAP_FOUR_ID,
         targetMapId: HUB_TWO_MAP_ID,
         arrivalPositions: mapFourHubTwoArrivalPositions,
+      },
+      {
+        id: MAP_FOUR_TO_MAP_FIVE_TELEPORTER_ID,
+        position: mapFourForwardTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_FOUR_ID,
+        targetMapId: MAP_FIVE_ID,
+        arrivalPositions: mapFourMapFiveArrivalPositions,
         autoSelectAfterEnemiesCleared: true,
+      },
+    ],
+  },
+  [MAP_FIVE_ID]: {
+    id: MAP_FIVE_ID,
+    displayName: "Emberbriar Crossing",
+    debugName: "zone-5",
+    columns: WILDERNESS_MAP_COLUMNS,
+    rows: MAP_ONE_ROWS,
+    walls: MAP_FIVE_WALLS,
+    healingFountains: [],
+    subzones: mapFiveSubzones,
+    subzoneNameLabels: mapFiveSubzoneNameLabels,
+    teleports: [
+      {
+        id: MAP_FIVE_TO_MAP_FOUR_TELEPORTER_ID,
+        position: mapFiveReturnTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_FIVE_ID,
+        targetMapId: MAP_FOUR_ID,
+        arrivalPositions: mapFiveMapFourArrivalPositions,
+      },
+      {
+        id: MAP_FIVE_TO_MAP_SIX_TELEPORTER_ID,
+        position: mapFiveForwardTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_FIVE_ID,
+        targetMapId: MAP_SIX_ID,
+        arrivalPositions: mapFiveMapSixArrivalPositions,
+        autoSelectAfterEnemiesCleared: true,
+      },
+    ],
+  },
+  [MAP_SIX_ID]: {
+    id: MAP_SIX_ID,
+    displayName: "Nightmire Canopy",
+    debugName: "zone-6",
+    columns: WILDERNESS_MAP_COLUMNS,
+    rows: MAP_ONE_ROWS,
+    walls: MAP_SIX_WALLS,
+    healingFountains: [],
+    subzones: mapSixSubzones,
+    subzoneNameLabels: mapSixSubzoneNameLabels,
+    teleports: [
+      {
+        id: MAP_SIX_TO_MAP_FIVE_TELEPORTER_ID,
+        position: mapSixReturnTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_SIX_ID,
+        targetMapId: MAP_FIVE_ID,
+        arrivalPositions: mapSixMapFiveArrivalPositions,
+      },
+      {
+        id: MAP_SIX_TO_MAP_SEVEN_TELEPORTER_ID,
+        position: mapSixForwardTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_SIX_ID,
+        targetMapId: MAP_SEVEN_ID,
+        arrivalPositions: mapSixMapSevenArrivalPositions,
+        autoSelectAfterEnemiesCleared: true,
+      },
+    ],
+  },
+  [MAP_SEVEN_ID]: {
+    id: MAP_SEVEN_ID,
+    displayName: "Twilight of the Fallen",
+    debugName: "zone-7",
+    columns: WILDERNESS_MAP_COLUMNS,
+    rows: WILDERNESS_MAP_ROWS,
+    walls: MAP_SEVEN_WALLS,
+    healingFountains: [],
+    subzones: mapSevenSubzones,
+    subzoneNameLabels: mapSevenSubzoneNameLabels,
+    teleports: [
+      {
+        id: MAP_SEVEN_TO_MAP_SIX_TELEPORTER_ID,
+        position: mapSevenReturnTeleporterPosition,
+        range: TELEPORTER_RANGE,
+        sourceMapId: MAP_SEVEN_ID,
+        targetMapId: MAP_SIX_ID,
+        arrivalPositions: mapSevenMapSixArrivalPositions,
       },
     ],
   },

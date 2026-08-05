@@ -2,8 +2,11 @@ import {
   debugMapDefinitions,
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
+  MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
 } from "./debugMap";
@@ -19,6 +22,9 @@ const MAIN_WORLD_ROUTE: readonly DebugMapId[] = [
   MAP_THREE_ID,
   HUB_TWO_MAP_ID,
   MAP_FOUR_ID,
+  MAP_FIVE_ID,
+  MAP_SIX_ID,
+  MAP_SEVEN_ID,
 ];
 
 export function getNextWorldTravelTeleport(

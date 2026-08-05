@@ -2,12 +2,14 @@ import { isTargetDummyEnemy } from "./entityGuards";
 import {
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
+  MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
+  MAP_SEVEN_ID,
+  MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
 } from "./debugMap";
-import { getQuickExchangeItems } from "./merchant";
 import {
   getNavigationGrid,
   getNavigationNeighborPositions,
@@ -25,7 +27,6 @@ import {
   getActiveQuest,
   getIncompleteObjectives,
   getQuestTargetMapId,
-  isMerchantUnlockedForQuests,
   matchesObjectiveSubzoneAtPosition,
 } from "./questSystem";
 import { isTeleportWorking } from "./teleportState";
@@ -167,7 +168,6 @@ function getPoiTargetOptions(
 
   if (mapType === "hub") {
     return [
-      ...getHubMerchantOptions(state, candidates),
       ...subzoneQuestOptions,
       {
         poi: createIdlePoi(state.currentMapId ?? HUB_MAP_ID),
@@ -345,33 +345,6 @@ function isQuestElitePoi(
     entity.questSpawn?.isElite === true &&
     entity.questSpawn.objectiveId === objective.id
   );
-}
-
-function getHubMerchantOptions(
-  state: GameState,
-  candidates: PointOfInterest[],
-): PoiTargetOption[] {
-  if (
-    getQuickExchangeItems(state).length === 0 ||
-    !isMerchantUnlockedForQuests(state)
-  ) {
-    return [];
-  }
-
-  const merchantPoi = candidates.find((poi) => {
-    const entity = poi.targetEntityId ? state.entities[poi.targetEntityId] : undefined;
-    return entity?.kind === "npc" && entity.npcRole === "merchant";
-  });
-
-  return merchantPoi
-    ? [
-        {
-          poi: merchantPoi,
-          priority: 10,
-          reason: "merchant quick exchange",
-        },
-      ]
-    : [];
 }
 
 function getQuestTargetOptions(
@@ -604,6 +577,42 @@ function getQuestObjectiveTargetOptions(
         objectiveId: objective.id,
       },
     ];
+  }
+
+  if (objective.type === "buy_merchant_item") {
+    return candidates
+      .filter((poi) => {
+        const entity = poi.targetEntityId
+          ? state.entities[poi.targetEntityId]
+          : undefined;
+
+        return entity?.kind === "npc" && entity.npcRole === "merchant";
+      })
+      .map((poi) => ({
+        poi,
+        priority: 10,
+        reason: "active quest merchant objective",
+        questId,
+        objectiveId: objective.id,
+      }));
+  }
+
+  if (objective.type === "craft_item") {
+    return candidates
+      .filter((poi) => {
+        const entity = poi.targetEntityId
+          ? state.entities[poi.targetEntityId]
+          : undefined;
+
+        return entity?.kind === "npc" && entity.npcRole === "smith";
+      })
+      .map((poi) => ({
+        poi,
+        priority: 10,
+        reason: "active quest smith objective",
+        questId,
+        objectiveId: objective.id,
+      }));
   }
 
   return [];
@@ -1343,6 +1352,18 @@ function createGuideObjectivePoi(
 }
 
 function getMapExplorationTarget(mapId: DebugMapId): Position {
+  if (mapId === MAP_SEVEN_ID) {
+    return { x: 120, y: 16 };
+  }
+
+  if (mapId === MAP_SIX_ID) {
+    return { x: 132, y: 42 };
+  }
+
+  if (mapId === MAP_FIVE_ID) {
+    return { x: 132, y: 42 };
+  }
+
   if (mapId === MAP_FOUR_ID) {
     return { x: 132, y: 36 };
   }
