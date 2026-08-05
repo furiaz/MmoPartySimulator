@@ -247,29 +247,14 @@ describe("merchant buy", () => {
           group: "books",
         }),
         expect.objectContaining({
-          itemId: "steel_sword",
-          priceCrowns: 120,
-          group: "weapons",
-        }),
-        expect.objectContaining({
           itemId: "veteran_sword",
           priceCrowns: 180,
           group: "weapons",
         }),
         expect.objectContaining({
-          itemId: "reinforced_shield",
-          priceCrowns: 90,
-          group: "offhands",
-        }),
-        expect.objectContaining({
           itemId: "tower_shield",
           priceCrowns: 135,
           group: "offhands",
-        }),
-        expect.objectContaining({
-          itemId: "bastion_cuirass",
-          priceCrowns: 140,
-          group: "plate",
         }),
         expect.objectContaining({
           itemId: "ironhold_cuirass",
@@ -286,38 +271,30 @@ describe("merchant buy", () => {
         "plain_charm",
         "stalker_mask",
         "vanguard_coif",
+        "iron_sword",
+        "steel_sword",
+        "reinforced_shield",
+        "bastion_cuirass",
+        "acolyte_robe",
+        "blessed_robe",
       ]),
     );
   });
 
-  it("prices armor stock by early Tier 1 unlock progression", () => {
+  it("keeps non-craftable equipment prices in merchant stock", () => {
     const stock = getMerchantBuyStock(createMerchantState(), MERCHANT_ID);
     const pricesByItemId = Object.fromEntries(
       stock.map((stockEntry) => [stockEntry.itemId, stockEntry.priceCrowns]),
     );
 
     expect(pricesByItemId).toMatchObject({
-      acolyte_robe: 82,
-      acolyte_pants: 62,
-      acolyte_wraps: 52,
-      acolyte_sandals: 52,
-      scholar_hood: 62,
-      scholar_robe: 82,
-      scholar_pants: 62,
-      scholar_gloves: 52,
-      scholar_sandals: 52,
-      steel_sword: 120,
       veteran_sword: 180,
-      reinforced_shield: 90,
       tower_shield: 135,
-      blessed_robe: 140,
       sanctuary_robe: 210,
-      pathfinder_jacket: 140,
       wayfarer_jacket: 210,
-      sentinel_hauberk: 140,
       ironward_hauberk: 210,
-      bastion_cuirass: 140,
       ironhold_cuirass: 210,
+      conqueror_cuirass: 210,
     });
   });
 
@@ -328,18 +305,18 @@ describe("merchant buy", () => {
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "steel_sword",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
       status: "success",
-      itemId: "steel_sword",
-      priceCrowns: 120,
+      itemId: "veteran_sword",
+      priceCrowns: 180,
       previousCrowns: 200,
-      newCrowns: 80,
+      newCrowns: 20,
     });
-    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(80);
-    expect(countInventoryItem(nextState.inventory, "steel_sword")).toBe(1);
+    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(20);
+    expect(countInventoryItem(nextState.inventory, "veteran_sword")).toBe(1);
   });
 
   it("buys stock consumables into shared inventory for Crowns", () => {
@@ -425,7 +402,7 @@ describe("merchant buy", () => {
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "steel_sword",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
@@ -449,7 +426,7 @@ describe("merchant buy", () => {
     const { state: nextState, result } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "steel_sword",
+      "veteran_sword",
     );
 
     expect(result).toMatchObject({
@@ -528,7 +505,7 @@ describe("merchant buy", () => {
     const { state: nextState } = buyMerchantItem(
       state,
       MERCHANT_ID,
-      "steel_sword",
+      "veteran_sword",
     );
 
     expect(nextState.debugTelemetry?.events.map((event) => event.type)).toEqual(
@@ -544,10 +521,10 @@ describe("merchant buy", () => {
         expect.objectContaining({
           type: "merchant_buy_completed",
           entityId: MERCHANT_ID,
-          itemId: "steel_sword",
-          currencyAmount: 120,
+          itemId: "veteran_sword",
+          currencyAmount: 180,
           previousCurrencyBalance: 200,
-          nextCurrencyBalance: 80,
+          nextCurrencyBalance: 20,
         }),
       ]),
     );
@@ -593,7 +570,7 @@ describe("merchant buy", () => {
         secondaryFilter: "one_handed_sword",
         partyCompatibleOnly: true,
       }).map((entry) => entry.itemId),
-    ).toEqual(["iron_sword", "steel_sword", "veteran_sword"]);
+    ).toEqual(["veteran_sword"]);
   });
 
   it("filters merchant books by class", () => {
@@ -637,7 +614,7 @@ describe("merchant buy", () => {
         minLevelRequirement: 15,
         maxLevelRequirement: 20,
       }).map((entry) => entry.itemId),
-    ).toEqual(["steel_sword", "veteran_sword"]);
+    ).toEqual(["veteran_sword"]);
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "weapons",
@@ -645,7 +622,7 @@ describe("merchant buy", () => {
         minLevelRequirement: 15,
         maxLevelRequirement: 15,
       }).map((entry) => entry.itemId),
-    ).toEqual(["steel_sword"]);
+    ).toEqual([]);
     expect(
       getFilteredMerchantBuyStock(state, MERCHANT_ID, {
         mainFilter: "plate",
@@ -659,7 +636,7 @@ describe("merchant buy", () => {
         secondaryFilter: "one_handed_sword",
         maxLevelRequirement: 10,
       }).map((entry) => entry.itemId),
-    ).toEqual(["iron_sword"]);
+    ).toEqual([]);
   });
 });
 

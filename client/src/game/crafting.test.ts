@@ -5,9 +5,11 @@ import {
   craftRecipe,
   getCraftingRecipe,
   getCraftingRecipeStatus,
+  getSortedCraftingRecipeStatuses,
   isPartyLeaderNearSmith,
 } from "./crafting";
 import { createCompanion, createNpc } from "./entities";
+import { ITEM_DEFINITIONS } from "./items";
 import {
   addItemToInventoryState,
   countInventoryItem,
@@ -25,8 +27,8 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["wolf_pelt", 1],
-      ["crafting_string", 2],
+      ["slime_gel_t1", 2],
+      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -34,7 +36,7 @@ describe("Smith crafting", () => {
 
     expect(result.result.status).toBe("success");
     expect(countInventoryItem(result.state.inventory, "softwood")).toBe(0);
-    expect(countInventoryItem(result.state.inventory, "wolf_pelt")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "training_sword")).toBe(1);
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(6);
@@ -44,7 +46,7 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["crafting_string", 2],
+      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -63,8 +65,8 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["wolf_pelt", 1],
-      ["crafting_string", 2],
+      ["slime_gel_t1", 2],
+      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 3).state;
 
@@ -83,8 +85,8 @@ describe("Smith crafting", () => {
     let state = createCraftingState({ inventory: createEmptyPartyInventory(3) });
     state = addItems(state, [
       ["softwood", 6],
-      ["wolf_pelt", 2],
-      ["crafting_string", 3],
+      ["slime_gel_t1", 3],
+      ["crafting_string", 2],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -103,8 +105,8 @@ describe("Smith crafting", () => {
     let state = createCraftingState({ leaderPosition: { x: 10, y: 10 } });
     state = addItems(state, [
       ["softwood", 5],
-      ["wolf_pelt", 1],
-      ["crafting_string", 2],
+      ["slime_gel_t1", 1],
+      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -164,7 +166,7 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["wolf_pelt", 1],
+      ["slime_gel_t1", 1],
       ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 4).state;
@@ -178,39 +180,16 @@ describe("Smith crafting", () => {
     expect(status.hasRequiredCrowns).toBe(true);
     expect(status.requirements).toContainEqual({
       kind: "item",
-      itemId: "crafting_string",
+      itemId: "slime_gel_t1",
       quantity: 2,
-      displayName: "String",
+      displayName: "Slime Gel (Tier 1)",
       ownedQuantity: 1,
       isMet: false,
     });
   });
 
-  it("defines valid recipes for every planned level 1 and level 5 equipment output", () => {
-    const expectedRecipeIds = [
-      "training_sword",
-      "plain_charm",
-      "guard_coif",
-      "guard_hauberk",
-      "guard_legguards",
-      "guard_gloves",
-      "guard_boots",
-      "scout_cap",
-      "scout_jacket",
-      "scout_trousers",
-      "scout_gloves",
-      "scout_boots",
-      "stalker_mask",
-      "stalker_vest",
-      "stalker_leggings",
-      "stalker_grips",
-      "stalker_boots",
-      "vanguard_coif",
-      "vanguard_hauberk",
-      "vanguard_legguards",
-      "vanguard_gloves",
-      "vanguard_boots",
-    ];
+  it("defines valid recipes for every planned level 1, 5, 10, and 15 equipment output", () => {
+    const expectedRecipeIds = getPlannedCraftedEquipmentIds();
 
     for (const recipeId of expectedRecipeIds) {
       const recipe = getCraftingRecipe(recipeId);
@@ -220,12 +199,53 @@ describe("Smith crafting", () => {
     }
   });
 
+  it("sorts the smithy recipe list by weapon path order and complete armor sets", () => {
+    const sortedRecipeIds = getSortedCraftingRecipeStatuses(createCraftingState()).map(
+      (status) => status.recipe.id,
+    );
+
+    expect(sortedRecipeIds.slice(0, 17)).toEqual([
+      "training_sword",
+      "iron_sword",
+      "steel_sword",
+      "guard_mace",
+      "bastion_mace",
+      "short_bow",
+      "reinforced_bow",
+      "claw_gauntlets",
+      "steel_claws",
+      "apprentice_orb",
+      "adept_orb",
+      "rune_lantern",
+      "etched_rune_lantern",
+      "holy_mace",
+      "sanctified_mace",
+      "thorn_whip",
+      "barbed_whip",
+    ]);
+    expectRecipeGroupOrder(sortedRecipeIds, [
+      "acolyte_hood",
+      "acolyte_robe",
+      "acolyte_pants",
+      "acolyte_wraps",
+      "acolyte_sandals",
+    ]);
+    expectRecipeGroupOrder(sortedRecipeIds, [
+      "warplate_helm",
+      "warplate_cuirass",
+      "warplate_greaves",
+      "warplate_gauntlets",
+      "warplate_sabatons",
+    ]);
+  });
+
   it("crafts level 5 equipment by consuming one matching level 1 armor piece", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["scout_cap", 1],
       ["softwood", 6],
       ["spider_silk_t1", 2],
+      ["wolf_pelt", 1],
       ["crafting_string", 3],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
@@ -245,6 +265,7 @@ describe("Smith crafting", () => {
 
     expect(result.result.status).toBe("success");
     expect(countInventoryItem(result.state.inventory, "scout_cap")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "wolf_pelt")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "stalker_mask")).toBe(1);
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(10);
   });
@@ -262,6 +283,7 @@ describe("Smith crafting", () => {
         [itemId, 1],
         ["softwood", 6],
         ["spider_silk_t1", 2],
+        ["wolf_pelt", 1],
         ["crafting_string", 3],
       ]);
       state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
@@ -346,6 +368,7 @@ describe("Smith crafting", () => {
       ["scout_cap", 1],
       ["softwood", 6],
       ["spider_silk_t1", 2],
+      ["wolf_pelt", 1],
       ["crafting_string", 3],
     ]);
     state = {
@@ -366,8 +389,8 @@ describe("Smith crafting", () => {
     let materialState = createCraftingState();
     materialState = addItems(materialState, [
       ["softwood", 5],
-      ["wolf_pelt", 1],
-      ["crafting_string", 2],
+      ["slime_gel_t1", 2],
+      ["crafting_string", 1],
     ]);
     materialState = {
       ...materialState,
@@ -386,16 +409,17 @@ describe("Smith crafting", () => {
   });
 
   it("allows consumed inputs to free the inventory space needed for the output", () => {
-    let state = createCraftingState({ inventory: createEmptyPartyInventory(4) });
+    let state = createCraftingState({ inventory: createEmptyPartyInventory(5) });
     state = addItems(state, [
       ["scout_cap", 1],
       ["softwood", 6],
       ["spider_silk_t1", 2],
+      ["wolf_pelt", 1],
       ["crafting_string", 3],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
 
-    expect(state.inventory.slots).toHaveLength(4);
+    expect(state.inventory.slots).toHaveLength(5);
 
     const result = craftRecipe(state, "stalker_mask");
 
@@ -411,9 +435,10 @@ describe("Smith crafting", () => {
     };
     let state = createCraftingState({ quests });
     state = addItems(state, [
+      ["copper_ore", 2],
+      ["field_herb", 2],
       ["slime_gel_t1", 3],
       ["crafting_string", 1],
-      ["iron_nails", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -421,8 +446,9 @@ describe("Smith crafting", () => {
 
     expect(result.result.status).toBe("success");
     expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "copper_ore")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "field_herb")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
-    expect(countInventoryItem(result.state.inventory, "iron_nails")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "plain_charm")).toBe(1);
     expect(
       result.state.quests.smiths_first_work.objectiveProgress.craft_plain_charm,
@@ -430,6 +456,224 @@ describe("Smith crafting", () => {
       currentCount: 1,
       completed: true,
     });
+  });
+
+  it("adds previous-equipment requirements to every level 15 recipe", () => {
+    for (const itemDefinition of Object.values(ITEM_DEFINITIONS)) {
+      if (
+        itemDefinition.category !== "equipment" ||
+        itemDefinition.levelRequirement !== 15
+      ) {
+        continue;
+      }
+
+      const recipe = getCraftingRecipe(itemDefinition.id);
+      const equipmentRequirement = recipe?.costs.find(
+        (cost) => cost.kind === "equipment",
+      );
+
+      expect(equipmentRequirement).toMatchObject({
+        kind: "equipment",
+        equipmentType: itemDefinition.equipmentType,
+        levelRequirement: 10,
+        quantity: 1,
+      });
+
+      if (itemDefinition.equipmentKind === "armor") {
+        expect(equipmentRequirement).toMatchObject({
+          armorFamily: itemDefinition.armorFamily,
+        });
+      }
+    }
+  });
+
+  it("does not require previous equipment for level 10 recipes", () => {
+    for (const itemDefinition of Object.values(ITEM_DEFINITIONS)) {
+      if (
+        itemDefinition.category !== "equipment" ||
+        itemDefinition.levelRequirement !== 10
+      ) {
+        continue;
+      }
+
+      const recipe = getCraftingRecipe(itemDefinition.id);
+
+      expect(recipe?.costs.some((cost) => cost.kind === "equipment")).toBe(false);
+    }
+  });
+
+  it("crafts level 15 armor with matching level 10 family and part", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["acolyte_hood", 1],
+      ["redleaf_herb", 14],
+      ["imp_horn_chip_t2", 5],
+      ["imp_tail_t2", 1],
+      ["crafting_string", 5],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
+
+    const result = craftRecipe(state, "blessed_hood");
+
+    expect(result.result.status).toBe("success");
+    expect(countInventoryItem(result.state.inventory, "acolyte_hood")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "blessed_hood")).toBe(1);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(20);
+  });
+
+  it("rejects level 15 armor previous gear with the wrong family, part, level, equipped state, bank state, or lock state", () => {
+    const cases: Array<[string, ItemId]> = [
+      ["wrong family", "trailrunner_cap"],
+      ["wrong part", "acolyte_sandals"],
+      ["wrong level", "blessed_hood"],
+    ];
+
+    for (const [, itemId] of cases) {
+      let state = createCraftingState();
+      state = addItems(state, [
+        [itemId, 1],
+        ["redleaf_herb", 14],
+        ["imp_horn_chip_t2", 5],
+        ["imp_tail_t2", 1],
+        ["crafting_string", 5],
+      ]);
+      state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
+
+      const result = craftRecipe(state, "blessed_hood");
+
+      expect(result.result).toEqual({
+        status: "failed",
+        recipeId: "blessed_hood",
+        reason: "missing_materials",
+      });
+      expect(result.state.inventory).toEqual(state.inventory);
+    }
+
+    let equippedState = createCraftingState();
+    const leader = equippedState.entities.leader;
+
+    if (!leader || leader.kind !== "companion") {
+      throw new Error("Expected leader companion");
+    }
+
+    equippedState = {
+      ...equippedState,
+      entities: {
+        ...equippedState.entities,
+        leader: {
+          ...leader,
+          equipment: {
+            ...leader.equipment,
+            head: "acolyte_hood",
+          },
+        },
+      },
+    };
+    equippedState = addItems(equippedState, [
+      ["redleaf_herb", 14],
+      ["imp_horn_chip_t2", 5],
+      ["imp_tail_t2", 1],
+      ["crafting_string", 5],
+    ]);
+    equippedState = setCurrencyBalanceForDebug(equippedState, "crowns", 50).state;
+
+    expect(craftRecipe(equippedState, "blessed_hood").result).toEqual({
+      status: "failed",
+      recipeId: "blessed_hood",
+      reason: "missing_materials",
+    });
+
+    let bankState = createCraftingState();
+    bankState = {
+      ...bankState,
+      bank: {
+        capacity: 100,
+        slots: [{ itemId: "acolyte_hood", quantity: 1, slotIndex: 0 }],
+        lockedSlotIndices: [],
+        autoRoutingMode: "keep_inventory",
+      },
+    };
+    bankState = addItems(bankState, [
+      ["redleaf_herb", 14],
+      ["imp_horn_chip_t2", 5],
+      ["imp_tail_t2", 1],
+      ["crafting_string", 5],
+    ]);
+    bankState = setCurrencyBalanceForDebug(bankState, "crowns", 50).state;
+
+    expect(craftRecipe(bankState, "blessed_hood").result).toEqual({
+      status: "failed",
+      recipeId: "blessed_hood",
+      reason: "missing_materials",
+    });
+
+    let lockedState = createCraftingState();
+    lockedState = addItems(lockedState, [
+      ["acolyte_hood", 1],
+      ["redleaf_herb", 14],
+      ["imp_horn_chip_t2", 5],
+      ["imp_tail_t2", 1],
+      ["crafting_string", 5],
+    ]);
+    lockedState = {
+      ...lockedState,
+      inventory: toggleInventorySlotLock(lockedState.inventory, 0),
+    };
+    lockedState = setCurrencyBalanceForDebug(lockedState, "crowns", 50).state;
+
+    expect(craftRecipe(lockedState, "blessed_hood").result).toEqual({
+      status: "failed",
+      recipeId: "blessed_hood",
+      reason: "missing_materials",
+    });
+  });
+
+  it("crafts level 15 weapon and offhand recipes only with matching level 10 equipment types", () => {
+    let weaponState = createCraftingState();
+    weaponState = addItems(weaponState, [
+      ["iron_sword", 1],
+      ["iron_ore", 20],
+      ["crawler_plate_t2", 2],
+      ["wolf_fang_t2", 2],
+      ["iron_nails", 6],
+    ]);
+    weaponState = setCurrencyBalanceForDebug(weaponState, "crowns", 50).state;
+
+    expect(craftRecipe(weaponState, "steel_sword").result.status).toBe("success");
+
+    let wrongTypeState = createCraftingState();
+    wrongTypeState = addItems(wrongTypeState, [
+      ["guard_mace", 1],
+      ["iron_ore", 20],
+      ["crawler_plate_t2", 2],
+      ["wolf_fang_t2", 2],
+      ["iron_nails", 6],
+    ]);
+    wrongTypeState = setCurrencyBalanceForDebug(
+      wrongTypeState,
+      "crowns",
+      50,
+    ).state;
+
+    expect(craftRecipe(wrongTypeState, "steel_sword").result).toEqual({
+      status: "failed",
+      recipeId: "steel_sword",
+      reason: "missing_materials",
+    });
+
+    let offhandState = createCraftingState();
+    offhandState = addItems(offhandState, [
+      ["wooden_shield", 1],
+      ["iron_ore", 20],
+      ["hardwood", 10],
+      ["crawler_plate_t2", 3],
+      ["iron_nails", 8],
+    ]);
+    offhandState = setCurrencyBalanceForDebug(offhandState, "crowns", 50).state;
+
+    expect(craftRecipe(offhandState, "reinforced_shield").result.status).toBe(
+      "success",
+    );
   });
 });
 
@@ -464,5 +708,27 @@ function addItems(
     (nextState, [itemId, quantity]) =>
       addItemToInventoryState(nextState, itemId, quantity, "debug").state,
     state,
+  );
+}
+
+function getPlannedCraftedEquipmentIds(): ItemId[] {
+  return Object.values(ITEM_DEFINITIONS)
+    .filter(
+      (itemDefinition) =>
+        itemDefinition.category === "equipment" &&
+        [1, 5, 10, 15].includes(itemDefinition.levelRequirement ?? 1),
+    )
+    .map((itemDefinition) => itemDefinition.id);
+}
+
+function expectRecipeGroupOrder(
+  sortedRecipeIds: ItemId[],
+  expectedGroup: ItemId[],
+): void {
+  const startIndex = sortedRecipeIds.indexOf(expectedGroup[0]);
+
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(sortedRecipeIds.slice(startIndex, startIndex + expectedGroup.length)).toEqual(
+    expectedGroup,
   );
 }

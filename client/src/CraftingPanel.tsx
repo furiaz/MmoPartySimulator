@@ -14,7 +14,7 @@ import {
   type ItemDefinition,
 } from "./game";
 
-type CraftingLevelFilter = "all" | "1" | "5" | "10plus";
+type CraftingLevelFilter = "all" | "1" | "5" | "10" | "15" | "20plus";
 type CraftingCategoryFilter = "all" | "weapons" | "armor" | "accessories";
 type CraftingArmorFamilyFilter = "all" | ArmorFamily;
 type CraftingWeaponTypeFilter = "all" | EquipmentType;
@@ -116,7 +116,9 @@ function matchesCraftingFilters(
   if (
     (filters.level === "1" && level !== 1) ||
     (filters.level === "5" && level !== 5) ||
-    (filters.level === "10plus" && level < 10)
+    (filters.level === "10" && level !== 10) ||
+    (filters.level === "15" && level !== 15) ||
+    (filters.level === "20plus" && level < 20)
   ) {
     return false;
   }
@@ -324,7 +326,9 @@ export function CraftingPanel({
                 <option value="all">All</option>
                 <option value="1">1</option>
                 <option value="5">5</option>
-                <option value="10plus">10+</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20plus">20+</option>
               </select>
             </label>
             <label>
