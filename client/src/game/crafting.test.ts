@@ -12,6 +12,11 @@ import { startDebugTelemetryRecording } from "./debugTelemetry";
 import { createCompanion, createNpc } from "./entities";
 import { ITEM_DEFINITIONS } from "./items";
 import {
+  TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+  awardKeyItem,
+  getKeyItemQuantity,
+} from "./keyItems";
+import {
   addItemToInventoryState,
   countInventoryItem,
   createEmptyPartyInventory,
@@ -24,6 +29,22 @@ import type { DebugTelemetryEvent, ItemId } from "./types";
 import { getCurrencyBalance, setCurrencyBalanceForDebug } from "./wallet";
 
 describe("Smith crafting", () => {
+  it("keeps the Harbor Union Bastion teleport echo recipe visible", () => {
+    const statuses = getSortedCraftingRecipeStatuses(createCraftingState());
+    const status = statuses.find(
+      (recipeStatus) =>
+        recipeStatus.recipe.id === "teleport_echo_harbor_union_bastion",
+    );
+
+    expect(statuses[0]?.recipe.id).toBe("teleport_echo_harbor_union_bastion");
+    expect(status?.outputDisplayName).toBe(
+      "Teleportation Echo - Harbor Union Bastion",
+    );
+    expect(status?.outputKeyItemDefinition?.id).toBe(
+      TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+    );
+  });
+
   it("crafts an item near a Smith and consumes exact materials and Crowns", () => {
     let state = createCraftingState();
     state = addItems(state, [
@@ -41,6 +62,61 @@ describe("Smith crafting", () => {
     expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "training_sword")).toBe(1);
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(6);
+  });
+
+  it("crafts the Harbor Union Bastion teleport echo without using inventory slots", () => {
+    let state = createCraftingState();
+    state = addItems(state, getTeleportEchoCraftingCosts());
+    state = setCurrencyBalanceForDebug(state, "crowns", 300).state;
+
+    const result = craftRecipe(state, "teleport_echo_harbor_union_bastion");
+
+    expect(result.result).toEqual({
+      status: "success",
+      recipeId: "teleport_echo_harbor_union_bastion",
+      outputKind: "key_item",
+      outputKeyItemId: TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+      outputQuantity: 1,
+      displayName: "Teleportation Echo - Harbor Union Bastion",
+      crownCost: 250,
+      previousCrowns: 300,
+      newCrowns: 50,
+    });
+    expect(getKeyItemQuantity(
+      result.state,
+      TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+    )).toBe(1);
+    expect(result.state.inventory.slots).toEqual([]);
+    expect(result.state.newsBroadcasts?.at(-1)?.text).toBe(
+      "Unlocked: Teleportation Echo - Harbor Union Bastion",
+    );
+  });
+
+  it("disables repeat crafting for an owned teleport echo", () => {
+    let state = awardKeyItem(
+      createCraftingState(),
+      TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+    ).state;
+    state = addItems(state, getTeleportEchoCraftingCosts());
+    state = setCurrencyBalanceForDebug(state, "crowns", 300).state;
+    const status = getCraftingRecipeStatus(
+      state,
+      getCraftingRecipe("teleport_echo_harbor_union_bastion")!,
+    );
+    const result = craftRecipe(state, "teleport_echo_harbor_union_bastion");
+
+    expect(status.isOutputOwned).toBe(true);
+    expect(status.canCraft).toBe(false);
+    expect(result.result).toEqual({
+      status: "failed",
+      recipeId: "teleport_echo_harbor_union_bastion",
+      reason: "already_owned",
+    });
+    expect(getKeyItemQuantity(
+      result.state,
+      TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+    )).toBe(1);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(300);
   });
 
   it("records crafting attempt and success telemetry while debug recording", () => {
@@ -367,9 +443,9 @@ describe("Smith crafting", () => {
   });
 
   it("sorts the smithy recipe list by weapon path order and complete armor sets", () => {
-    const sortedRecipeIds = getSortedCraftingRecipeStatuses(createCraftingState()).map(
-      (status) => status.recipe.id,
-    );
+    const sortedRecipeIds = getSortedCraftingRecipeStatuses(createCraftingState())
+      .map((status) => status.recipe.outputItemId)
+      .filter((itemId): itemId is ItemId => Boolean(itemId));
 
     expect(sortedRecipeIds.slice(0, 17)).toEqual([
       "training_sword",
@@ -908,6 +984,27 @@ function addItems(
       addItemToInventoryState(nextState, itemId, quantity, "debug").state,
     state,
   );
+}
+
+function getTeleportEchoCraftingCosts(): Array<[ItemId, number]> {
+  return [
+    ["slime_gel_t1", 12],
+    ["slime_core_t1", 2],
+    ["bat_wing_t1", 8],
+    ["bat_ear_t1", 1],
+    ["spider_silk_t1", 8],
+    ["spider_fang_t1", 1],
+    ["goblin_ear_t1", 8],
+    ["goblin_tooth_t1", 1],
+    ["imp_horn_chip_t1", 8],
+    ["imp_tail_t1", 1],
+    ["wolf_pelt", 6],
+    ["wolf_fang", 1],
+    ["crawler_pebble_t1", 6],
+    ["crawler_plate_t1", 1],
+    ["moss_tuft_t1", 6],
+    ["mossling_cap_t1", 1],
+  ];
 }
 
 function getPlannedCraftedEquipmentIds(): ItemId[] {

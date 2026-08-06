@@ -96,6 +96,9 @@ export type {
   ItemId,
   ItemRarity,
   JunkItemId,
+  KeyItemDefinition,
+  KeyItemId,
+  KeyItemsById,
   LootTier,
   MapVisualObject,
   MapVisualObjectId,
@@ -108,6 +111,7 @@ export type {
   PartyRecoveryIntent,
   PartyInventory,
   PartyWallet,
+  NewsBroadcastEvent,
   Position,
   PrimaryStatId,
   NpcEntity,
@@ -274,6 +278,18 @@ export {
   getItemDisplayName,
   getItemDefinitionForResourceType,
 } from "./items";
+export {
+  KEY_ITEM_DEFINITIONS,
+  TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+  TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+  awardKeyItem,
+  awardKeyItemIfMissing,
+  getKeyItemDefinition,
+  getKeyItemQuantity,
+  getOwnedKeyItemEntries,
+  hasKeyItem,
+  sanitizeKeyItemsById,
+} from "./keyItems";
 export {
   ARMOR_FAMILY_LABELS,
   CLASS_EQUIPMENT_PROFILES,
@@ -722,9 +738,24 @@ export {
   isMapTeleportPoiActive,
   isTeleportRallyActive,
   setMapTeleportPoi,
+  teleportWorldTravelDestination,
   triggerMapTeleport,
   updateTeleportSystem,
+  type WorldTravelTeleportFailureReason,
+  type WorldTravelTeleportResult,
 } from "./teleportSystem";
+export {
+  WORLD_TRAVEL_TELEPORT_UNLOCKS,
+  getWorldTravelTeleportStatus,
+  type WorldTravelTeleportStatus,
+  type WorldTravelTeleportUnlock,
+} from "./worldTravelTeleports";
+export {
+  NEWS_BROADCAST_DURATION_MS,
+  queueNewsBroadcast,
+  queueUnlockNewsBroadcast,
+  updateNewsBroadcasts,
+} from "./newsBroadcast";
 export { updatePoiSystem } from "./poiSystem";
 export {
   RESURRECTION_RANGE,

@@ -61,6 +61,7 @@ export function createInitialGameState(): GameState {
   ].reduce(addEntity, {
     entities: {},
     inventory: createEmptyPartyInventory(),
+    keyItemsById: {},
     bank: createEmptyPartyBank(),
     wallet: createEmptyPartyWallet(),
     map: debugMap,
@@ -115,6 +116,7 @@ export function createInitialGameState(): GameState {
     skillVisualEvents: [],
     companionAoeChannelsByCasterId: {},
     dropVisualEvents: [],
+    newsBroadcasts: [],
     lastCompanionDamageTakenAtByCompanionId: {},
   });
 

@@ -140,6 +140,7 @@ import {
   startDebugTelemetryRecording,
   stopDebugTelemetryRecording,
   toggleBankSlotLock,
+  teleportWorldTravelDestination,
   toggleInventoryBankLock,
   unequipItemFromCompanion,
   unequipFlaskFromCompanion,
@@ -176,6 +177,7 @@ import {
   type MerchantStockEntry,
   type MerchantStockGroup,
   type NavigationClickAccessibility,
+  type NewsBroadcastEvent,
   type NpcEntity,
   type OfflineFarmingSummary,
   type PartyMemberRole,
@@ -193,6 +195,7 @@ import {
   type SkillMarkState,
   type SkillShieldBlockState,
   type SkillVisualEvent,
+  type WorldTravelTeleportFailureReason,
   type WorldWipeRecoveryChoice,
 } from "./game";
 import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
@@ -478,6 +481,7 @@ const craftingFailureMessages: Record<CraftingFailureReason, string> = {
   invalid_recipe: "Recipe unavailable",
   invalid_output: "Recipe output unavailable",
   leader_not_near_smith: "Requires Smithy",
+  already_owned: "Already owned",
   missing_materials: "Missing materials",
   insufficient_crowns: "Not enough Crowns",
   inventory_full: "Inventory is full",
@@ -509,6 +513,45 @@ function getBankTransferFailureMessage(reason: string): string {
     default:
       return "Bank action failed";
   }
+}
+
+function getWorldTravelTeleportFailureMessage(
+  reason: WorldTravelTeleportFailureReason,
+): string {
+  switch (reason) {
+    case "current_map":
+      return "Already in that zone.";
+    case "locked":
+      return "Teleport is locked.";
+    case "active_transition":
+      return "Teleport already in progress.";
+    case "recovery_active":
+      return "Teleport unavailable during recovery.";
+    case "invalid_destination":
+    default:
+      return "Teleport destination unavailable.";
+  }
+}
+
+function NewsBroadcastOverlay({
+  broadcasts,
+}: {
+  broadcasts: NewsBroadcastEvent[];
+}) {
+  const latestBroadcast = broadcasts[broadcasts.length - 1];
+
+  if (!latestBroadcast) {
+    return null;
+  }
+
+  return (
+    <div className="news-broadcast-overlay" aria-live="polite">
+      <div className="news-broadcast-panel">
+        <span>News Broadcast</span>
+        <strong>{latestBroadcast.text}</strong>
+      </div>
+    </div>
+  );
 }
 
 type ViewportSize = {
@@ -4160,6 +4203,21 @@ function App() {
     setGameState((state) => setWorldTravelTargetMapId(state, null));
   }
 
+  function teleportWorldTravel(targetMapId: DebugMapId) {
+    const teleport = teleportWorldTravelDestination(gameState, targetMapId);
+
+    if (teleport.result.status === "success") {
+      queueSaveAfterStateChange("World travel teleport saved");
+      setSaveStatusMessage(`Teleported to ${teleport.result.displayName}.`);
+      setGameState(teleport.state);
+      return;
+    }
+
+    setSaveStatusMessage(
+      getWorldTravelTeleportFailureMessage(teleport.result.reason),
+    );
+  }
+
   function openEquipmentManagementFromInventory() {
     setSelectedCompanionId(selectedMenuCompanionId);
     setActiveGameMenuTab("party");
@@ -5271,6 +5329,7 @@ function App() {
               onCraftRecipe={craftSelectedRecipe}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
+              onTeleportWorldTravelDestination={teleportWorldTravel}
               onUnequipEquipment={unequipEquipment}
               onUnequipFlask={unequipFlask}
               onMovePartyOrder={movePartyMemberOrder}
@@ -5281,6 +5340,7 @@ function App() {
             />
           </Suspense>
         ) : null}
+        <NewsBroadcastOverlay broadcasts={gameState.newsBroadcasts ?? []} />
         {offlineSummary ? (
           <OfflineSummaryToast
             summary={offlineSummary}

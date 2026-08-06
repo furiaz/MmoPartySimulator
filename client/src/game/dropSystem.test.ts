@@ -6,6 +6,10 @@ import {
   handleEnemyDefeatedDrops,
   updateDropSystem,
 } from "./dropSystem";
+import {
+  TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+  getKeyItemQuantity,
+} from "./keyItems";
 import { createDebugMap, MAP_ONE_ID, MAP_TWO_ID } from "./debugMap";
 import { createTestGameState } from "./testState";
 import type { DropVisualEvent } from "./types";
@@ -121,6 +125,54 @@ describe("enemy drop system", () => {
 
     expect(nextState.dropVisualEvents).toEqual([]);
     expect(nextState.inventory.slots).toEqual([]);
+  });
+
+  it("awards the Slimeward Camp teleport echo once from Azure Mass", () => {
+    const now = 1000;
+    const enemy = {
+      ...createEnemy("azure", { x: 5, y: 5 }, "aggressive", {
+        enemyTypeId: "azure_mass",
+      }),
+      state: "dead" as const,
+      health: 0,
+    };
+    const state = createTestGameState({
+      currentMapId: MAP_ONE_ID,
+      map: createDebugMap(MAP_ONE_ID),
+      entities: { [enemy.id]: enemy },
+      inventory: createEmptyPartyInventory(0),
+    });
+
+    const firstDefeat = handleEnemyDefeatedDrops(
+      state,
+      enemy,
+      "leader",
+      now,
+      () => 0.99,
+    );
+    const secondDefeat = handleEnemyDefeatedDrops(
+      firstDefeat,
+      enemy,
+      "leader",
+      now + 1,
+      () => 0.99,
+    );
+
+    expect(getKeyItemQuantity(
+      firstDefeat,
+      TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+    )).toBe(1);
+    expect(firstDefeat.newsBroadcasts?.at(-1)?.text).toBe(
+      "Unlocked: Teleportation Echo - Slimeward Camp",
+    );
+    expect(getKeyItemQuantity(
+      secondDefeat,
+      TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+    )).toBe(1);
+    expect(secondDefeat.newsBroadcasts).toHaveLength(
+      firstDefeat.newsBroadcasts?.length ?? 0,
+    );
+    expect(secondDefeat.inventory.slots).toEqual([]);
   });
 });
 

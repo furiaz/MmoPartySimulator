@@ -6,6 +6,7 @@ import {
 import { addItemToInventoryState } from "./inventory";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
+import { sanitizeKeyItemsById } from "./keyItems";
 import {
   getLevelGapXpModifier,
   getSameLevelEnemyXp,
@@ -357,6 +358,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     ...state,
     entities,
     inventory: sanitizePartyInventory(state.inventory),
+    keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {
       ...sanitizePartyBank(state.bank),
       autoRoutingMode: sanitizeBankAutoRoutingMode(
@@ -424,6 +426,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     consumableUsesByCompanionId: {},
     hubDepartureFoodWarning: null,
     dropVisualEvents: [],
+    newsBroadcasts: [],
     slimewardDungeon: sanitizeSlimewardDungeon(state.slimewardDungeon),
     resurrectionProgressByCompanionId: {},
     resurrectionChannelsByHelperId: {},

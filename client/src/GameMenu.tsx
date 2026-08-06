@@ -67,6 +67,7 @@ export function GameMenu({
   onCraftRecipe,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
+  onTeleportWorldTravelDestination,
   onUnequipEquipment,
   onUnequipFlask,
   onMovePartyOrder,
@@ -127,6 +128,7 @@ export function GameMenu({
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
+  onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
   onUnequipEquipment: (companionId: string, targetSlot: EquipmentSlot) => void;
   onUnequipFlask: (companionId: string) => void;
   onMovePartyOrder: (companionId: string, direction: "up" | "down") => void;
@@ -228,6 +230,7 @@ export function GameMenu({
               ) : activeTab === "inventory" ? (
                 <InventoryPanel
                   inventory={inventory}
+                  gameState={gameState}
                   members={members}
                   quests={quests}
                   skillBookReadMessage={skillBookReadMessage}
@@ -249,9 +252,11 @@ export function GameMenu({
               ) : activeTab === "world" ? (
                 <WorldPanel
                   currentMapId={currentMapId}
+                  gameState={gameState}
                   worldTravelTargetMapId={worldTravelTargetMapId}
                   onClearRoute={onClearWorldTravelRoute}
                   onSetRoute={onSetWorldTravelRoute}
+                  onTeleport={onTeleportWorldTravelDestination}
                 />
               ) : (
                 <OptionsPanel

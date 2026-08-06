@@ -6,6 +6,7 @@ import {
   EQUIPMENT_TYPE_LABELS,
   getItemDefinition,
   getItemDisplayName,
+  getOwnedKeyItemEntries,
   getQuestItemInventoryEntries,
   formatCurrencyDisplay,
   getCompanionSkillRank,
@@ -55,6 +56,7 @@ function formatCategoryLabel(category: ItemCategory): string {
 
 export function InventoryPanel({
   inventory,
+  gameState,
   members,
   quests,
   skillBookReadMessage,
@@ -63,6 +65,7 @@ export function InventoryPanel({
   onOpenEquipmentManagement,
 }: {
   inventory: PartyInventory;
+  gameState: GameState;
   members: Companion[];
   quests: GameState["quests"];
   skillBookReadMessage?: string | null;
@@ -71,10 +74,11 @@ export function InventoryPanel({
   onOpenEquipmentManagement: () => void;
 }) {
   const [activeCategory, setActiveCategory] = useState<
-    ItemCategory | "all" | "questItems"
+    ItemCategory | "all" | "questItems" | "keyItems"
   >("all");
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
   const questItemEntries = getQuestItemInventoryEntries(quests);
+  const keyItemEntries = getOwnedKeyItemEntries(gameState);
   const availableCategories = Array.from(
     new Set(
       Object.values(ITEM_DEFINITIONS).map((itemDefinition) =>
@@ -118,6 +122,12 @@ export function InventoryPanel({
     activeCategory === "questItems"
       ? questItemEntries.find((entry) => selectedItemKey === entry.key) ?? null
       : null;
+  const selectedKeyItem =
+    activeCategory === "keyItems"
+      ? keyItemEntries.find(
+          (entry) => selectedItemKey === entry.definition.id,
+        ) ?? null
+      : null;
 
   return (
     <section className="inventory-panel" aria-label="Inventory">
@@ -126,6 +136,8 @@ export function InventoryPanel({
         <span>
           {activeCategory === "questItems"
             ? `${questItemEntries.length} Quest Items`
+            : activeCategory === "keyItems"
+              ? `${keyItemEntries.length} Key Items`
             : `${getUsedInventorySlots(inventory)}/${inventory.capacity}`}
         </span>
       </div>
@@ -160,6 +172,16 @@ export function InventoryPanel({
           </button>
         ))}
         <button
+          className={activeCategory === "keyItems" ? "active" : ""}
+          onClick={() => {
+            setActiveCategory("keyItems");
+            setSelectedItemKey(null);
+          }}
+          type="button"
+        >
+          Key Items
+        </button>
+        <button
           className={activeCategory === "questItems" ? "active" : ""}
           onClick={() => {
             setActiveCategory("questItems");
@@ -178,6 +200,14 @@ export function InventoryPanel({
             <span>
               Progress {selectedQuestItem.quantity}/{selectedQuestItem.requiredCount}
             </span>
+          </div>
+        </div>
+      ) : selectedKeyItem ? (
+        <div className="inventory-item-action-panel">
+          <div>
+            <strong>{selectedKeyItem.definition.displayName}</strong>
+            <span>Key Item</span>
+            <span>{selectedKeyItem.definition.description}</span>
           </div>
         </div>
       ) : selectedSlot && selectedItemDefinition ? (
@@ -226,7 +256,47 @@ export function InventoryPanel({
         </div>
       ) : null}
       <div className="inventory-slot-grid">
-        {activeCategory === "questItems" ? (
+        {activeCategory === "keyItems" ? (
+          keyItemEntries.length > 0 ? (
+            keyItemEntries.map((entry, index) => {
+              const isSelected = selectedItemKey === entry.definition.id;
+
+              return (
+                <div
+                  key={entry.definition.id}
+                  className={`inventory-slot filled key-item${isSelected ? " selected" : ""}`}
+                  onClick={() =>
+                    setSelectedItemKey(isSelected ? null : entry.definition.id)
+                  }
+                  title={[
+                    entry.definition.displayName,
+                    "Category Key Item",
+                    entry.definition.description,
+                    `Quantity ${entry.quantity}`,
+                  ].join("\n")}
+                >
+                  <span className="inventory-slot-index">{index + 1}</span>
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="inventory-item-icon"
+                    src={NPC_ICON_SRC.quest_giver}
+                  />
+                  <span className="inventory-slot-name">
+                    {entry.definition.displayName}
+                  </span>
+                  <span className="inventory-slot-quantity">
+                    x{entry.quantity}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="inventory-slot empty inventory-key-items-empty">
+              <span className="inventory-slot-name">No key items</span>
+            </div>
+          )
+        ) : activeCategory === "questItems" ? (
           questItemEntries.length > 0 ? (
             questItemEntries.map((entry, index) => {
               const isSelected = selectedItemKey === entry.key;

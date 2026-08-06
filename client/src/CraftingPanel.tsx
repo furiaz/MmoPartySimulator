@@ -2,20 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
 import {
   ARMOR_FAMILY_LABELS,
+  CLASS_DEFINITIONS,
   EQUIPMENT_SLOT_LABELS,
   EQUIPMENT_TYPE_LABELS,
   formatCurrencyDisplay,
   getSortedCraftingRecipeStatuses,
   type ArmorFamily,
+  type ClassId,
   type CraftingRecipeId,
   type CraftingRecipeStatus,
   type EquipmentType,
   type GameState,
   type ItemDefinition,
+  type PrimaryStatId,
 } from "./game";
 
 type CraftingLevelFilter = "all" | "1" | "5" | "10" | "15" | "20plus";
-type CraftingCategoryFilter = "all" | "weapons" | "armor" | "accessories";
+type CraftingCategoryFilter =
+  | "all"
+  | "key_items"
+  | "weapons"
+  | "armor"
+  | "accessories";
 type CraftingArmorFamilyFilter = "all" | ArmorFamily;
 type CraftingWeaponTypeFilter = "all" | EquipmentType;
 type CraftingArmorPartFilter =
@@ -44,9 +52,21 @@ const armorPartFilterOptions: CraftingArmorPartFilter[] = [
   "boots",
 ];
 
+const primaryStatLabels: Record<PrimaryStatId, string> = {
+  strength: "Strength",
+  dexterity: "Dexterity",
+  constitution: "Constitution",
+  intelligence: "Intelligence",
+  wisdom: "Wisdom",
+};
+
 function getCraftingBlockReason(status: CraftingRecipeStatus): string | null {
-  if (!status.outputItemDefinition) {
+  if (!status.outputDisplayName) {
     return "Recipe unavailable";
+  }
+
+  if (status.isOutputOwned) {
+    return "Owned";
   }
 
   if (!status.isLeaderNearSmith) {
@@ -68,7 +88,13 @@ function getCraftingBlockReason(status: CraftingRecipeStatus): string | null {
   return null;
 }
 
-function getRecipeSummary(itemDefinition: ItemDefinition | undefined): string {
+function getRecipeSummary(status: CraftingRecipeStatus): string {
+  if (status.outputKeyItemDefinition) {
+    return "Key Item";
+  }
+
+  const itemDefinition = status.outputItemDefinition;
+
   if (!itemDefinition) {
     return "Unavailable";
   }
@@ -94,6 +120,50 @@ function getRecipeSummary(itemDefinition: ItemDefinition | undefined): string {
   return `Level ${level} Equipment`;
 }
 
+function getEquipmentStatDetails(itemDefinition: ItemDefinition): string[] {
+  const primaryStats = Object.entries(itemDefinition.primaryStatModifiers ?? {})
+    .filter(([, value]) => value !== undefined && value !== 0)
+    .map(
+      ([stat, value]) =>
+        `${primaryStatLabels[stat as PrimaryStatId]} ${formatModifier(value)}`,
+    );
+  const derivedStats = Object.entries(itemDefinition.statModifiers ?? {})
+    .filter(([, value]) => value !== undefined && value !== 0)
+    .map(([stat, value]) => `${formatStatName(stat)} ${formatModifier(value)}`);
+
+  return [...primaryStats, ...derivedStats];
+}
+
+function getCraftingOutputDescription(status: CraftingRecipeStatus): string {
+  if (status.outputKeyItemDefinition) {
+    return status.outputKeyItemDefinition.description;
+  }
+
+  return status.outputItemDefinition?.description ?? "No description available.";
+}
+
+function getWeaponClassRequirementText(
+  itemDefinition: ItemDefinition | undefined,
+): string | null {
+  if (
+    itemDefinition?.category !== "equipment" ||
+    (itemDefinition.equipmentKind !== "weapon" &&
+      itemDefinition.equipmentKind !== "offhand")
+  ) {
+    return null;
+  }
+
+  const allowedClassNames = (itemDefinition.allowedClassIds ?? [])
+    .map((classId: ClassId) => CLASS_DEFINITIONS[classId]?.displayName)
+    .filter((displayName): displayName is string => Boolean(displayName));
+
+  if (allowedClassNames.length === 0) {
+    return null;
+  }
+
+  return `${allowedClassNames.length === 1 ? "Required class" : "Required classes"}: ${allowedClassNames.join(", ")}`;
+}
+
 function matchesCraftingFilters(
   status: CraftingRecipeStatus,
   filters: {
@@ -108,7 +178,21 @@ function matchesCraftingFilters(
   const itemDefinition = status.outputItemDefinition;
 
   if (!itemDefinition) {
-    return false;
+    if (filters.level !== "all") {
+      return false;
+    }
+
+    if (
+      filters.category !== "all" &&
+      (filters.category !== "key_items" || !status.outputKeyItemDefinition)
+    ) {
+      return false;
+    }
+
+    return (
+      (filters.craftability !== "craftable" || status.canCraft) &&
+      (filters.craftability !== "missing" || !status.canCraft)
+    );
   }
 
   const level = itemDefinition.levelRequirement ?? 1;
@@ -129,7 +213,8 @@ function matchesCraftingFilters(
       itemDefinition.equipmentKind !== "offhand") ||
     (filters.category === "armor" && itemDefinition.equipmentKind !== "armor") ||
     (filters.category === "accessories" &&
-      itemDefinition.equipmentKind !== "accessory")
+      itemDefinition.equipmentKind !== "accessory") ||
+    filters.category === "key_items"
   ) {
     return false;
   }
@@ -263,6 +348,18 @@ export function CraftingPanel({
   const selectedBlockReason = selectedStatus
     ? getCraftingBlockReason(selectedStatus)
     : "No recipe selected";
+  const selectedIsEquipment =
+    selectedStatus?.outputItemDefinition?.category === "equipment";
+  const selectedEquipmentStats =
+    selectedIsEquipment && selectedStatus?.outputItemDefinition
+      ? getEquipmentStatDetails(selectedStatus.outputItemDefinition)
+      : [];
+  const selectedDescription = selectedStatus
+    ? getCraftingOutputDescription(selectedStatus)
+    : "";
+  const selectedWeaponClassRequirement = getWeaponClassRequirementText(
+    selectedStatus?.outputItemDefinition,
+  );
   const selectedOutputIconSrc = selectedStatus?.outputItemDefinition
     ? INVENTORY_ITEM_ICON_SRC[selectedStatus.outputItemDefinition.id]
     : undefined;
@@ -342,6 +439,7 @@ export function CraftingPanel({
                 }
               >
                 <option value="all">All</option>
+                <option value="key_items">Key Items</option>
                 <option value="weapons">Weapons</option>
                 <option value="armor">Armor</option>
                 <option value="accessories">Accessories</option>
@@ -438,8 +536,12 @@ export function CraftingPanel({
           </div>
           <div className="crafting-recipe-list" aria-label="Crafting recipes">
             {filteredRecipeStatuses.map((status) => {
-              const outputItem = status.outputItemDefinition;
               const isSelected = selectedStatus?.recipe.id === status.recipe.id;
+              const statusLabel = status.canCraft
+                ? "Ready"
+                : status.isOutputOwned
+                  ? "Owned"
+                  : "Missing";
 
               return (
                 <button
@@ -451,10 +553,10 @@ export function CraftingPanel({
                   type="button"
                 >
                   <span>
-                    <strong>{outputItem?.displayName ?? "Unknown Recipe"}</strong>
-                    <small>{getRecipeSummary(outputItem)}</small>
+                    <strong>{status.outputDisplayName ?? "Unknown Recipe"}</strong>
+                    <small>{getRecipeSummary(status)}</small>
                   </span>
-                  <b>{status.canCraft ? "Ready" : "Missing"}</b>
+                  <b>{statusLabel}</b>
                 </button>
               );
             })}
@@ -475,16 +577,40 @@ export function CraftingPanel({
                 <div>
                   <span className="crafting-detail-kicker">Output</span>
                   <h3>
-                    {selectedStatus.outputItemDefinition?.displayName ??
-                      "Unknown Recipe"}
+                    {selectedStatus.outputDisplayName ?? "Unknown Recipe"}
                   </h3>
                   <p>
                     Quantity x{selectedStatus.recipe.outputQuantity}
-                    {selectedStatus.outputItemDefinition?.stackable
+                    {selectedStatus.outputKeyItemDefinition
+                      ? " - Key Item"
+                      : selectedStatus.outputItemDefinition?.stackable
                       ? ""
                       : " - one slot each"}
                   </p>
+                  {selectedWeaponClassRequirement ? (
+                    <p className="crafting-output-class-requirement">
+                      {selectedWeaponClassRequirement}
+                    </p>
+                  ) : null}
                 </div>
+              </div>
+              <div className="crafting-output-details">
+                <span className="crafting-detail-kicker">
+                  {selectedIsEquipment ? "Stats" : "Description"}
+                </span>
+                {selectedIsEquipment ? (
+                  <div className="crafting-output-stat-list">
+                    {selectedEquipmentStats.length > 0 ? (
+                      selectedEquipmentStats.map((stat) => (
+                        <span key={stat}>{stat}</span>
+                      ))
+                    ) : (
+                      <span>Stats none</span>
+                    )}
+                  </div>
+                ) : (
+                  <p>{selectedDescription}</p>
+                )}
               </div>
               <dl className="crafting-cost-grid">
                 <div>
@@ -525,7 +651,7 @@ export function CraftingPanel({
                 onClick={() => onCraft(selectedStatus.recipe.id)}
                 title={
                   selectedBlockReason ||
-                  `Craft ${selectedStatus.outputItemDefinition?.displayName}`
+                  `Craft ${selectedStatus.outputDisplayName}`
                 }
                 type="button"
               >
@@ -542,4 +668,12 @@ export function CraftingPanel({
       </div>
     </section>
   );
+}
+
+function formatStatName(stat: string): string {
+  return stat.replace(/[A-Z]/g, (letter) => ` ${letter}`).toLowerCase();
+}
+
+function formatModifier(value: number): string {
+  return `${value > 0 ? "+" : ""}${value}`;
 }

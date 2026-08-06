@@ -28,6 +28,7 @@ import {
 import { updateFollowSystem } from "./followSystem";
 import { updateGatherSystem } from "./gatherSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
+import { updateNewsBroadcasts } from "./newsBroadcast";
 import {
   syncPartyDerivedMaxHealth,
   updatePassiveHealthRegen,
@@ -89,6 +90,7 @@ export function updateGame(
     clearFrameMovementPlanning(advanceSimulationTime(state, timing)),
     timing.nowMs,
   );
+  nextState = updateNewsBroadcasts(nextState, timing.nowMs);
   nextState = clearExpiredAutonomousTargetSuppressions(nextState);
   nextState = updateStatusEffects(nextState, timing.nowMs);
   nextState = updateRuneSkillRuntime(nextState, timing.nowMs);
