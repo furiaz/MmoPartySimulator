@@ -10,6 +10,7 @@ import { addHubDepartureFoodWarningIfNeeded } from "./consumables";
 import {
   clearSlimewardDungeonRuntime,
   createSlimewardChestNpc,
+  isSlimewardDungeonChestUiOpen,
   shouldResetSlimewardDungeonOnTeleport,
 } from "./dungeonSystem";
 import { rollEnemyVariantForSpawn, isSuperiorEnemy } from "./enemyVariants";
@@ -55,6 +56,7 @@ import {
   pruneMissingEntityRuntimeState,
 } from "./mapRuntimeCleanup";
 import { assignCurrentRoleBonuses } from "./roleBonus";
+import { getWorldTravelTeleportStatus } from "./worldTravelTeleports";
 import {
   updateEntity,
   type GameState,
@@ -73,6 +75,25 @@ import type {
   GameMap,
   Position,
 } from "./types";
+
+export type WorldTravelTeleportFailureReason =
+  | "invalid_destination"
+  | "current_map"
+  | "locked"
+  | "active_transition"
+  | "recovery_active";
+
+export type WorldTravelTeleportResult =
+  | {
+      status: "success";
+      targetMapId: DebugMapId;
+      displayName: string;
+    }
+  | {
+      status: "failed";
+      targetMapId: DebugMapId;
+      reason: WorldTravelTeleportFailureReason;
+    };
 
 export function triggerMapTeleport(
   state: GameState,
@@ -119,6 +140,86 @@ export function triggerMapTeleport(
       currentMapDebugName: state.map?.debugName,
     },
   );
+}
+
+export function teleportWorldTravelDestination(
+  state: GameState,
+  targetMapId: DebugMapId,
+  nowMs = Date.now(),
+): { state: GameState; result: WorldTravelTeleportResult } {
+  const status = getWorldTravelTeleportStatus(state, targetMapId);
+
+  if (!status) {
+    return {
+      state,
+      result: { status: "failed", targetMapId, reason: "invalid_destination" },
+    };
+  }
+
+  if (state.currentMapId === targetMapId) {
+    return {
+      state,
+      result: { status: "failed", targetMapId, reason: "current_map" },
+    };
+  }
+
+  if (!status.isUnlocked) {
+    return {
+      state,
+      result: { status: "failed", targetMapId, reason: "locked" },
+    };
+  }
+
+  if (state.activeTeleport) {
+    return {
+      state,
+      result: { status: "failed", targetMapId, reason: "active_transition" },
+    };
+  }
+
+  if (
+    state.worldWipeRecovery ||
+    isSlimewardDungeonChestUiOpen(state) ||
+    Object.keys(state.resurrectionChannelsByHelperId ?? {}).length > 0 ||
+    Object.keys(state.resurrectionProgressByCompanionId ?? {}).length > 0
+  ) {
+    return {
+      state,
+      result: { status: "failed", targetMapId, reason: "recovery_active" },
+    };
+  }
+
+  const teleport: ActiveTeleport = {
+    id: `world-travel-teleport-to-${targetMapId}`,
+    position: status.arrivalPositions[0] ?? { x: 0, y: 0 },
+    range: 0,
+    sourceMapId: state.currentMapId ?? targetMapId,
+    targetMapId,
+    triggeredBy: "player",
+  };
+  const nextState = completeTeleportWithDefinition(
+    {
+      ...state,
+      activeTeleport: teleport,
+      autoModeEnabled: false,
+      worldTravelTargetMapId: null,
+    },
+    teleport,
+    {
+      ...teleport,
+      arrivalPositions: status.arrivalPositions,
+    },
+    nowMs,
+  );
+
+  return {
+    state: nextState,
+    result: {
+      status: "success",
+      targetMapId,
+      displayName: debugMapDefinitions[targetMapId].displayName,
+    },
+  };
 }
 
 export function setMapTeleportPoi(
@@ -330,6 +431,20 @@ function completeTeleport(state: GameState, nowMs: number): GameState {
     return appendTeleportSkippedEvent(state, "teleport_definition_missing", teleport.id);
   }
 
+  return completeTeleportWithDefinition(
+    state,
+    teleport,
+    teleportDefinition,
+    nowMs,
+  );
+}
+
+function completeTeleportWithDefinition(
+  state: GameState,
+  teleport: ActiveTeleport,
+  teleportDefinition: DebugTeleportPoint,
+  nowMs: number,
+): GameState {
   const previousMapId = state.currentMapId;
   const previousMap = state.map;
   const sourceState = shouldResetSlimewardDungeonOnTeleport(teleport.id)

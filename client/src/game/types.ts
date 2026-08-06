@@ -604,6 +604,18 @@ export type ItemId =
   | ConsumableItemId
   | SkillBookItemId;
 
+export type KeyItemId =
+  | "teleport_echo_harbor_union_bastion"
+  | "teleport_echo_slimeward_camp";
+
+export type KeyItemDefinition = {
+  id: KeyItemId;
+  displayName: string;
+  description: string;
+};
+
+export type KeyItemsById = Partial<Record<KeyItemId, number>>;
+
 export type ItemRarity =
   | "common"
   | "uncommon"
@@ -741,6 +753,13 @@ export type PartyInventory = {
   capacity: number;
   slots: InventorySlot[];
   lockedSlotIndices?: number[];
+};
+
+export type NewsBroadcastEvent = {
+  id: string;
+  text: string;
+  createdAt: number;
+  expiresAt: number;
 };
 
 export type BankAutoRoutingMode =

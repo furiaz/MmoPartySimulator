@@ -4,6 +4,12 @@ import { getEnemyDropArchetypeId } from "./enemyArchetypes";
 import { addItemToInventoryState } from "./inventory";
 import { getItemDefinition, getItemDisplayName } from "./items";
 import {
+  awardKeyItemIfMissing,
+  getKeyItemDefinition,
+  TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+} from "./keyItems";
+import { queueUnlockNewsBroadcast } from "./newsBroadcast";
+import {
   addCombatFeedback,
   type GameState,
 } from "./state";
@@ -24,9 +30,10 @@ export function handleEnemyDefeatedDrops(
   random = Math.random,
 ): GameState {
   const enemyArchetypeId = getEnemyDropArchetypeId(enemy);
+  const sourceState = awardAzureMassTeleportEchoIfMissing(state, enemy, now);
 
   if (!enemyArchetypeId) {
-    return appendDropTelemetry(state, enemy, {
+    return appendDropTelemetry(sourceState, enemy, {
       type: "enemy_drop_none",
       entityId: enemy.id,
       reason: "missing_enemy_archetype",
@@ -35,7 +42,7 @@ export function handleEnemyDefeatedDrops(
   }
 
   const lootTier = getLootTierForLevel(enemy.level);
-  let nextState = appendDropTelemetry(state, enemy, {
+  let nextState = appendDropTelemetry(sourceState, enemy, {
     type: "enemy_drop_roll_started",
     entityId: enemy.id,
     targetId: defeatedByEntityId,
@@ -99,6 +106,31 @@ export function handleEnemyDefeatedDrops(
   }
 
   return nextState;
+}
+
+function awardAzureMassTeleportEchoIfMissing(
+  state: GameState,
+  enemy: Enemy,
+  now: number,
+): GameState {
+  if (enemy.enemyTypeId !== "azure_mass") {
+    return state;
+  }
+
+  const award = awardKeyItemIfMissing(
+    state,
+    TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
+  );
+
+  if (award.awardedQuantity <= 0) {
+    return state;
+  }
+
+  return queueUnlockNewsBroadcast(
+    award.state,
+    getKeyItemDefinition(TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID).displayName,
+    now,
+  );
 }
 
 export function updateDropSystem(

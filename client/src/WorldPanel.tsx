@@ -9,7 +9,9 @@ import {
   MAP_SIX_ID,
   MAP_THREE_ID,
   MAP_TWO_ID,
+  getWorldTravelTeleportStatus,
   type DebugMapId,
+  type GameState,
 } from "./game";
 
 const prototypeRegionMapIds: DebugMapId[] = [
@@ -26,14 +28,18 @@ const prototypeRegionMapIds: DebugMapId[] = [
 
 export function WorldPanel({
   currentMapId,
+  gameState,
   worldTravelTargetMapId,
   onClearRoute,
   onSetRoute,
+  onTeleport,
 }: {
   currentMapId?: DebugMapId;
+  gameState: GameState;
   worldTravelTargetMapId: DebugMapId | null;
   onClearRoute: () => void;
   onSetRoute: (targetMapId: DebugMapId) => void;
+  onTeleport: (targetMapId: DebugMapId) => void;
 }) {
   const activeRouteName = worldTravelTargetMapId
     ? debugMapDefinitions[worldTravelTargetMapId].displayName
@@ -59,6 +65,10 @@ export function WorldPanel({
             const mapDefinition = debugMapDefinitions[mapId];
             const isCurrentMap = mapId === currentMapId;
             const isActiveRoute = mapId === worldTravelTargetMapId;
+            const teleportStatus = getWorldTravelTeleportStatus(
+              gameState,
+              mapId,
+            );
             const actionLabel = isCurrentMap
               ? "Current Zone"
               : isActiveRoute
@@ -71,14 +81,33 @@ export function WorldPanel({
                   <strong>{mapDefinition.displayName}</strong>
                   <span>{mapDefinition.debugName}</span>
                 </div>
-                <button
-                  className={isCurrentMap || isActiveRoute ? "active" : ""}
-                  disabled={isCurrentMap}
-                  onClick={() => onSetRoute(mapId)}
-                  type="button"
-                >
-                  {actionLabel}
-                </button>
+                <div className="world-map-actions">
+                  <button
+                    className={isCurrentMap || isActiveRoute ? "active" : ""}
+                    disabled={isCurrentMap}
+                    onClick={() => onSetRoute(mapId)}
+                    type="button"
+                  >
+                    {actionLabel}
+                  </button>
+                  <button
+                    className={teleportStatus?.canTeleport ? "" : "locked"}
+                    disabled={!teleportStatus?.canTeleport}
+                    onClick={() => onTeleport(mapId)}
+                    title={
+                      !teleportStatus
+                        ? "No teleport echo available"
+                        : teleportStatus.isCurrentMap
+                          ? "Current zone"
+                          : teleportStatus.isUnlocked
+                            ? `Teleport to ${mapDefinition.displayName}`
+                            : teleportStatus.acquisitionHint
+                    }
+                    type="button"
+                  >
+                    Teleport
+                  </button>
+                </div>
               </div>
             );
           })}

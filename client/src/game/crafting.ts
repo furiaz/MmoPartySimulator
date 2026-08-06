@@ -13,6 +13,13 @@ import {
   EQUIPMENT_TYPE_LABELS,
 } from "./equipmentTypes";
 import { getItemDefinition, getItemDisplayName } from "./items";
+import {
+  awardKeyItem,
+  getKeyItemDefinition,
+  hasKeyItem,
+  TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+} from "./keyItems";
+import { queueUnlockNewsBroadcast } from "./newsBroadcast";
 import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
 import { recordCraftedItemForQuests } from "./questProgressionHooks";
@@ -31,12 +38,15 @@ import type {
   InventorySlot,
   ItemDefinition,
   ItemId,
+  KeyItemDefinition,
+  KeyItemId,
   PartyInventory,
 } from "./types";
 
 export const SMITH_CRAFTING_INTERACTION_RANGE = 2;
 
-export type CraftingRecipeId = EquipmentItemId;
+export type KeyItemCraftingRecipeId = "teleport_echo_harbor_union_bastion";
+export type CraftingRecipeId = EquipmentItemId | KeyItemCraftingRecipeId;
 
 export type CraftingItemRequirement = {
   kind: "item";
@@ -58,7 +68,9 @@ export type CraftingCost =
 
 export type CraftingRecipe = {
   id: CraftingRecipeId;
-  outputItemId: ItemId;
+  outputKind: "item" | "key_item";
+  outputItemId?: ItemId;
+  outputKeyItemId?: KeyItemId;
   outputQuantity: number;
   costs: CraftingCost[];
   crownCost: number;
@@ -70,6 +82,7 @@ export type CraftingFailureReason =
   | "invalid_recipe"
   | "invalid_output"
   | "leader_not_near_smith"
+  | "already_owned"
   | "missing_materials"
   | "insufficient_crowns"
   | "inventory_full"
@@ -86,6 +99,9 @@ export type CraftingRequirementStatus = CraftingCost & {
 export type CraftingRecipeStatus = {
   recipe: CraftingRecipe;
   outputItemDefinition: ItemDefinition | undefined;
+  outputKeyItemDefinition: KeyItemDefinition | undefined;
+  outputDisplayName: string | undefined;
+  isOutputOwned: boolean;
   requirements: CraftingRequirementStatus[];
   crownBalance: number;
   hasRequiredMaterials: boolean;
@@ -99,7 +115,9 @@ export type CraftingResult =
   | {
       status: "success";
       recipeId: CraftingRecipeId;
-      outputItemId: ItemId;
+      outputKind: "item" | "key_item";
+      outputItemId?: ItemId;
+      outputKeyItemId?: KeyItemId;
       outputQuantity: number;
       displayName: string;
       crownCost: number;
@@ -135,7 +153,7 @@ const previousEquipmentCost = (
 
 type ArmorPieceKey = "head" | "chest" | "legs" | "gloves" | "boots";
 
-type ArmorSetRecipeIds = Record<ArmorPieceKey, CraftingRecipeId>;
+type ArmorSetRecipeIds = Record<ArmorPieceKey, EquipmentItemId>;
 
 const CLASS_UPGRADE_EQUIPMENT_TYPE_ORDER: EquipmentType[] = [
   ...CLASS_EQUIPMENT_PROFILES.beginner.mainHand,
@@ -223,13 +241,30 @@ const LEVEL_10_ARMOR_COSTS: Record<
 };
 
 function equipmentRecipe(
-  id: CraftingRecipeId,
+  id: EquipmentItemId,
   costs: CraftingCost[],
   crownCost: number,
 ): CraftingRecipe {
   return {
     id,
+    outputKind: "item",
     outputItemId: id,
+    outputQuantity: 1,
+    costs,
+    crownCost,
+  };
+}
+
+function keyItemRecipe(
+  id: KeyItemCraftingRecipeId,
+  keyItemId: KeyItemId,
+  costs: CraftingCost[],
+  crownCost: number,
+): CraftingRecipe {
+  return {
+    id,
+    outputKind: "key_item",
+    outputKeyItemId: keyItemId,
     outputQuantity: 1,
     costs,
     crownCost,
@@ -260,7 +295,7 @@ function createLevel10ArmorSetRecipes(
 }
 
 function createLevel15ArmorRecipe(
-  id: CraftingRecipeId,
+  id: EquipmentItemId,
   armorFamily: ArmorFamily,
   piece: ArmorPieceKey,
   costs: CraftingCost[],
@@ -281,6 +316,29 @@ function createLevel15ArmorRecipe(
 }
 
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  keyItemRecipe(
+    "teleport_echo_harbor_union_bastion",
+    TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
+    [
+      itemCost("slime_gel_t1", 12),
+      itemCost("slime_core_t1", 2),
+      itemCost("bat_wing_t1", 8),
+      itemCost("bat_ear_t1", 1),
+      itemCost("spider_silk_t1", 8),
+      itemCost("spider_fang_t1", 1),
+      itemCost("goblin_ear_t1", 8),
+      itemCost("goblin_tooth_t1", 1),
+      itemCost("imp_horn_chip_t1", 8),
+      itemCost("imp_tail_t1", 1),
+      itemCost("wolf_pelt", 6),
+      itemCost("wolf_fang", 1),
+      itemCost("crawler_pebble_t1", 6),
+      itemCost("crawler_plate_t1", 1),
+      itemCost("moss_tuft_t1", 6),
+      itemCost("mossling_cap_t1", 1),
+    ],
+    250,
+  ),
   equipmentRecipe(
     "training_sword",
     [
@@ -1333,7 +1391,13 @@ export function getCraftingRecipes(): CraftingRecipe[] {
 }
 
 export function getCraftingRecipeOutputItemIds(): ItemId[] {
-  return Array.from(new Set(CRAFTING_RECIPES.map((recipe) => recipe.outputItemId)));
+  return Array.from(
+    new Set(
+      CRAFTING_RECIPES.map((recipe) => recipe.outputItemId).filter(
+        (itemId): itemId is ItemId => Boolean(itemId),
+      ),
+    ),
+  );
 }
 
 export function getCraftingRecipe(
@@ -1346,7 +1410,16 @@ export function getCraftingRecipeStatus(
   state: GameState,
   recipe: CraftingRecipe,
 ): CraftingRecipeStatus {
-  const outputItemDefinition = getItemDefinition(recipe.outputItemId);
+  const outputItemDefinition = recipe.outputItemId
+    ? getItemDefinition(recipe.outputItemId)
+    : undefined;
+  const outputKeyItemDefinition = recipe.outputKeyItemId
+    ? getKeyItemDefinition(recipe.outputKeyItemId)
+    : undefined;
+  const outputDisplayName =
+    outputItemDefinition?.displayName ?? outputKeyItemDefinition?.displayName;
+  const isOutputOwned =
+    recipe.outputKeyItemId ? hasKeyItem(state, recipe.outputKeyItemId) : false;
   const requirements = recipe.costs.map((cost) =>
     getCraftingRequirementStatus(state.inventory, cost),
   );
@@ -1354,13 +1427,23 @@ export function getCraftingRecipeStatus(
   const hasRequiredMaterials = requirements.every((requirement) => requirement.isMet);
   const hasRequiredCrowns = canAfford(state.wallet, "crowns", recipe.crownCost);
   const hasInventorySpace =
-    Boolean(outputItemDefinition) &&
-    canInventoryAcceptCraftingOutput(state, recipe, outputItemDefinition);
+    recipe.outputKind === "key_item"
+      ? true
+      : outputItemDefinition
+        ? canInventoryAcceptCraftingOutput(state, recipe, outputItemDefinition)
+        : false;
   const isLeaderNearSmith = isPartyLeaderNearSmith(state);
+  const hasValidOutput =
+    recipe.outputKind === "key_item"
+      ? Boolean(outputKeyItemDefinition)
+      : Boolean(outputItemDefinition);
 
   return {
     recipe,
     outputItemDefinition,
+    outputKeyItemDefinition,
+    outputDisplayName,
+    isOutputOwned,
     requirements,
     crownBalance,
     hasRequiredMaterials,
@@ -1368,7 +1451,8 @@ export function getCraftingRecipeStatus(
     hasInventorySpace,
     isLeaderNearSmith,
     canCraft:
-      Boolean(outputItemDefinition) &&
+      hasValidOutput &&
+      !isOutputOwned &&
       hasRequiredMaterials &&
       hasRequiredCrowns &&
       hasInventorySpace &&
@@ -1382,6 +1466,14 @@ export function getSortedCraftingRecipeStatuses(
   return CRAFTING_RECIPES.map((recipe) =>
     getCraftingRecipeStatus(state, recipe),
   ).sort((first, second) => {
+    const outputKindOrder =
+      getCraftingOutputKindSortOrder(first) -
+      getCraftingOutputKindSortOrder(second);
+
+    if (outputKindOrder !== 0) {
+      return outputKindOrder;
+    }
+
     if (first.canCraft !== second.canCraft) {
       return first.canCraft ? -1 : 1;
     }
@@ -1416,11 +1508,21 @@ export function craftRecipe(
   const status = getCraftingRecipeStatus(state, recipe);
   const attemptedState = appendCraftingAttemptTelemetry(state, recipe, status);
 
-  if (!status.outputItemDefinition) {
+  if (!status.outputDisplayName) {
     return createCraftingFailure(
       attemptedState,
       recipe.id,
       "invalid_output",
+      recipe,
+      status,
+    );
+  }
+
+  if (status.isOutputOwned) {
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "already_owned",
       recipe,
       status,
     );
@@ -1506,6 +1608,61 @@ export function craftRecipe(
     );
   }
 
+  if (recipe.outputKind === "key_item") {
+    if (!recipe.outputKeyItemId || !status.outputKeyItemDefinition) {
+      return createCraftingFailure(
+        attemptedState,
+        recipe.id,
+        "invalid_output",
+        recipe,
+        status,
+      );
+    }
+
+    const keyItemAward = awardKeyItem(
+      currencyRemoval.state,
+      recipe.outputKeyItemId,
+      recipe.outputQuantity,
+    );
+    const craftedState = appendCraftingSucceededTelemetry(
+      queueUnlockNewsBroadcast(
+        keyItemAward.state,
+        status.outputKeyItemDefinition.displayName,
+      ),
+      recipe,
+      status,
+      consumedCraftingItems,
+      previousCrowns,
+      currencyRemoval.result.newBalance,
+      state,
+    );
+
+    return {
+      state: craftedState,
+      result: {
+        status: "success",
+        recipeId: recipe.id,
+        outputKind: recipe.outputKind,
+        outputKeyItemId: recipe.outputKeyItemId,
+        outputQuantity: recipe.outputQuantity,
+        displayName: status.outputKeyItemDefinition.displayName,
+        crownCost: recipe.crownCost,
+        previousCrowns,
+        newCrowns: currencyRemoval.result.newBalance,
+      },
+    };
+  }
+
+  if (!recipe.outputItemId || !status.outputItemDefinition) {
+    return createCraftingFailure(
+      attemptedState,
+      recipe.id,
+      "invalid_output",
+      recipe,
+      status,
+    );
+  }
+
   const inventoryAdd = addItemToInventoryState(
     currencyRemoval.state,
     recipe.outputItemId,
@@ -1542,6 +1699,7 @@ export function craftRecipe(
     result: {
       status: "success",
       recipeId: recipe.id,
+      outputKind: recipe.outputKind,
       outputItemId: recipe.outputItemId,
       outputQuantity: recipe.outputQuantity,
       displayName: status.outputItemDefinition.displayName,
@@ -1806,6 +1964,14 @@ function compareCraftingRecipeStatuses(
   const firstOutput = first.outputItemDefinition;
   const secondOutput = second.outputItemDefinition;
 
+  if (!firstOutput && secondOutput) {
+    return 1;
+  }
+
+  if (firstOutput && !secondOutput) {
+    return -1;
+  }
+
   if (!firstOutput || !secondOutput) {
     return first.recipe.id.localeCompare(second.recipe.id);
   }
@@ -1819,6 +1985,14 @@ function compareCraftingRecipeStatuses(
     getArmorSlotSortOrder(firstOutput) - getArmorSlotSortOrder(secondOutput) ||
     firstOutput.displayName.localeCompare(secondOutput.displayName)
   );
+}
+
+function getCraftingOutputKindSortOrder(status: CraftingRecipeStatus): number {
+  if (status.recipe.outputKind === "key_item") {
+    return 0;
+  }
+
+  return 1;
 }
 
 function getEquipmentKindSortOrder(itemDefinition: ItemDefinition): number {

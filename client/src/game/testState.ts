@@ -10,6 +10,7 @@ export function createTestGameState(
   return {
     entities: {},
     inventory: createEmptyPartyInventory(),
+    keyItemsById: {},
     bank: createEmptyPartyBank(),
     wallet: createEmptyPartyWallet(),
     autoModeEnabled: false,
@@ -32,6 +33,7 @@ export function createTestGameState(
     followTrailsByEntityId: {},
     combatFeedbackEvents: [],
     combatProjectiles: [],
+    newsBroadcasts: [],
     ...overrides,
   };
 }

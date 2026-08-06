@@ -19,7 +19,9 @@ import type {
   GameEntity,
   Enemy,
   HubDepartureFoodWarningState,
+  KeyItemsById,
   LeaderIntent,
+  NewsBroadcastEvent,
   PartyIntent,
   PartyInventory,
   PartyWallet,
@@ -154,6 +156,7 @@ export type {
 export type GameState = {
   entities: Record<string, GameEntity>;
   inventory: PartyInventory;
+  keyItemsById?: KeyItemsById;
   bank: PartyBank;
   wallet: PartyWallet;
   currentMapId?: DebugMapId;
@@ -236,6 +239,7 @@ export type GameState = {
   flaskRechargeEnemyKillCounter?: number;
   flaskRechargeCountedEnemyDefeats?: Record<string, number>;
   dropVisualEvents?: DropVisualEvent[];
+  newsBroadcasts?: NewsBroadcastEvent[];
   autonomousTargetSuppressionsByEnemyId?: Record<string, AutonomousTargetSuppressionState>;
   slimewardDungeon?: SlimewardDungeonRuntimeState;
   resurrectionProgressByCompanionId?: Record<string, ResurrectionProgressState>;

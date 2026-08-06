@@ -1280,11 +1280,35 @@
 }
 
 .crafting-output p,
+.crafting-output-details p,
 .crafting-result-message {
   margin: 0;
   color: #aec6ca;
   font-size: 13px;
   line-height: 1.35;
+}
+
+.crafting-output-details {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(58, 90, 96, 0.58);
+  background: rgba(9, 18, 21, 0.22);
+}
+
+.crafting-output-stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crafting-output-stat-list span {
+  padding: 4px 7px;
+  border: 1px solid rgba(122, 166, 173, 0.42);
+  background: rgba(58, 90, 96, 0.28);
+  color: #e6f0f2;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .crafting-cost-grid {
@@ -2254,6 +2278,54 @@
 .world-map-row span {
   color: #aec6ca;
   font-size: 12px;
+}
+
+.world-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.world-map-actions button.locked {
+  border-color: rgba(148, 163, 184, 0.25);
+  color: rgba(203, 213, 225, 0.58);
+}
+
+.news-broadcast-overlay {
+  align-items: center;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  pointer-events: none;
+  position: fixed;
+  z-index: 70;
+}
+
+.news-broadcast-panel {
+  background: rgba(7, 15, 18, 0.9);
+  border: 1px solid rgba(90, 205, 255, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.42);
+  color: #ecfeff;
+  display: grid;
+  gap: 7px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 16px 19px;
+  text-align: center;
+}
+
+.news-broadcast-panel span {
+  color: rgba(165, 243, 252, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.news-broadcast-panel strong {
+  font-size: 18px;
+  line-height: 1.25;
 }
 
 .menu-split-layout {
