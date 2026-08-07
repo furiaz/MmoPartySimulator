@@ -48,6 +48,7 @@ Current game-logic implementation files include:
 
 - `attackSlots.ts`
 - `attackSystem.ts`
+- `bank.ts`
 - `classes.ts`
 - `classSelection.ts`
 - `combatBasicAttackResolution.ts`
@@ -60,6 +61,7 @@ Current game-logic implementation files include:
 - `companionCooldowns.ts`
 - `consumables.ts`
 - `createInitialGameState.ts`
+- `crafting.ts`
 - `debugMap.ts`
 - `debugTelemetry.ts`
 - `debugTools.ts`
@@ -92,6 +94,7 @@ Current game-logic implementation files include:
 - `inventory.ts`
 - `interactionApproach.ts`
 - `items.ts`
+- `keyItems.ts`
 - `leveling.ts`
 - `mapRuntimeCleanup.ts`
 - `merchant.ts`
@@ -100,6 +103,7 @@ Current game-logic implementation files include:
 - `movementTypes.ts`
 - `navigation.ts`
 - `navigationClick.ts`
+- `newsBroadcast.ts`
 - `partyActivityCoordinator.ts`
 - `partyFormationSystem.ts`
 - `partyIntentState.ts`
@@ -148,6 +152,7 @@ Current game-logic implementation files include:
 - `types.ts`
 - `updateGame.ts`
 - `wallet.ts`
+- `worldTravelTeleports.ts`
 - `worldTravelRouting.ts`
 - `worldWipeRecovery.ts`
 
@@ -156,8 +161,10 @@ Current tests live beside game-logic files as `*.test.ts`.
 Current top-level React/UI implementation files include:
 
 - `App.tsx`
+- `BankPanel.tsx`
 - `CompanionPanels.tsx`
 - `CompanionVitalsPanel.tsx`
+- `CraftingPanel.tsx`
 - `GameMenu.tsx`
 - `gameMenuTypes.ts`
 - `GuidePopup.tsx`
@@ -195,9 +202,9 @@ The player is not represented as a world entity.
 
 The player is the manager/controller issuing intent and commands to party members.
 
-NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, dungeon chest presentation, and non-interactive service placeholders.
+NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, dungeon chest presentation, bank chest presentation, and non-interactive service placeholders.
 
-Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, placeholder hub NPC display, Bounty Board placeholder display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
+Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, Smith crafting interaction, Bank Chest storage interaction, placeholder hub NPC display, Bounty Board placeholder display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
 
 Current NPC role values include:
 
@@ -208,6 +215,7 @@ type NpcRole =
   | "bounty_board"
   | "merchant"
   | "smith"
+  | "bank_chest"
   | "dog"
   | "test_blade"
   | "quest_guide"
@@ -215,7 +223,7 @@ type NpcRole =
   | "dungeon_chest_open";
 ```
 
-NPCs do not implement dialogue, full shops beyond fixed prototype Merchant Buy stock, crafting, recruitment, smithing, relationship behavior, or general follower behavior.
+NPCs do not implement dialogue, full shops beyond fixed prototype Merchant Buy stock, production crafting or smithing beyond current prototype Smith crafting, recruitment, relationship behavior, or general follower behavior.
 
 Current execution states:
 
@@ -429,7 +437,7 @@ Current role priority:
 
 `GameState` is the central simulation container.
 
-Current responsibilities include storing entities, shared party prototype inventory, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, autonomous target suppression state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, hub food warning state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, last companion damage timing, debug options, and debug telemetry.
+Current responsibilities include storing entities, shared party prototype inventory, shared party bank, shared party key item state, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, autonomous target suppression state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, hub food warning state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, last companion damage timing, short-lived news broadcasts, debug options, and debug telemetry.
 
 Current movement planning fields include:
 
@@ -489,6 +497,17 @@ type PoiSearchScope = "free_travel" | "zone_only" | "subzone_only";
 `subzone_only` sets `stayInMap` to true and lets POI and autonomous gatherer selection use the leader's current subzone as a local boundary where supported.
 
 `zone_only` keeps autonomous POI selection on the current prototype map without applying leader-subzone filtering. It is not the final zone system.
+
+Current shared inventory, bank, key item, and wallet fields include:
+
+- `inventory`
+- `bank`
+- `keyItemsById`
+- `wallet`
+
+Current short-lived feedback fields include:
+
+- `newsBroadcasts`
 
 Current prototype consumable runtime fields include:
 
@@ -581,9 +600,9 @@ Current initial prototype state includes:
 - two starting companions
 - the starting leader as a Defender-role companion
 - the second starting companion as a Fighter-role companion
-- hub Quest Giver, Merchant, Smith, Dog, and Test Blade NPCs
+- hub Quest Giver, Merchant, Smith, Bank Chest, Dog, and Test Blade NPCs
 - hub target dummy and hub AoE target dummy
-- empty shared party inventory and wallet
+- empty shared party inventory, bank, key item state, and wallet
 - initial quest state
 - one Training Sword added to shared inventory as prototype/debug setup
 
@@ -601,9 +620,10 @@ Current save game behavior:
 
 - `SAVE_VERSION` is currently `1`
 - saved data includes `saveVersion`, `savedAtMs`, optional `offlineFarmingBlockedReason`, and sanitized `GameState`
-- validation rejects malformed saves, unsupported save versions, missing entities, invalid inventory, invalid wallet, invalid quest state, invalid leader id, and invalid current map id
+- validation rejects malformed saves, unsupported save versions, missing entities, invalid inventory, invalid bank, invalid key item state, invalid wallet, invalid quest state, invalid leader id, and invalid current map id
 - restore rebuilds the current debug map from saved quest state
-- save sanitization resets transient runtime state such as active teleports, party intent, direct commands, interrupted POI state, movement caches, attack slots, combat feedback, combat projectiles, autonomous target suppressions, skill runtime, status-effect runtime, companion AoE runtime, enemy AoE runtime, consumable use runtime, drop visuals, resurrection runtime, world-wipe recovery, health timing, target dummy timing, companion damage timing, and debug telemetry
+- save sanitization preserves valid shared inventory, bank, key item, wallet, quest, companion progression, companion equipment, companion consumable assignment, and teleport working state
+- save sanitization resets transient runtime state such as active teleports, party intent, direct commands, interrupted POI state, movement caches, attack slots, combat feedback, combat projectiles, autonomous target suppressions, skill runtime, status-effect runtime, companion AoE runtime, enemy AoE runtime, consumable use runtime, drop visuals, resurrection runtime, world-wipe recovery, health timing, target dummy timing, companion damage timing, short-lived news broadcasts, and debug telemetry
 - companion save sanitization keeps dead companions dead, returns living companions to idle or follow state, clears temporary consumable buffs, and sanitizes skill progression data
 - enemy save sanitization keeps dead enemies dead and returns living enemies to idle state
 - Slimeward dungeon chest UI state is closed during save sanitization
@@ -1375,6 +1395,7 @@ Current quest ids are:
 
 - `clear_the_shore`
 - `outfit_the_expedition`
+- `smiths_first_work`
 - `stolen_field_supplies`
 - `break_lower_shore_blockage`
 - `scout_rise_samples`
@@ -1390,6 +1411,7 @@ Current quest display names are:
 
 - `clear_the_shore`: Secure the Landing
 - `outfit_the_expedition`: Outfit the Expedition
+- `smiths_first_work`: First Work at the Smithy
 - `stolen_field_supplies`: Stolen Field Supplies
 - `break_lower_shore_blockage`: Break the Lower Shore Blockage
 - `scout_rise_samples`: Scout Rise Samples
@@ -1412,7 +1434,8 @@ type QuestObjectiveType =
   | "gather_item_count"
   | "equip_item"
   | "equip_flask"
-  | "buy_merchant_equipment"
+  | "buy_merchant_item"
+  | "craft_item"
   | "inspect_poi"
   | "repair_poi"
   | "defend_area"
@@ -1424,12 +1447,13 @@ type QuestObjectiveType =
   | "return_to_poi";
 ```
 
-Current implemented quest objective behavior includes defeat counts, enemy quest drop counts, gather counts, reach POIs, inspect POIs, guide NPC escort objectives, rescue NPC objectives, repair POIs, defend areas, route unlocks, elite defeat objectives, dungeon chest collection checks, equipment equip checks, flask equip checks, and Merchant Buy equipment checks.
+Current implemented quest objective behavior includes defeat counts, enemy quest drop counts, gather counts, reach POIs, inspect POIs, guide NPC escort objectives, rescue NPC objectives, repair POIs, defend areas, route unlocks, elite defeat objectives, dungeon chest collection checks, equipment equip checks, flask equip checks, Merchant Buy item checks, and crafted item checks.
 
 Current prototype quest chain:
 
 - `clear_the_shore` unlocks `outfit_the_expedition`
-- `outfit_the_expedition` unlocks `stolen_field_supplies`
+- `outfit_the_expedition` unlocks `smiths_first_work`
+- `smiths_first_work` unlocks `stolen_field_supplies`
 - `stolen_field_supplies` unlocks `break_lower_shore_blockage`
 - `break_lower_shore_blockage` unlocks `scout_rise_samples`
 - `scout_rise_samples` unlocks `rescue_the_grove_runner`
@@ -1466,6 +1490,7 @@ Current quest objective helper behavior:
 - defeat elite objectives ensure the configured elite quest enemy is spawned
 - unlock route objectives complete the current route objective when active
 - collect dungeon chest objectives complete when the matching dungeon chest has been collected
+- craft item objectives complete when `recordCraftedItemForQuests` observes the matching crafted item
 
 The quest guide and related quest objective helpers are prototype systems.
 
@@ -1485,7 +1510,7 @@ Current POI categories are:
 
 `poiSystem.ts` selects global quest intent and coordinates local map target selection for auto-mode behavior.
 
-`poiTargetSelection.ts` builds and scores local POI candidates, handles World Travel route targets, quest targets, hub Merchant quick exchange targets, wild fallback combat/resource targets, leader subzone restrictions, progressive fallback distance tiers, and stable target reuse.
+`poiTargetSelection.ts` builds and scores local POI candidates, handles World Travel route targets, quest targets, hub Merchant quick exchange targets, Smith crafting targets, wild fallback combat/resource targets, leader subzone restrictions, progressive fallback distance tiers, and stable target reuse.
 
 POI selection should evaluate progression targets before generic map activity.
 
@@ -2308,6 +2333,95 @@ Current currency id:
 
 Currency does not use inventory slots.
 
+Prototype key item logic lives in `keyItems.ts`.
+
+Key items are stored on `GameState` as:
+
+```ts
+keyItemsById?: KeyItemsById;
+```
+
+Current key item behavior:
+
+- key items are slotless and do not use inventory or bank capacity
+- key item quantities are sanitized by known key item id
+- key items may be awarded directly or only-if-missing
+- owned key items may unlock direct World Travel teleport options
+- current key item definitions include Teleportation Echo entries for Harbor Union Bastion and Slimeward Camp
+
+Short-lived global feedback logic lives in `newsBroadcast.ts`.
+
+News broadcasts are stored on `GameState` as:
+
+```ts
+newsBroadcasts?: NewsBroadcastEvent[];
+```
+
+Current news broadcast behavior:
+
+- broadcasts are queued with text, creation time, and expiry time
+- unlock broadcasts currently use `Unlocked: {displayName}`
+- expired broadcasts are pruned by `updateGame`
+- news broadcasts are transient UI feedback and are cleared by save sanitization
+
+Prototype bank logic lives in `bank.ts`.
+
+Bank state is stored on `GameState` as:
+
+```ts
+bank: PartyBank;
+```
+
+Current bank state:
+
+```ts
+type BankAutoRoutingMode =
+  | "keep_inventory"
+  | "deposit_body_parts"
+  | "deposit_all";
+
+type PartyBank = {
+  capacity: number;
+  slots: BankSlot[];
+  lockedSlotIndices: number[];
+  autoRoutingMode: BankAutoRoutingMode;
+};
+```
+
+Current bank behavior:
+
+- uses a fixed prototype capacity of 100 slots
+- stores items separately from shared inventory
+- accepts inventory items except quest items
+- supports manual deposit, manual withdraw, and deposit-all helpers
+- requires the leader to be near a `bank_chest` NPC for manual transfer by default
+- may be viewed remotely through UI while transfer actions remain proximity-gated
+- supports bank slot locks and inventory slot locks for bank movement
+- supports auto-routing modes for keeping inventory, depositing eligible body-part junk, or depositing all eligible non-quest items
+- sanitizes missing or old-save bank state into valid default bank state
+
+Prototype Smith crafting logic lives in `crafting.ts`.
+
+Current crafting behavior:
+
+- recipes may output inventory items or slotless key items
+- recipe costs may require inventory item quantities, matching previous equipment, and Crowns
+- crafting requires the leader to be near a `smith` NPC
+- crafting ignores locked inventory slots when counting or consuming requirements
+- crafting does not count equipped or banked equipment toward previous-equipment requirements
+- item outputs require inventory capacity after consumed inputs are accounted for
+- key item outputs do not require inventory capacity and cannot be crafted again when already owned
+- successful item crafting routes inventory mutation through inventory helpers
+- successful key item crafting routes unlock feedback through news broadcasts
+- successful crafting can record quest progress through quest progression hooks
+- crafting attempts, successes, and failures can record debug telemetry when telemetry recording is enabled
+
+Current crafting recipes include:
+
+- the Harbor Union Bastion Teleportation Echo key item recipe
+- level 1, 5, 10, and 15 prototype equipment recipes where matching item definitions exist
+- previous-equipment upgrade requirements for supported level 5 and level 15 recipes
+
 Prototype consumable logic lives in `consumables.ts`.
 
 Current consumable kinds are:
@@ -2451,7 +2565,7 @@ The Merchant Sell panel is currently a UI placeholder only.
 
 Full selling rules, dynamic shop inventory, shop restocking, price simulation, and a full shop economy are not implemented.
 
-This prototype inventory/wallet/consumable/drop/merchant layer does not include bank storage, persistent ground loot, full selling, dynamic shops, crafting, trading, backend persistence, cloud save, account save, cross-device persistence, full wallet UI, full equipment economy, rarity, affixes, upgrades, durability, sockets, set bonuses, or item comparison.
+This prototype inventory/wallet/key-item/bank/consumable/drop/merchant/crafting layer does not include persistent ground loot, full selling, dynamic shops, trading, backend persistence, cloud save, account save, cross-device persistence, full wallet UI, full equipment economy, full production bank rules, full production crafting chains, profession progression, recipe discovery, upgrades, rarity, affixes, durability, sockets, set bonuses, or item comparison.
 
 
 
@@ -2692,6 +2806,9 @@ type DebugMapId =
   | "map-2"
   | "map-3"
   | "map-4"
+  | "map-5"
+  | "map-6"
+  | "map-7"
   | "slimeward-camp"
   | "slimeward-floor-1"
   | "slimeward-floor-2";
@@ -2701,10 +2818,13 @@ Current readable map names:
 
 - `hub`: Harbor Union Bastion
 - `hub-2`: Forward Bastion
-- `map-1`: First Wild Zone
-- `map-2`: Second Wild Zone
-- `map-3`: Third Wild Zone
-- `map-4`: Fourth Wild Zone
+- `map-1`: Mosswake Shore
+- `map-2`: Briarwood Rise
+- `map-3`: Azurefen Hollow
+- `map-4`: Ashwatch Approach
+- `map-5`: Emberbriar Crossing
+- `map-6`: Nightmire Canopy
+- `map-7`: Twilight of the Fallen
 - `slimeward-camp`: Slimeward Camp
 - `slimeward-floor-1`: Slimeward Floor 1
 - `slimeward-floor-2`: Slimeward Floor 2
@@ -2721,6 +2841,9 @@ Current prototype map dimensions:
 - `map-2`: 160 columns by 57 rows
 - `map-3`: 160 columns by 30 rows
 - `map-4`: 160 columns by 30 rows
+- `map-5`: 160 columns by 57 rows
+- `map-6`: 160 columns by 57 rows
+- `map-7`: 160 columns by 30 rows
 - `slimeward-camp`: 44 columns by 30 rows
 - `slimeward-floor-1`: 136 columns by 40 rows
 - `slimeward-floor-2`: 152 columns by 44 rows
@@ -2740,7 +2863,7 @@ Current responsibilities include:
 - finding the subzone at a position
 - checking whether a position is inside a subzone's bounds
 
-Current wilderness maps are authored with three prototype subzones each.
+Current wilderness maps are authored with two or three prototype subzones each.
 
 Subzones are used by current map organization, floor texture selection, Stay in Subzone behavior, encounter area placement, resource location placement, and UI-facing subzone labels.
 
@@ -2768,6 +2891,12 @@ Current prototype/debug routes:
 - `hub-2` -> `map-3`
 - `hub-2` -> `map-4`
 - `map-4` -> `hub-2`
+- `map-4` -> `map-5`
+- `map-5` -> `map-4`
+- `map-5` -> `map-6`
+- `map-6` -> `map-5`
+- `map-6` -> `map-7`
+- `map-7` -> `map-6`
 - `hub-2` -> `hub-2` north route placeholder
 - `hub-2` -> `hub-2` east route placeholder
 - `hub` -> `slimeward-camp`
@@ -2791,6 +2920,8 @@ Current teleport behavior:
 - can set a teleport point as party movement intent
 - auto mode may select eligible working teleport points after living enemies are cleared or when quest progression requires a connected map
 - World Travel may select an eligible known destination and guide the party toward the matching working teleport point
+- direct World Travel teleport may immediately transition to an unlocked supported destination through `teleportWorldTravelDestination`
+- direct World Travel teleport requires a matching key item unlock and is blocked by current-map selection, active transitions, world-wipe recovery, open Slimeward chest UI, or resurrection runtime
 - party members rally to the teleport point
 - teleport completes when living party members are within teleport range
 - on completion, current map changes to the teleport target map
@@ -2827,18 +2958,25 @@ type TeleportRuntimeState = {
 
 `worldTravelRouting.ts` owns current prototype World Travel route-step selection.
 
+`worldTravelTeleports.ts` owns current key-item unlocked direct World Travel teleport metadata.
+
 World Travel should use current route and map data.
 
 Current World Travel routing:
 
 - returns no route when the current map is missing or already matches the destination
 - prefers a direct working teleport when one exists
-- routes between main-world maps through the ordered main route from hub through map-4, including Forward Bastion between map 3 and map 4
+- routes between main-world maps through the ordered main route from hub through map-7, including Forward Bastion between map 3 and map 4
 - uses breadth-first route search for other working prototype routes, including Slimeward routes
 - ignores non-working teleports
 - restricts main-world-to-main-world travel to main-world route teleports
 
-World Travel must not require final zone ids, persistent zone state, final world streaming, map discovery, travel costs, or a production teleport network.
+Current direct World Travel teleport unlocks:
+
+- `hub` requires `teleport_echo_harbor_union_bastion`
+- `slimeward-camp` requires `teleport_echo_slimeward_camp`
+
+World Travel must not require final zone ids, persistent zone state, final world streaming, production map discovery, production travel costs, or a production teleport network.
 
 Do not expand this into full zones, persistent world streaming, or a final teleport network unless explicitly requested.
 
@@ -3076,7 +3214,7 @@ Current resource visuals use generated image icons by resource type.
 
 Current NPC visuals:
 
-- Quest Giver, Class Mentor, Merchant, Smith, Bounty Board, and Dog may use generated image icons
+- Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, and Dog may use generated image icons
 - Test Blade may use Test-NPC image assets
 - quest guide NPCs may use temporary NPC visuals
 - dungeon chest NPCs may use temporary or placeholder presentation
@@ -3120,7 +3258,7 @@ Simulation logic must not depend on PixiJS, sprite assets, floor chunk size, or 
 
 Debug telemetry records simulation information for inspection.
 
-Current telemetry can track target acquisition, target changes, formation changes, skipped targets, movement failure, path query metrics, navigation distance metrics, attack start, damage dealt, combat resolution, healing resolution, health regeneration, max-health synchronization, entity death, Superior enemy spawning, gathering start, resource depletion, class changes, role changes, character XP awarded, character XP reduced, character level up, character XP skipped, inventory changes, equipment equip/unequip attempts, equipment equip/unequip results, equipment validation failures, teleport start, teleport completion, teleport skips, map transitions, POI selection, POI skips, POI interruption, quest availability, quest dialog opening, quest acceptance, quest objective progress, quest objective completion, quest ready-to-turn-in state, quest finish selection, quest reward validation, quest reward validation failure, quest reward claim start, quest reward claim failure, quest reward claim success, quest repeat reset, quest reward Crowns, quest reward XP, quest reward item and equipment grants, quest turn-in, quest completion, quest unlocks, quest equipment state checks, quest-driven teleport intent, enemy drop rolls, quest drop visuals, drop visual events, drop inventory routing, wallet currency changes, merchant interaction events, Merchant Buy results, quick exchange results, merchant quest gating, skill selection, skill usage, skill skips, skill effects, skill cooldown state, direct command issue/rejection/replacement/completion/cancellation/grace events, resurrection target selection, resurrection participant assignment, resurrection area progress, resurrection participant removal, companion resurrection, flask fountain refills, flask recharge progress, flask charge gains, and capped flask recharge no-ops.
+Current telemetry can track target acquisition, target changes, formation changes, skipped targets, movement failure, path query metrics, navigation distance metrics, attack start, damage dealt, combat resolution, healing resolution, health regeneration, max-health synchronization, entity death, Superior enemy spawning, gathering start, resource depletion, class changes, role changes, character XP awarded, character XP reduced, character level up, character XP skipped, inventory changes, equipment equip/unequip attempts, equipment equip/unequip results, equipment validation failures, teleport start, teleport completion, teleport skips, map transitions, POI selection, POI skips, POI interruption, quest availability, quest dialog opening, quest acceptance, quest objective progress, quest objective completion, quest ready-to-turn-in state, quest finish selection, quest reward validation, quest reward validation failure, quest reward claim start, quest reward claim failure, quest reward claim success, quest repeat reset, quest reward Crowns, quest reward XP, quest reward item and equipment grants, quest turn-in, quest completion, quest unlocks, quest equipment state checks, quest-driven teleport intent, enemy drop rolls, quest drop visuals, drop visual events, drop inventory routing, wallet currency changes, merchant interaction events, Merchant Buy results, quick exchange results, merchant quest gating, crafting attempts, crafting successes, crafting failures, debug crafting material grants, skill selection, skill usage, skill skips, skill effects, skill cooldown state, direct command issue/rejection/replacement/completion/cancellation/grace events, resurrection target selection, resurrection participant assignment, resurrection area progress, resurrection participant removal, companion resurrection, flask fountain refills, flask recharge progress, flask charge gains, and capped flask recharge no-ops.
 
 Party-order rejection telemetry currently uses `party_order_rejected` for invalid, blocked, or unreachable party orders.
 
@@ -3155,6 +3293,15 @@ Prototype equipment telemetry may include:
 
 Equipment telemetry should remain development-only and may include tick, companion id, companion class id, item id, item display name, item category, target slot, equipment type, previous item id, result, reason, used inventory slots, and inventory capacity.
 
+Prototype crafting telemetry may include:
+
+- `craft_attempted`
+- `craft_succeeded`
+- `craft_failed`
+- `debug_crafting_materials_added`
+
+Crafting telemetry should remain development-only and may include tick, companion id or fallback crafting entity id, crafting recipe id, output item id, output quantity, failure reason, requirement rows, consumed item rows, Crown cost, currency balances, inventory used slots, inventory capacity, and free slots before or after crafting.
+
 Debug telemetry should remain development-only.
 
 ---
@@ -3183,6 +3330,10 @@ Debug/testing helpers may exist for development:
 - Slimeward dungeon runtime and chest testing
 - enemy AoE channel testing
 - add prototype consumables to shared inventory
+- add prototype crafting materials and enemy drops to shared inventory
+- bank storage, slot lock, transfer, and auto-routing testing
+- key item and direct World Travel teleport testing
+- Smith crafting recipe, requirement, result, and telemetry testing
 - hub target dummy testing
 - explicit aggressive-enemy test setups
 - prototype teleport/map transition testing
@@ -3201,7 +3352,7 @@ These should remain isolated from core systems and must not define final gamepla
 
 ## Current UI Responsibilities
 
-The React UI currently may display and control map/debug map view through the PixiJS world renderer, generated terrain tiles, subzone name labels, party members, enemies, resources, NPCs, quest guide NPCs, healing fountains, hub target dummies, sprite animation, enemy and NPC name labels, Superior enemy name/aura presentation, enemy AoE danger circles and channel bars, companion AoE skill visuals, status-effect presentation where supported, basic combat projectile visuals, teleport working/broken presentation, camera follow behavior, combat feedback, skill visual feedback, companion global cooldown display, direct command overlays and rejection feedback, drop visual feedback, resurrection progress, world-wipe rescue choice and rescue feedback overlays, party selection, role changes, role bonus status, class changes, first-class selection, party order changes, leader changes, Party Management leader status and leader switching controls, group/direct commands, inventory counters, wallet balance, inventory item details, skill book details, skill book reading actions, prototype equipment slot state, prototype equipment equip/unequip commands, prototype consumable equipment, food assignment, auto-flask settings, Beginner First Aid self-heal settings, Beginner First Aid ally-heal settings, Second Wind self-heal settings, Hold Fast use settings, Fake Death use settings, Blood Feast use settings, Light Mend ally-heal settings, Self Sacrifice safety-floor settings, Penitent's Gift ally/self-heal settings, Eternal Hope use settings, mobility skill use mode settings, defensive mobility threshold settings, Support Focus settings, Overcharge toggle settings, FireBurst target mode settings, Circle of Renewal target mode and HP-threshold settings, learned skill summaries, legacy skill toggles, hub food warnings, quest tracker, quest log, prototype quest reward text, quest objective text, quest turn-in error feedback, equipment tutorial quest state, guide popup overlays, merchant quick exchange UI, Merchant Buy UI, Merchant Sell placeholder UI, World Travel menu state, prototype destination selection, Options save controls, start screen save controls, offline progress summary, XP and level progress, party size limit, debug controls, performance/debug telemetry, and debug telemetry export.
+The React UI currently may display and control map/debug map view through the PixiJS world renderer, generated terrain tiles, subzone name labels, party members, enemies, resources, NPCs, quest guide NPCs, healing fountains, hub target dummies, sprite animation, enemy and NPC name labels, Superior enemy name/aura presentation, enemy AoE danger circles and channel bars, companion AoE skill visuals, status-effect presentation where supported, basic combat projectile visuals, teleport working/broken presentation, camera follow behavior, combat feedback, skill visual feedback, news broadcast overlays, companion global cooldown display, direct command overlays and rejection feedback, drop visual feedback, resurrection progress, world-wipe rescue choice and rescue feedback overlays, party selection, role changes, role bonus status, class changes, first-class selection, party order changes, leader changes, Party Management leader status and leader switching controls, group/direct commands, inventory counters, wallet balance, inventory item details, key item display, skill book details, skill book reading actions, prototype equipment slot state, prototype equipment equip/unequip commands, prototype consumable equipment, food assignment, auto-flask settings, Beginner First Aid self-heal settings, Beginner First Aid ally-heal settings, Second Wind self-heal settings, Hold Fast use settings, Fake Death use settings, Blood Feast use settings, Light Mend ally-heal settings, Self Sacrifice safety-floor settings, Penitent's Gift ally/self-heal settings, Eternal Hope use settings, mobility skill use mode settings, defensive mobility threshold settings, Support Focus settings, Overcharge toggle settings, FireBurst target mode settings, Circle of Renewal target mode and HP-threshold settings, learned skill summaries, legacy skill toggles, hub food warnings, quest tracker, quest log, prototype quest reward text, quest objective text, quest turn-in error feedback, equipment tutorial quest state, Smithy quest state, guide popup overlays, merchant quick exchange UI, Merchant Buy UI, Merchant Sell placeholder UI, Bank Chest interaction UI, bank slot display, bank transfer controls, bank slot locking controls, bank auto-routing controls, Smith crafting UI, crafting filters, crafting recipe details, crafting result feedback, World Travel menu state, prototype destination selection, direct Teleportation Echo travel options, Options save controls, start screen save controls, offline progress summary, XP and level progress, party size limit, debug controls, performance/debug telemetry, and debug telemetry export.
 
 UI should remain a consumer/controller of game state, not the owner of simulation behavior.
 
@@ -3209,7 +3360,7 @@ UI should remain a consumer/controller of game state, not the owner of simulatio
 
 ## Menu UI Technical Structure
 
-The React UI may include a main menu and submenu system for party overview, party management, prototype inventory display, prototype quest display, prototype world travel, and prototype options/save controls.
+The React UI may include a main menu and submenu system for party overview, party management, prototype inventory display, Atlas quest/crafting/bank pages, prototype world travel, and prototype options/save controls.
 
 Menu UI must remain in React components under `client/src/`.
 
@@ -3222,6 +3373,7 @@ React may:
 - track selected companion UI state
 - track selected Party section UI state
 - track selected Party Management section UI state
+- track selected Atlas subpage UI state
 - track selected quest UI state
 - track selected World Travel destination UI state
 - track guide popup queue, active popup, and viewed popup UI state
@@ -3236,6 +3388,8 @@ React may:
 - call existing skill behavior helpers for supported prototype skill behavior settings
 - call existing skill progression helpers for supported skill-book reading and legacy skill toggles
 - call existing merchant helpers for supported quick exchange and Merchant Buy actions
+- call existing bank helpers for supported bank transfers, slot locks, and auto-routing settings
+- call existing crafting helpers for supported recipe status display and craft actions
 - call existing teleport or travel-intent helpers for supported prototype World Travel actions
 - call browser save storage helpers for supported local save, import, export, continue, delete, and new-game actions
 - display placeholder sections for future systems
@@ -3245,7 +3399,7 @@ React must not:
 - define core simulation behavior
 - duplicate role logic
 - invent new role values
-- define stat formulas, derived combat formulas, equipment rules, skills, formation, behavior settings, quest rules, POI selection rules, teleport rules, merchant rules, wallet rules, or advanced inventory rules inside React components
+- define stat formulas, derived combat formulas, equipment rules, skills, formation, behavior settings, quest rules, POI selection rules, teleport rules, merchant rules, bank rules, crafting rules, wallet rules, key item unlock rules, or advanced inventory rules inside React components
 - implement equipment UI beyond displaying game state and issuing commands to existing game logic unless explicitly requested
 - implement final zone routing, map discovery, travel costs, or production world-map behavior inside React components
 
@@ -3254,8 +3408,9 @@ Current intended main menu views:
 - Party
 - Party Management
 - Inventory
-- Quests
-- World Travel
+- Atlas
+- World
+- Options
 
 Current intended Party sections and controls:
 
@@ -3295,13 +3450,19 @@ First-class selection UI must call game-logic class selection helpers and displa
 
 React must not duplicate first-class selection validation, class equipment compatibility rules, or skill progression initialization logic.
 
-The Quests view may display prototype quest state and objective progress from game state.
+The Atlas view may display prototype quest state, objective progress, Smith crafting state, and bank state from game state.
 
-The Inventory view may display wallet balance, but wallet and inventory rules must remain in game logic.
+The Inventory view may display wallet balance and key items, but wallet, key item, and inventory rules must remain in game logic.
 
 The World Travel view may display the current map and known prototype region destinations.
 
 Selecting a destination may set `worldTravelTargetMapId`; the POI system then guides the party toward the next valid teleport step along the current prototype route.
+
+Selecting an unlocked direct Teleportation Echo destination may call existing teleport helpers to complete the supported prototype direct transition.
+
+Bank UI may call existing bank helper functions, but must not define bank capacity, slot-locking, transfer, proximity, quest-item exclusion, or auto-routing rules inside React.
+
+Crafting UI may call existing crafting helper functions, but must not define recipes, recipe sorting, material matching, previous-equipment requirements, key item ownership checks, Smith proximity, wallet mutation, inventory mutation, or quest progress rules inside React.
 
 Merchant UI may call existing merchant helper functions, but must not define exchange, buy, pricing, stock, inventory, or wallet rules inside React.
 
@@ -3352,9 +3513,11 @@ Do not implement unless requested:
 - final world content pipeline
 - full quest journal, dialogue system, quest reward economy, or production quest content beyond the prototype quest chain
 - full shop, selling, buying, and merchant economy beyond prototype quick exchange and fixed prototype Merchant Buy stock
+- full production crafting, smithing, profession progression, upgrade chains, or recipe economy beyond current prototype Smith crafting
+- full production bank economy, account storage, remote storage rules, or storage upgrades beyond current prototype Bank Chest storage
 - persistent ground loot beyond prototype drop visual events and drop-to-inventory behavior
 - final death penalty, checkpoint, resurrection economy, or recovery system beyond prototype resurrection and world-wipe recovery
 - production enemy respawn, encounter reset, or spawn scheduling beyond current prototype wild-map respawn behavior
 - final POI/world-routing framework beyond debug-map POI guidance
 - production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype
-- full town systems, interiors, crafting, smithing, recruitment, or NPC relationship systems
+- full town systems, interiors, production crafting, production smithing, recruitment, or NPC relationship systems

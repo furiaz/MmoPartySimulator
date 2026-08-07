@@ -49,7 +49,7 @@ The party has:
 - assignable roles
 - class identity
 - level and XP progression
-- shared inventory and wallet systems during the prototype phase
+- shared inventory, bank, key item, and wallet systems during the prototype phase
 
 The current leader is always one of the physical party members.
 
@@ -816,16 +816,44 @@ Current merchant behavior:
 - full selling rules are not implemented
 - this is prototype merchant behavior, not a full shop economy
 
+Current prototype key item behavior:
+
+- key items are slotless progression records, not inventory-slot items
+- current key items may unlock direct prototype World Travel teleport options
+- key items may be awarded by crafting, boss drops, or other explicit prototype rewards
+- key items may show short-lived unlock feedback
+
+Current prototype bank behavior:
+
+- Bank Chest NPCs can provide shared party storage when the leader is nearby
+- bank storage is slot-based and separate from shared inventory
+- bank and inventory slots may be locked to prevent selected movement
+- manual deposit, manual withdraw, and deposit-all actions may move eligible items between inventory and bank
+- quest items cannot be deposited
+- bank auto-routing may keep items in inventory, deposit eligible body-part junk only, or deposit all eligible non-quest items
+- remote bank viewing may exist through UI, but item movement requires proximity to a Bank Chest
+
+Current prototype crafting behavior:
+
+- Smith NPCs can provide lightweight prototype crafting when the leader is nearby
+- crafting may create equipment or slotless key items
+- crafting consumes required unlocked inventory items, matching previous equipment where required, and Crowns
+- crafting does not count equipped or banked equipment toward previous-equipment requirements
+- crafting requires inventory space for item outputs after consumed inputs are accounted for
+- current craftable equipment covers prototype level 1, 5, 10, and 15 equipment paths where recipes exist
+- current key item crafting may include the Harbor Union Bastion Teleportation Echo
+- successful crafting may advance explicit crafting quest objectives
+
 This is not the full inventory, wallet, equipment economy, shop, crafting, trading, bank, loot, backend persistence, cloud save, account save, or cross-device persistence system.
 
 Do not implement these unless explicitly requested:
 
-- bank storage
+- production bank storage beyond the current prototype Bank Chest system
 - persistent ground loot
 - full selling flows
 - dynamic shop inventories or full shop economy beyond the fixed prototype Merchant buy stock
 - advanced consumable systems beyond current prototype flasks, food assignment, auto-flask behavior, hub food behavior, and temporary buffs
-- crafting
+- full crafting chains, profession progression, upgrades, durability, or production crafting economy beyond the current prototype Smith crafting system
 - trading
 - backend persistence
 - full wallet UI
@@ -1218,7 +1246,9 @@ It may show:
 - equipment item details such as slot, type, level requirement, and simple stat modifiers
 - shared wallet balance
 
-The Inventory menu must not implement the full inventory, equipment economy, full wallet UI, shop, crafting, trading, bank, loot, or persistence systems unless explicitly requested.
+The Inventory menu may display current shared inventory, key items, wallet-facing values, and supported prototype item interactions.
+
+The Inventory menu must not implement the full inventory, equipment economy, full wallet UI, shop, production crafting, trading, production bank economy, loot, or persistence systems unless explicitly requested.
 
 The Inventory view may display skill book details when a skill book is selected.
 
@@ -1258,14 +1288,17 @@ It may show:
 - destination display names
 - whether a destination can currently be selected
 - simple unavailable-state messaging when travel is blocked
+- unlocked direct Teleportation Echo options where current prototype key items support them
 
 World Travel selection may request travel to a known prototype map destination.
 
 The POI system should route the party toward the next valid teleport step along the current prototype route.
 
+Direct Teleportation Echo selection may immediately move the party to an unlocked supported prototype destination when no active transition or recovery interaction blocks it.
+
 World Travel must use existing prototype teleport route data and current map state.
 
-World Travel must not create final zone routing, persistent zone state, fast travel rules, map discovery rules, production travel costs, or a full world map unless explicitly requested.
+World Travel must not create final zone routing, persistent zone state, production fast travel rules, map discovery rules, production travel costs, or a full world map unless explicitly requested.
 
 World Travel does not replace physical teleport points. It is a menu-driven way to guide the party toward currently valid prototype map transitions.
 
@@ -1298,6 +1331,7 @@ Supported prototype quest objective type definitions:
 - equip item
 - equip flask
 - buy merchant equipment
+- craft item
 - unlock route
 - collect dungeon chest
 - return to POI
@@ -1317,6 +1351,7 @@ Current prototype quest content currently uses:
 - equip item
 - equip flask
 - buy merchant equipment
+- craft item
 - unlock route
 - collect dungeon chest
 
@@ -1332,7 +1367,13 @@ Current prototype quests:
 
 - Outfit the Expedition
   - Quest id: outfit_the_expedition
-  - Objectives: equip a Training Sword, equip a Guard Coif, equip a Minor Recovery Flask, and buy 1 merchant equipment item
+  - Objectives: equip a Training Sword, equip a Guard Coif, equip a Minor Recovery Flask, buy 1 First Aid skill book, buy 1 Crafting String, and buy 1 Iron Nails
+  - Rewards: 10 Crowns, 4 character XP
+  - Unlocks: First Work at the Smithy
+
+- First Work at the Smithy
+  - Quest id: smiths_first_work
+  - Objectives: craft 1 Plain Charm and equip it in accessory slot 1
   - Rewards: 10 Crowns, 4 character XP
   - Unlocks: Stolen Field Supplies
 
@@ -2142,27 +2183,31 @@ Current Harbor Union Bastion prototype hub:
 - Harbor Union Bastion is the first prototype hub map.
 - It is a safe port/peninsula settlement.
 - It currently includes a minimal beach/dock entry area, small city square, placeholder NPCs, a healing fountain, decorative house/cabin/tent/dock-shore structure visuals, and a clear exit to the first wild zone.
-- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Dog, Test Blade, a hub target dummy, and a hub AoE target dummy.
+- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Dog, Test Blade, a hub target dummy, and a hub AoE target dummy.
 - The Quest Giver supports the lightweight prototype quest chain only.
 - The Class Mentor supports prototype first-class selection for eligible Beginner companions.
 - The Merchant supports prototype quick exchange of eligible junk items for Crowns and a fixed prototype buy stock for selected equipment, consumables, and skill books.
+- The Smith supports current lightweight prototype crafting only.
+- The Bank Chest supports current lightweight prototype shared bank storage only.
 - Hub target dummies are passive 100 HP debug enemies with no XP reward.
 - The standard hub target dummy can be manually attacked for combat testing, is not selected by autonomous POI behavior, and regenerates health over time.
 - The hub AoE target dummy is a debug combat-test enemy for prototype enemy AoE channel and telegraph behavior.
 - The healing fountain restores party member health and refills equipped flask charges when party members are in range.
 - The prototype hub should not spawn hostile enemies for now.
-- The prototype hub must not implement full town systems, interiors, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, crafting, recruitment, smithing, or NPC relationship systems unless explicitly requested.
+- The prototype hub must not implement full town systems, interiors, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, full crafting or smithing beyond current prototype Smith crafting, recruitment, or NPC relationship systems unless explicitly requested.
 
 Current Forward Bastion prototype hub:
 
 - Forward Bastion is the second prototype hub map.
-- It is a safe forward settlement connected between the Third Wild Zone and Fourth Wild Zone.
+- It is a safe forward settlement connected between Azurefen Hollow and Ashwatch Approach.
 - It currently includes placeholder services, decorative structure visuals, a healing fountain, and physical route teleports.
-- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bounty Board, and dog NPCs.
+- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, and dog NPCs.
 - The Class Mentor may appear in Forward Bastion through current quest-aware hub NPC data.
-- The Bounty Board and Smith remain placeholder hub NPCs unless explicitly expanded.
+- The Bounty Board remains a placeholder hub NPC unless explicitly expanded.
+- The Smith supports current lightweight prototype crafting only.
+- The Bank Chest supports current lightweight prototype shared bank storage only.
 - Forward Bastion should not spawn hostile enemies for now.
-- Forward Bastion must not implement full town systems, interiors, bounty systems, smithing, crafting, recruitment, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, or NPC relationship systems unless explicitly requested.
+- Forward Bastion must not implement full town systems, interiors, bounty systems, full smithing or crafting beyond current prototype Smith crafting, recruitment, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, or NPC relationship systems unless explicitly requested.
 
 The expedition expands outward into regions such as:
 
@@ -2205,6 +2250,9 @@ Current prototype/debug map routes are:
 - `map-2` <-> `map-3`
 - `map-3` <-> `hub-2`
 - `hub-2` <-> `map-4`
+- `map-4` <-> `map-5`
+- `map-5` <-> `map-6`
+- `map-6` <-> `map-7`
 - `hub` -> `slimeward-camp`
 - `map-3` <-> `slimeward-camp`
 - `slimeward-camp` <-> `slimeward-floor-1`
@@ -2228,20 +2276,26 @@ Current readable prototype/debug map names:
 
 - `hub`: Harbor Union Bastion
 - `hub-2`: Forward Bastion
-- `map-1`: First Wild Zone
-- `map-2`: Second Wild Zone
-- `map-3`: Third Wild Zone
-- `map-4`: Fourth Wild Zone
+- `map-1`: Mosswake Shore
+- `map-2`: Briarwood Rise
+- `map-3`: Azurefen Hollow
+- `map-4`: Ashwatch Approach
+- `map-5`: Emberbriar Crossing
+- `map-6`: Nightmire Canopy
+- `map-7`: Twilight of the Fallen
 - `slimeward-camp`: Slimeward Camp
 - `slimeward-floor-1`: Slimeward Floor 1
 - `slimeward-floor-2`: Slimeward Floor 2
 
 Current prototype wilderness subzones are:
 
-- First Wild Zone: Shore Fringe, Mossy Glade, Lower Shore
-- Second Wild Zone: Scout Rise, Old Grove, Wolf Causeway
-- Third Wild Zone: Broken Thicket, Crawler Shelf, Imp Fen
-- Fourth Wild Zone: Shaman Watch, Ash Hollow, Orc Approach
+- Mosswake Shore: Shore Fringe, Mossy Glade, Lower Shore
+- Briarwood Rise: Scout Rise, Old Grove, Wolf Causeway
+- Azurefen Hollow: Broken Thicket, Crawler Shelf, Imp Fen
+- Ashwatch Approach: Shaman Watch, Ash Hollow, Orc Approach
+- Emberbriar Crossing: Crossing, Burrows, Thornfield
+- Nightmire Canopy: Mire, Canopy, Oldroot
+- Twilight of the Fallen: Plaza, Garden
 
 Current Slimeward dungeon prototype rooms/subzones are:
 
@@ -2280,7 +2334,14 @@ The World Travel menu may expose known prototype/debug map destinations and guid
 
 World Travel is menu-driven travel intent for existing prototype routes.
 
-World Travel is not instant fast travel unless explicitly implemented that way later.
+Current prototype World Travel may also expose direct teleport options unlocked by slotless Teleportation Echo key items.
+
+Current direct World Travel teleport unlocks include:
+
+- Harbor Union Bastion, unlocked by the Harbor Union Bastion Teleportation Echo from prototype crafting
+- Slimeward Camp, unlocked by the Slimeward Camp Teleportation Echo from the Azure Mass
+
+Direct World Travel teleport options are prototype key-item convenience travel. They should not define final fast travel, discovery, travel cost, route ownership, or production teleport-network behavior.
 
 Do not build the final zone system, persistent zone state, full production teleport network, travel costs, map discovery, production dungeon framework, or a full world map unless explicitly requested.
 
@@ -2388,7 +2449,9 @@ Current prototype save behavior:
 - save files use a prototype save version
 - invalid, unsupported, malformed, or incompatible saves are rejected with player-facing feedback
 - restored saves rebuild the current prototype map from saved quest state
+- restored saves preserve valid shared inventory, wallet, bank, key item, quest, companion, and teleport working state
 - restored saves clear transient runtime state such as active travel, direct commands, combat feedback, projectiles, cooldowns, movement caches, resurrection channels, recovery overlays, temporary visuals, consumable buffs, skill runtime state, status effects, companion AoE channels, enemy AoE channels, enemy AoE cooldowns, and debug telemetry
+- restored saves clear short-lived news broadcast feedback
 - restored saves sanitize companion skill progression and preserve valid learned skill rank data
 
 Current prototype offline progress:
@@ -2436,6 +2499,9 @@ Temporary debug tools may include:
 - inspect quest state and POI decisions
 - inspect wallet, drops, merchant exchange, and Merchant Buy telemetry
 - inspect inventory capacity, item grants, item removal, and reward validation
+- inspect bank storage, slot locking, transfer, and auto-routing behavior
+- inspect key item unlock state and direct World Travel teleport options
+- inspect Smith crafting recipe status, crafting requirements, crafting results, and crafting telemetry
 - inspect equipment equip, unequip, validation, and stat contribution behavior
 - inspect consumable assignment, flask use, food use, auto-flask behavior, food warnings, and flask recharge behavior
 - inspect healing fountain health restoration and flask refill behavior
@@ -2446,6 +2512,7 @@ Temporary debug tools may include:
 - inspect quest guide escort behavior
 - inspect PixiJS world rendering behavior
 - add prototype consumables to shared inventory
+- add prototype crafting materials and enemy drops to shared inventory
 
 Debug tools are not part of final gameplay.
 
@@ -2476,12 +2543,14 @@ Do not implement these unless explicitly requested:
 - final world content pipeline
 - full quest journal, branching dialogue, production quest content, or full quest reward economy beyond prototype quest rewards
 - full shop, selling, buying, and merchant economy beyond prototype quick exchange and fixed prototype Merchant Buy stock
+- full production crafting, smithing, profession progression, upgrade chains, or recipe economy beyond current prototype Smith crafting
+- full production bank economy, account storage, remote storage rules, or storage upgrades beyond current prototype Bank Chest storage
 - persistent ground loot beyond prototype drop-to-inventory behavior
 - final death penalty, checkpoint, resurrection economy, or recovery system beyond prototype resurrection and world-wipe recovery
 - production enemy respawn, encounter reset, or spawn scheduling beyond current prototype wild-map respawn behavior
 - production POI framework beyond current debug-map guidance
 - production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype
-- full town systems, interiors, crafting, smithing, recruitment, or NPC relationship systems
+- full town systems, interiors, production crafting, production smithing, recruitment, or NPC relationship systems
 
 ---
 

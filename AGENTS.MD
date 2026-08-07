@@ -150,9 +150,11 @@ Debugging / Fixing:
 ---
 ## Documentation Companion Ticket Rule
 
-Whenever a GitHub Issue ticket is created for implementation work, also create one companion documentation ticket for the same topic.
+Whenever a GitHub Issue ticket is created for executable implementation work, also create one companion documentation ticket for the same topic.
 
-Do not create a companion documentation ticket for documentation-only tickets.
+Do not create a companion documentation ticket for documentation-only tickets, parent epics, child epics, tracking-only issues, planning-only issues, or future placeholder tickets that are not ready for implementation.
+
+For large feature hierarchies, create documentation companion tickets only for leaf implementation tickets that are approved for execution, unless the user explicitly asks for one shared documentation strategy ticket for the whole feature.
 
 The documentation ticket should cover:
 
@@ -303,6 +305,47 @@ Ticket numbers must be unique across all GitHub Issues, regardless of whether th
 
 Do not guess the next ticket number from GitHub issue numbers. GitHub issue numbers and ticket numbers are separate.
 
+## Issue Hierarchy / Epic Workflow Rules
+
+Large systems should be organized as an issue hierarchy instead of one giant implementation ticket.
+
+Issue hierarchy terms:
+
+- Parent epic: a tracking/planning issue for a whole feature set.
+- Child epic: a tracking/planning issue for one major area of the parent feature.
+- Leaf implementation ticket: an executable ticket with a narrow implementation scope.
+- Future placeholder ticket: a staged future idea that should not be implemented until dependencies are complete and the user approves execution.
+
+Parent epics and child epics:
+
+- Must not be executed directly unless the user explicitly asks to update planning/status only.
+- Must include `Parent` and/or `Children` sections where applicable.
+- Should summarize scope, goals, child tickets, dependencies, and out-of-scope items.
+- Should stay on the project board while child work is active.
+- Should not receive a documentation companion ticket unless they directly require documentation work.
+
+Leaf implementation tickets:
+
+- Must include `Parent` when part of an epic hierarchy.
+- Must include `Depends On` when another ticket must be completed first.
+- Must include specific implementation scope, out-of-scope items, and verification plan.
+- Must be independently reviewable and reversible.
+- Are the only issue type Codex should execute by default.
+
+Before executing a ticket in an issue hierarchy:
+
+- Verify the target issue is a leaf implementation ticket.
+- Check all `Depends On` issues.
+- Stop and report blocked dependencies if required prerequisite tickets are not complete or explicitly approved to proceed.
+- Keep changes scoped to the leaf ticket even if the parent epic describes broader behavior.
+
+For large feature requests:
+
+- If the request touches multiple systems, Codex must propose a parent/child issue tree before creating implementation tickets.
+- Shared foundation work should be split from feature-specific work.
+- MVP tickets should be separated from upgrade, cleanup, expansion, and future-depth tickets.
+- Future placeholder tickets should remain in Todo or Dragons Vault until promoted.
+
 ## Plan Review Gate
 
 After an initial implementation plan is created, Codex must automatically act as a reviewer before creating the implementation ticket.
@@ -354,10 +397,11 @@ When the user asks for an execution plan:
 - Create a clear initial implementation plan first.
 - Before creating any GitHub Issue ticket, run the Plan Review Gate.
 - Revise the implementation plan based on the Plan Review Gate findings.
-- Create the GitHub Issue ticket from the reviewed implementation plan.
+- For small scoped work, create one leaf implementation ticket from the reviewed implementation plan.
+- For large multi-system work, create a parent epic, child epics when useful, and focused leaf implementation tickets from the reviewed implementation plan.
 - Use the next available ticket number in this title format:
   - [Ticket 0001]: Short descriptive title
-- Also create the required companion documentation ticket.
+- Also create the required companion documentation ticket for each executable leaf implementation ticket, unless the ticket is documentation-only, tracking-only, an epic, or a future placeholder.
 - Link the documentation ticket to the implementation ticket.
 - Add both issues to the GitHub Project board.
 - Move both issues to Design Stage unless the user says otherwise.
@@ -378,6 +422,8 @@ When the user later asks to execute an approved ticket or plan:
 - Do not move the ticket to Done unless the user explicitly approves completion after review.
 - Before implementation, verify the active issue title already starts with [Ticket 000N]:.
 - If it does not, automatically promote/rename the issue using the Ticket Number Validation Rule before editing code.
+- If the active issue is a parent epic or child epic, do not implement code from it directly. Ask which leaf implementation ticket should be executed, or summarize the next unblocked leaf tickets.
+- If the active issue has a `Depends On` section, verify those dependencies before moving the ticket to In Progress.
 
 
 ## Rollback / Traceability Rules
