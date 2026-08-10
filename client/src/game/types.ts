@@ -2513,6 +2513,21 @@ export type Companion = LivingEntity & {
 
 export type RestingCompanionsById = Record<string, Companion>;
 
+export type GuildRecruitCandidate = {
+  id: string;
+  classId: ClassId;
+  characterLevel: number;
+  role: PartyMemberRole;
+  generatedAtMs: number;
+  sequence: number;
+};
+
+export type GuildRecruitState = {
+  candidate: GuildRecruitCandidate | null;
+  nextRefreshAtMs: number;
+  recruitSequence: number;
+};
+
 export type ResourceEntity = BaseEntity & {
   kind: "resource";
   resourceType: ResourceType;

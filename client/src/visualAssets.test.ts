@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { createCompanion, createEnemy, createNpc, FIRST_CLASS_IDS } from "./game";
+import {
+  CLASS_DEFINITIONS,
+  createCompanion,
+  createEnemy,
+  createNpc,
+  FIRST_CLASS_IDS,
+} from "./game";
 import {
   entityVisualAssets,
   firstClassCharacterVisualAssets,
   getEntityVisualAsset,
+  getClassIdleFrameSrc,
   getSpriteAnimation,
   type SpriteDirection,
 } from "./visualAssets";
@@ -215,6 +222,16 @@ describe("entity visual assets", () => {
         );
       }
     }
+  });
+
+  it("resolves a recruit-style idle frame for every current class", () => {
+    for (const classId of Object.keys(CLASS_DEFINITIONS)) {
+      expect(getClassIdleFrameSrc(classId as keyof typeof CLASS_DEFINITIONS)).toMatch(
+        /\.png$/,
+      );
+    }
+
+    expect(getClassIdleFrameSrc("beginner")).toContain("BeginnerWalkingSouth");
   });
 
   it("uses the Beginner cardinal movement fallback for first-class movement", () => {

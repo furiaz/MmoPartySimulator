@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   createDebugMap,
+  HUB_MAP_ID,
   HUB_TWO_MAP_ID,
   MAP_ONE_ID,
   SLIMEWARD_FLOOR_ONE_ID,
 } from "./debugMap";
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
+import {
+  createInitialGuildRecruitState,
+  GUILD_RECRUIT_REFRESH_INTERVAL_MS,
+} from "./guildRecruit";
 import { addItemToInventoryState } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
@@ -192,6 +197,37 @@ describe("save game serialization", () => {
     expect(getPartySizeLimit(restored.state)).toBe(4);
   });
 
+  it("preserves Guild recruit candidate, timer, and sequence through save restore", () => {
+    const guildRecruit = {
+      ...createInitialGuildRecruitState(NOW_MS),
+      recruitSequence: 7,
+      candidate: {
+        id: "guild-recruit-candidate-7",
+        classId: "beginner" as const,
+        characterLevel: 1,
+        role: "none" as const,
+        generatedAtMs: NOW_MS,
+        sequence: 7,
+      },
+      nextRefreshAtMs: NOW_MS + GUILD_RECRUIT_REFRESH_INTERVAL_MS,
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        guildRecruit,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildRecruit).toEqual(guildRecruit);
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -289,14 +325,15 @@ describe("save game serialization", () => {
         entities: {
           [leader.id]: leader,
         },
-        currentMapId: MAP_ONE_ID,
-        map: createDebugMap(MAP_ONE_ID),
+        currentMapId: HUB_MAP_ID,
+        map: createDebugMap(HUB_MAP_ID),
         partyLeaderId: leader.id,
       }),
       NOW_MS,
     );
     delete (save.state as Partial<GameState>).restingCompanionsById;
     delete (save.state as Partial<GameState>).highestCharacterLevelEver;
+    delete (save.state as Partial<GameState>).guildRecruit;
 
     const restored = restoreGameStateFromSave(save);
 
@@ -308,6 +345,24 @@ describe("save game serialization", () => {
     expect(restored.state.restingCompanionsById).toEqual({});
     expect(restored.state.highestCharacterLevelEver).toBe(30);
     expect(getPartySizeLimit(restored.state)).toBe(4);
+    expect(restored.state.guildRecruit?.candidate).toMatchObject({
+      id: "guild-recruit-candidate-1",
+      classId: "beginner",
+      characterLevel: 1,
+      role: "none",
+      sequence: 1,
+    });
+    expect(restored.state.guildRecruit?.recruitSequence).toBe(1);
+    expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
+      kind: "npc",
+      displayName: "Guild Coordinator",
+      npcRole: "guild_coordinator",
+    });
+    expect(restored.state.entities["hub-tavern-keeper"]).toMatchObject({
+      kind: "npc",
+      displayName: "Tavern Keeper",
+      npcRole: "tavern_keeper",
+    });
   });
 });
 

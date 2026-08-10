@@ -47,6 +47,7 @@ export function GameMenu({
   selectedCompanionId,
   selectedQuestId,
   craftingResultMessage,
+  guildRecruitResultMessage,
   canUseGuildTavern,
   highestCharacterLevelEver,
   onAllocateStatPoint,
@@ -67,6 +68,7 @@ export function GameMenu({
   onSelectQuest,
   onSelectTab,
   onCraftRecipe,
+  onRecruitGuildCandidate,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
   onTeleportWorldTravelDestination,
@@ -95,6 +97,7 @@ export function GameMenu({
   selectedCompanionId: string | null;
   selectedQuestId: QuestId | null;
   craftingResultMessage?: string | null;
+  guildRecruitResultMessage?: string | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
@@ -129,6 +132,7 @@ export function GameMenu({
   onSelectQuest: (questId: QuestId) => void;
   onSelectTab: (tab: GameMenuTab | null) => void;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
+  onRecruitGuildCandidate: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
   onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
@@ -145,6 +149,10 @@ export function GameMenu({
       className={`game-menu-panel${
         activeTab === "atlas" && activeAtlasSubpage === "bank"
           ? " bank-menu-panel"
+          : ""
+      }${
+        activeTab === "atlas" && activeAtlasSubpage === "guildTavern"
+          ? " guild-tavern-menu-panel"
           : ""
       }`}
       aria-label="Game menu"
@@ -245,11 +253,14 @@ export function GameMenu({
                 <AtlasPanel
                   activeSubpage={activeAtlasSubpage}
                   craftingResultMessage={craftingResultMessage}
+                  currentTime={currentTime}
+                  guildRecruitResultMessage={guildRecruitResultMessage}
                   canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
                   quests={quests}
                   selectedQuestId={selectedQuestId}
                   onCraftRecipe={onCraftRecipe}
+                  onRecruitGuildCandidate={onRecruitGuildCandidate}
                   onSelectQuest={onSelectQuest}
                   onSelectSubpage={onSelectAtlasSubpage}
                 />
@@ -279,21 +290,27 @@ export function GameMenu({
 function AtlasPanel({
   activeSubpage,
   craftingResultMessage,
+  currentTime,
+  guildRecruitResultMessage,
   canUseGuildTavern,
   gameState,
   quests,
   selectedQuestId,
   onCraftRecipe,
+  onRecruitGuildCandidate,
   onSelectQuest,
   onSelectSubpage,
 }: {
   activeSubpage: AtlasSubpage;
   craftingResultMessage?: string | null;
+  currentTime: number;
+  guildRecruitResultMessage?: string | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
   selectedQuestId: QuestId | null;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
+  onRecruitGuildCandidate: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
@@ -347,7 +364,13 @@ function AtlasPanel({
           state={gameState}
         />
       ) : (
-        <GuildTavernPanel canUse={canUseGuildTavern} state={gameState} />
+        <GuildTavernPanel
+          canUse={canUseGuildTavern}
+          currentTime={currentTime}
+          recruitResultMessage={guildRecruitResultMessage}
+          state={gameState}
+          onRecruit={onRecruitGuildCandidate}
+        />
       )}
     </section>
   );

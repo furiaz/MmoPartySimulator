@@ -83,6 +83,7 @@ import {
   getEnemyType,
   getFilteredMerchantBuyStock,
   getActiveQuest,
+  getActiveCompanions,
   getItemDefinition,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
@@ -123,6 +124,8 @@ import {
   isBankChestNpc,
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
+  recruitGuildCandidate,
+  refreshGuildRecruitState,
   getNavigationClickCellKey,
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
@@ -2549,6 +2552,8 @@ function App() {
     useState<string | null>(null);
   const [craftingResultMessage, setCraftingResultMessage] =
     useState<string | null>(null);
+  const [guildRecruitResultMessage, setGuildRecruitResultMessage] =
+    useState<string | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -2774,12 +2779,40 @@ function App() {
     };
   }, [appMode, writeCurrentSave]);
 
+  useEffect(() => {
+    if (
+      appMode !== "playing" ||
+      !isGameMenuOpen ||
+      activeGameMenuTab !== "atlas" ||
+      activeAtlasSubpage !== "guildTavern"
+    ) {
+      return;
+    }
+
+    setGameState((state) => {
+      const refreshedState = refreshGuildRecruitState(state, currentTime);
+
+      if (refreshedState !== state) {
+        queueSaveAfterStateChange("Guild recruit refresh saved");
+      }
+
+      return refreshedState;
+    });
+  }, [
+    activeAtlasSubpage,
+    activeGameMenuTab,
+    appMode,
+    currentTime,
+    isGameMenuOpen,
+    queueSaveAfterStateChange,
+  ]);
+
   const partyMembers = useMemo(
     () =>
-      companionIds
-        .map((id) => gameState.entities[id] as Companion | undefined)
-        .filter((companion): companion is Companion => Boolean(companion)),
-    [gameState.entities],
+      getActiveCompanions(gameState).sort(
+        (a, b) => a.partyOrder - b.partyOrder || a.id.localeCompare(b.id),
+      ),
+    [gameState],
   );
   const selectedMenuCompanionId = partyMembers.some(
     (member) => member.id === selectedCompanionId,
@@ -2987,6 +3020,7 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+    setGuildRecruitResultMessage(null);
     setActiveMerchantNpcId(npc.id);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(
@@ -3015,6 +3049,7 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+    setGuildRecruitResultMessage(null);
   }, []);
 
   const openSmithInteraction = useCallback((npc: NpcEntity) => {
@@ -3049,6 +3084,7 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
     setActiveBankChestNpcId(npc.id);
     setBankResultMessage(null);
   }, []);
@@ -3067,6 +3103,7 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
     setIsGameMenuOpen(true);
     setActiveGameMenuTab("atlas");
     setActiveAtlasSubpage("guildTavern");
@@ -4212,6 +4249,36 @@ function App() {
   function selectAtlasSubpage(subpage: AtlasSubpage) {
     setActiveAtlasSubpage(subpage);
     setCraftingResultMessage(null);
+    if (subpage !== "guildTavern") {
+      setGuildRecruitResultMessage(null);
+    }
+  }
+
+  function recruitGuildCompanion() {
+    if (!canUseGuildTavern) {
+      setGuildRecruitResultMessage("Requires Guild & Tavern");
+      return;
+    }
+
+    const recruit = recruitGuildCandidate(gameState, currentTime);
+
+    if (recruit.ok) {
+      queueSaveAfterStateChange("Guild recruit saved");
+      setGuildRecruitResultMessage(
+        recruit.destination === "active_party"
+          ? "Recruit joined the active party"
+          : "Recruit sent to Tavern reserve",
+      );
+      setSelectedCompanionId(recruit.companion.id);
+    } else {
+      setGuildRecruitResultMessage(
+        recruit.reason === "roster_full"
+          ? "No active slot or Tavern reserve room."
+          : "No recruit available.",
+      );
+    }
+
+    setGameState(recruit.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -5350,6 +5417,7 @@ function App() {
               selectedCompanionId={selectedMenuCompanionId}
               selectedQuestId={selectedMenuQuestId}
               craftingResultMessage={craftingResultMessage}
+              guildRecruitResultMessage={guildRecruitResultMessage}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
@@ -5370,6 +5438,7 @@ function App() {
               onSelectQuest={setSelectedQuestId}
               onSelectTab={selectGameMenuTab}
               onCraftRecipe={craftSelectedRecipe}
+              onRecruitGuildCandidate={recruitGuildCompanion}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onTeleportWorldTravelDestination={teleportWorldTravel}

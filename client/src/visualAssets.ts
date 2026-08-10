@@ -667,6 +667,19 @@ export function getSpriteAnimation(
   );
 }
 
+export function getClassIdleFrameSrc(
+  classId: ClassId,
+  direction: SpriteDirection = "south",
+): string | null {
+  const visualAsset =
+    classId === "beginner"
+      ? entityVisualAssets.beginnerCharacter
+      : firstClassCharacterVisualAssets[classId];
+  const animation = getDirectionalAnimation(visualAsset.animations.idle, direction);
+
+  return animation.frames[0] ?? null;
+}
+
 function getDirectionalAnimation(
   animation:
     | SpriteAnimationAsset

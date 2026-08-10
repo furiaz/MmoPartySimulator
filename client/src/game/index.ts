@@ -54,6 +54,8 @@ export type {
   EntityState,
   GameEntity,
   GameMap,
+  GuildRecruitCandidate,
+  GuildRecruitState,
   ActiveTeleport,
   LeaderIntent,
   LeaderIntentType,
@@ -918,6 +920,19 @@ export {
   isGuildTavernNpc,
   isPartyLeaderNearGuildTavern,
 } from "./guildTavern";
+export {
+  GUILD_RECRUIT_REFRESH_INTERVAL_MS,
+  GUILD_RECRUIT_RESERVE_CAPACITY,
+  createInitialGuildRecruitState,
+  getGuildRecruitDestination,
+  getGuildRecruitReserveCapacity,
+  getGuildRecruitState,
+  recruitGuildCandidate,
+  refreshGuildRecruitState,
+  sanitizeGuildRecruitState,
+  type GuildRecruitDestination,
+  type GuildRecruitResult,
+} from "./guildRecruit";
 export type { CharacterXpProgress } from "./leveling";
 export {
   BEGINNER_CLASS_UNLOCK_LEVEL,

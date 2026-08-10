@@ -1,9 +1,20 @@
-import { createDebugMapForQuestState, debugMapDefinitions } from "./debugMap";
+import {
+  createDebugMapForQuestState,
+  debugMapDefinitions,
+  getHubNpcStartDataForQuestState,
+  getHubTwoNpcStartDataForQuestState,
+  HUB_MAP_ID,
+  HUB_TWO_MAP_ID,
+  slimewardCampNpcStartData,
+  SLIMEWARD_CAMP_ID,
+} from "./debugMap";
 import {
   sanitizeBankAutoRoutingMode,
   sanitizePartyBank,
 } from "./bank";
+import { createNpc } from "./entities";
 import { addItemToInventoryState } from "./inventory";
+import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import { sanitizeKeyItemsById } from "./keyItems";
@@ -358,9 +369,10 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   const currentMapId = state.currentMapId ?? "hub";
   const quests = sanitizeQuestStates(state.quests);
   const map = createDebugMapForQuestState(currentMapId, quests);
-  const entities = Object.fromEntries(
+  const savedEntities = Object.fromEntries(
     Object.entries(state.entities).map(([id, entity]) => [id, sanitizeEntityForSave(entity, state.partyLeaderId)]),
   );
+  const entities = restoreCurrentMapNpcs(savedEntities, currentMapId, quests);
   const restingCompanionsById = sanitizeRestingCompanionsForSave(
     state.restingCompanionsById,
     entities,
@@ -373,12 +385,14 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     entities,
     restingCompanionsById,
   });
+  const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit);
 
   return {
     ...state,
     entities,
     restingCompanionsById,
     highestCharacterLevelEver,
+    guildRecruit,
     inventory: sanitizePartyInventory(state.inventory),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {
@@ -769,6 +783,40 @@ function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity
   }
 
   return entity;
+}
+
+function restoreCurrentMapNpcs(
+  entities: Record<string, GameEntity>,
+  currentMapId: DebugMapId,
+  quests: GameState["quests"],
+): Record<string, GameEntity> {
+  const npcStartData =
+    currentMapId === HUB_MAP_ID
+      ? getHubNpcStartDataForQuestState(quests)
+      : currentMapId === HUB_TWO_MAP_ID
+        ? getHubTwoNpcStartDataForQuestState(quests)
+      : currentMapId === SLIMEWARD_CAMP_ID
+        ? slimewardCampNpcStartData
+        : [];
+
+  if (npcStartData.length === 0) {
+    return entities;
+  }
+
+  let nextEntities = entities;
+
+  for (const npc of npcStartData) {
+    if (nextEntities[npc.id] !== undefined) {
+      continue;
+    }
+
+    nextEntities = {
+      ...nextEntities,
+      [npc.id]: createNpc(npc.id, npc.position, npc.displayName, npc.npcRole),
+    };
+  }
+
+  return nextEntities;
 }
 
 function sanitizeRestingCompanionsForSave(

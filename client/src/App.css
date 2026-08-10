@@ -1038,6 +1038,10 @@
   padding: 12px 0 0;
 }
 
+.game-menu-panel.guild-tavern-menu-panel {
+  width: min(868px, calc(100vw - 32px));
+}
+
 .game-menu-tabs {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1208,9 +1212,9 @@
 }
 
 .guild-tavern-service-actions button {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(86px, auto);
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   min-width: 0;
   padding: 9px 10px;
@@ -1229,9 +1233,114 @@
 }
 
 .guild-tavern-service-actions button small {
+  grid-column: 3;
   color: #92a8ad;
   font-weight: 800;
   text-align: right;
+}
+
+.guild-recruit-button-timer {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.guild-recruit-view {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-recruit-back-button {
+  justify-self: start;
+}
+
+.guild-recruit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(176px, 28%);
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-recruit-details {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-recruit-kicker {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-recruit-details h3,
+.guild-recruit-details p,
+.guild-recruit-details dl {
+  margin: 0;
+}
+
+.guild-recruit-details dl {
+  display: grid;
+  gap: 7px;
+}
+
+.guild-recruit-details dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-recruit-details dt {
+  color: #92a8ad;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-recruit-details dd {
+  min-width: 0;
+  margin: 0;
+  color: #e6f0f2;
+  font-weight: 800;
+}
+
+.guild-recruit-message {
+  color: #b9cdd1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.guild-recruit-details > button {
+  justify-self: start;
+  min-width: 132px;
+}
+
+.guild-recruit-sprite-frame {
+  display: grid;
+  place-items: center;
+  min-height: 214px;
+  overflow: hidden;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.guild-recruit-sprite-frame img {
+  width: min(172px, 100%);
+  max-height: 204px;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .crafting-header {

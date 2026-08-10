@@ -15,6 +15,7 @@ import {
   targetDummyPosition,
 } from "./debugMap";
 import { createEmptyPartyBank } from "./bank";
+import { createInitialGuildRecruitState } from "./guildRecruit";
 import {
   addItemToInventoryState,
   createEmptyPartyInventory,
@@ -65,6 +66,7 @@ export function createInitialGameState(): GameState {
       leader.characterLevel,
       secondCompanion.characterLevel,
     ),
+    guildRecruit: createInitialGuildRecruitState(),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),
