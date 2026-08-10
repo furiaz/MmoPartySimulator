@@ -12,7 +12,11 @@ import {
   getSameLevelEnemyXp,
   grantCharacterXpToCompanion,
 } from "./leveling";
-import { getPartyLeader } from "./partySystem";
+import {
+  getHighestCharacterLevelEver,
+  getPartyLeader,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 import {
   createInitialQuestStates,
   QUEST_DEFINITIONS,
@@ -162,6 +166,13 @@ export function validateSavedGame(value: unknown): SaveValidationResult {
 
   if (!isRecord(state.entities)) {
     return { ok: false, reason: "Save entities are missing." };
+  }
+
+  if (
+    state.restingCompanionsById !== undefined &&
+    !isRecord(state.restingCompanionsById)
+  ) {
+    return { ok: false, reason: "Save resting companions are invalid." };
   }
 
   if (!isRecord(state.inventory) || !Array.isArray(state.inventory.slots)) {
@@ -350,13 +361,24 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   const entities = Object.fromEntries(
     Object.entries(state.entities).map(([id, entity]) => [id, sanitizeEntityForSave(entity, state.partyLeaderId)]),
   );
+  const restingCompanionsById = sanitizeRestingCompanionsForSave(
+    state.restingCompanionsById,
+    entities,
+  );
   const followTrailsByEntityId = Object.fromEntries(
     Object.keys(entities).map((entityId) => [entityId, []]),
   );
+  const highestCharacterLevelEver = getHighestCharacterLevelEver({
+    ...state,
+    entities,
+    restingCompanionsById,
+  });
 
   return {
     ...state,
     entities,
+    restingCompanionsById,
+    highestCharacterLevelEver,
     inventory: sanitizePartyInventory(state.inventory),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {
@@ -638,13 +660,19 @@ function grantOfflineXp(
       continue;
     }
 
+    const updatedCompanion = grantCharacterXpToCompanion(companion, xpAmount);
+
     nextState = {
       ...nextState,
       entities: {
         ...nextState.entities,
-        [companion.id]: grantCharacterXpToCompanion(companion, xpAmount),
+        [companion.id]: updatedCompanion,
       },
     };
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
   }
 
   return nextState;
@@ -741,6 +769,47 @@ function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity
   }
 
   return entity;
+}
+
+function sanitizeRestingCompanionsForSave(
+  restingCompanionsById: GameState["restingCompanionsById"],
+  activeEntities: Record<string, GameEntity>,
+): GameState["restingCompanionsById"] {
+  return Object.fromEntries(
+    Object.entries(restingCompanionsById ?? {})
+      .filter(
+        ([companionId, companion]) =>
+          activeEntities[companionId] === undefined &&
+          isSavedCompanion(companion),
+      )
+      .map(([companionId, companion]) => {
+        const sanitizedCompanion = sanitizeProgressionForCompanion(companion);
+
+        return [
+          companionId,
+          {
+            ...sanitizedCompanion,
+            state: "idle",
+            currentTargetId: null,
+            commandPriority: "autonomous",
+            defendPosition: null,
+            consumableBuffs: {
+              flask: null,
+              food: null,
+            },
+          },
+        ];
+      }),
+  );
+}
+
+function isSavedCompanion(value: unknown): value is Companion {
+  return (
+    isRecord(value) &&
+    value.kind === "companion" &&
+    typeof value.id === "string" &&
+    Number.isFinite(value.characterLevel)
+  );
 }
 
 function sanitizeSlimewardDungeon(

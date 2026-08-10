@@ -60,6 +60,11 @@ export function createInitialGameState(): GameState {
     createTargetDummy(aoeTargetDummyId, aoeTargetDummyPosition),
   ].reduce(addEntity, {
     entities: {},
+    restingCompanionsById: {},
+    highestCharacterLevelEver: Math.max(
+      leader.characterLevel,
+      secondCompanion.characterLevel,
+    ),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),

@@ -123,6 +123,7 @@ export type {
   ResurrectionProgressState,
   ResurrectionRecoveryAssignmentState,
   RoleBonusState,
+  RestingCompanionsById,
   SkillBindState,
   SkillCooldownState,
   SkillCooldownsBySkillId,
@@ -597,11 +598,18 @@ export {
 } from "./skillRolePreferences";
 export {
   getOrderedFormationMembers,
+  getActiveCompanions,
+  getAllRosterCompanions,
+  getHighestCharacterLevelEver,
+  getHighestCompanionCharacterLevel,
   getOrderedPartyMembers,
   getPartyLeader,
   getPartyMembers,
+  getRestingCompanions,
   isGathererBusy,
   isPartyMember,
+  moveCompanionToRestingReserve,
+  recordHighestCharacterLevelEver,
 } from "./partySystem";
 export {
   COMBAT_APPROACH_DISTANCE,
@@ -905,6 +913,11 @@ export {
   startDebugTelemetryRecording,
   stopDebugTelemetryRecording,
 } from "./debugTelemetry";
+export {
+  GUILD_TAVERN_INTERACTION_RANGE,
+  isGuildTavernNpc,
+  isPartyLeaderNearGuildTavern,
+} from "./guildTavern";
 export type { CharacterXpProgress } from "./leveling";
 export {
   BEGINNER_CLASS_UNLOCK_LEVEL,

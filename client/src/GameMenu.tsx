@@ -2,6 +2,7 @@ import { InventoryPanel } from "./InventoryPanel";
 import { QuestsPanel } from "./QuestPanels";
 import { WorldPanel } from "./WorldPanel";
 import { BankPanel } from "./BankPanel";
+import { GuildTavernPanel } from "./GuildTavernPanel";
 import type {
   AtlasSubpage,
   GameMenuTab,
@@ -46,7 +47,8 @@ export function GameMenu({
   selectedCompanionId,
   selectedQuestId,
   craftingResultMessage,
-  totalPartyLevel,
+  canUseGuildTavern,
+  highestCharacterLevelEver,
   onAllocateStatPoint,
   onChangeLeader,
   onChangeRole,
@@ -93,7 +95,8 @@ export function GameMenu({
   selectedCompanionId: string | null;
   selectedQuestId: QuestId | null;
   craftingResultMessage?: string | null;
-  totalPartyLevel: number;
+  canUseGuildTavern: boolean;
+  highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
   onChangeLeader: (companionId: string) => void;
   onChangeRole: (companionId: string, role: PartyMemberRole) => void;
@@ -200,7 +203,7 @@ export function GameMenu({
                   members={members}
                   currentTime={currentTime}
                   selectedCompanionId={selectedCompanionId}
-                  totalPartyLevel={totalPartyLevel}
+                  highestCharacterLevelEver={highestCharacterLevelEver}
                   onAllocateStatPoint={onAllocateStatPoint}
                   onAssignFood={onAssignFood}
                   onChangeSkillBehavior={onChangeSkillBehavior}
@@ -219,7 +222,7 @@ export function GameMenu({
                   leaderId={leaderId}
                   members={members}
                   selectedCompanionId={selectedCompanionId}
-                  totalPartyLevel={totalPartyLevel}
+                  highestCharacterLevelEver={highestCharacterLevelEver}
                   onChangeLeader={onChangeLeader}
                   onChangeConsumableBehavior={onChangeConsumableBehavior}
                   onChangeRole={onChangeRole}
@@ -242,6 +245,7 @@ export function GameMenu({
                 <AtlasPanel
                   activeSubpage={activeAtlasSubpage}
                   craftingResultMessage={craftingResultMessage}
+                  canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
                   quests={quests}
                   selectedQuestId={selectedQuestId}
@@ -275,6 +279,7 @@ export function GameMenu({
 function AtlasPanel({
   activeSubpage,
   craftingResultMessage,
+  canUseGuildTavern,
   gameState,
   quests,
   selectedQuestId,
@@ -284,6 +289,7 @@ function AtlasPanel({
 }: {
   activeSubpage: AtlasSubpage;
   craftingResultMessage?: string | null;
+  canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
   selectedQuestId: QuestId | null;
@@ -315,6 +321,13 @@ function AtlasPanel({
         >
           Bank
         </button>
+        <button
+          className={activeSubpage === "guildTavern" ? "active" : ""}
+          onClick={() => onSelectSubpage("guildTavern")}
+          type="button"
+        >
+          Guild & Tavern
+        </button>
       </nav>
       {activeSubpage === "quests" ? (
         <QuestsPanel
@@ -328,11 +341,13 @@ function AtlasPanel({
           state={gameState}
           onCraft={onCraftRecipe}
         />
-      ) : (
+      ) : activeSubpage === "bank" ? (
         <BankPanel
           canManage={false}
           state={gameState}
         />
+      ) : (
+        <GuildTavernPanel canUse={canUseGuildTavern} state={gameState} />
       )}
     </section>
   );

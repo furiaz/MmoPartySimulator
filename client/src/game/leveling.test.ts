@@ -11,6 +11,7 @@ import {
   grantCharacterXpToParty,
   MAX_CHARACTER_LEVEL,
 } from "./leveling";
+import { moveCompanionToRestingReserve } from "./partySystem";
 import { PROTOTYPE_VISUAL_FEEDBACK_DURATION_MS } from "./state";
 import { createCompanionPrimaryStats } from "./stats";
 import { createTestGameState } from "./testState";
@@ -75,11 +76,16 @@ describe("character leveling", () => {
     expect(getSameLevelEnemyXp(6)).toBe(11);
   });
 
-  it("derives party size limit from total party level", () => {
+  it("derives party size limit from highest-ever companion level", () => {
     const leader = createCompanion("companion-1", { x: 0, y: 0 }, "companion-1");
     const ally = {
       ...createCompanion("companion-2", { x: 1, y: 0 }, "companion-1"),
       characterLevel: 9,
+    };
+    const veteran = {
+      ...createCompanion("companion-3", { x: 2, y: 0 }, "companion-1"),
+      characterLevel: 50,
+      partyOrder: 2,
     };
 
     expect(
@@ -100,7 +106,22 @@ describe("character leveling", () => {
           },
         }),
       ),
-    ).toBe(3);
+    ).toBe(2);
+
+    const activeVeteranState = createTestGameState({
+      entities: {
+        [leader.id]: leader,
+        [veteran.id]: veteran,
+      },
+      partyLeaderId: leader.id,
+    });
+
+    expect(getPartySizeLimit(activeVeteranState)).toBe(4);
+    expect(
+      getPartySizeLimit(
+        moveCompanionToRestingReserve(activeVeteranState, veteran.id),
+      ),
+    ).toBe(4);
   });
 
   it("returns party size unlock requirements by slot", () => {

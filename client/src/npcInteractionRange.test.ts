@@ -3,12 +3,13 @@ import {
   bankInteractionRange,
   defaultNpcInteractionRange,
   getNpcInteractionRange,
+  guildTavernInteractionRange,
   merchantInteractionRange,
   questGiverInteractionRange,
 } from "./npcInteractionRange";
 
 describe("NPC interaction ranges", () => {
-  it("uses wider interaction ranges for merchant, smith, and quest source NPCs", () => {
+  it("uses wider interaction ranges for hub service and quest source NPCs", () => {
     expect(getNpcInteractionRange({ npcRole: "merchant" })).toBe(
       merchantInteractionRange,
     );
@@ -24,9 +25,16 @@ describe("NPC interaction ranges", () => {
     expect(getNpcInteractionRange({ npcRole: "class_mentor" })).toBe(
       questGiverInteractionRange,
     );
+    expect(getNpcInteractionRange({ npcRole: "guild_coordinator" })).toBe(
+      guildTavernInteractionRange,
+    );
+    expect(getNpcInteractionRange({ npcRole: "tavern_keeper" })).toBe(
+      guildTavernInteractionRange,
+    );
     expect(merchantInteractionRange).toBe(2);
     expect(bankInteractionRange).toBe(2);
     expect(questGiverInteractionRange).toBe(2);
+    expect(guildTavernInteractionRange).toBe(2);
   });
 
   it("keeps other static NPC roles on the default range", () => {

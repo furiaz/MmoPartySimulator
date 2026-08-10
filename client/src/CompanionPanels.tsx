@@ -259,7 +259,7 @@ export function PartyMenuPanel({
   members,
   currentTime,
   selectedCompanionId,
-  totalPartyLevel,
+  highestCharacterLevelEver,
   onAllocateStatPoint,
   onAssignFood,
   onChangeSkillBehavior,
@@ -277,7 +277,7 @@ export function PartyMenuPanel({
   members: Companion[];
   currentTime: number;
   selectedCompanionId: string | null;
-  totalPartyLevel: number;
+  highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
   onAssignFood: (companionId: string, itemId: ItemId | null) => void;
   onChangeSkillBehavior: (
@@ -312,7 +312,7 @@ export function PartyMenuPanel({
         members={orderedMembers}
         selectedCompanionId={selectedCompanionId}
         showEmptySlots={true}
-        totalPartyLevel={totalPartyLevel}
+        partySizeUnlockLevel={highestCharacterLevelEver}
         onSelectCompanion={onSelectCompanion}
       />
       <nav className="party-submenu-tabs" aria-label="Party sections">
@@ -747,14 +747,14 @@ function CompanionMenuList({
   members,
   selectedCompanionId,
   showEmptySlots = false,
-  totalPartyLevel = 0,
+  partySizeUnlockLevel = 0,
   onSelectCompanion,
 }: {
   layout?: "vertical" | "horizontal";
   members: Companion[];
   selectedCompanionId: string | null;
   showEmptySlots?: boolean;
-  totalPartyLevel?: number;
+  partySizeUnlockLevel?: number;
   onSelectCompanion: (companionId: string) => void;
 }) {
   const slots = showEmptySlots
@@ -774,7 +774,8 @@ function CompanionMenuList({
           if (!member) {
             const unlockRequirement = getPartySizeUnlockRequirement(slotNumber);
             const isLocked =
-              unlockRequirement !== null && totalPartyLevel < unlockRequirement;
+              unlockRequirement !== null &&
+              partySizeUnlockLevel < unlockRequirement;
 
             return (
               <div
@@ -794,7 +795,7 @@ function CompanionMenuList({
                   <span className="party-companion-card-detail">Empty Slot</span>
                   <span className="party-companion-xp-text">
                     {isLocked
-                      ? `Unlocks at Total Party Level ${unlockRequirement}`
+                      ? `Unlocks at Highest Companion Level ${unlockRequirement}`
                       : "No companion assigned"}
                   </span>
                 </button>
@@ -858,7 +859,7 @@ export function PartyManagementPanel({
   leaderId,
   members,
   selectedCompanionId,
-  totalPartyLevel,
+  highestCharacterLevelEver,
   onChangeLeader,
   onChangeConsumableBehavior,
   onChangeRole,
@@ -871,7 +872,7 @@ export function PartyManagementPanel({
   leaderId: string;
   members: Companion[];
   selectedCompanionId: string | null;
-  totalPartyLevel: number;
+  highestCharacterLevelEver: number;
   onChangeLeader: (companionId: string) => void;
   onChangeConsumableBehavior: (
     companionId: string,
@@ -920,7 +921,7 @@ export function PartyManagementPanel({
           members={orderedMembers}
           selectedCompanionId={selectedCompanionId}
           showEmptySlots={true}
-          totalPartyLevel={totalPartyLevel}
+          partySizeUnlockLevel={highestCharacterLevelEver}
           onSelectCompanion={onSelectCompanion}
         />
         {selectedMember ? (

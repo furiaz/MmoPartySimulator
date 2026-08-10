@@ -1,5 +1,5 @@
 .game-page {
-  --main-menu-panel-background: rgba(26, 42, 47, 0.3);
+  --main-menu-panel-background: rgba(9, 18, 21, 0.9);
   --main-menu-panel-border: #3a5a60;
   --main-menu-panel-text: #e6f0f2;
   --main-menu-panel-muted-text: #b9cdd1;
@@ -1095,6 +1095,145 @@
   color: #ffffff;
 }
 
+.guild-tavern-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-tavern-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.guild-tavern-header h2,
+.guild-tavern-section h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.guild-tavern-header span {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.guild-tavern-header dl {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.guild-tavern-header dl div {
+  display: grid;
+  min-width: 62px;
+  padding: 6px 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-tavern-header dt {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.guild-tavern-header dd {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.guild-tavern-section-nav {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+}
+
+.guild-tavern-section-nav button {
+  min-width: 0;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.guild-tavern-section-nav strong {
+  justify-self: center;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.guild-tavern-section {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.guild-tavern-service-portrait {
+  display: grid;
+  place-items: end center;
+  min-height: 168px;
+  overflow: hidden;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-tavern-service-portrait img {
+  max-width: 82px;
+  max-height: 158px;
+  object-fit: contain;
+}
+
+.guild-tavern-service-actions {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.guild-tavern-service-actions > div {
+  display: grid;
+  gap: 8px;
+}
+
+.guild-tavern-service-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-color: #334a50;
+  color: #c6d5d8;
+}
+
+.guild-tavern-service-actions button span,
+.guild-tavern-service-actions button small {
+  min-width: 0;
+}
+
+.guild-tavern-service-actions button span {
+  overflow-wrap: anywhere;
+  font-weight: 900;
+}
+
+.guild-tavern-service-actions button small {
+  color: #92a8ad;
+  font-weight: 800;
+  text-align: right;
+}
+
 .crafting-header {
   display: flex;
   align-items: start;
@@ -1391,7 +1530,7 @@
   overflow-x: hidden;
   border: 1px solid var(--main-menu-panel-border);
   border-radius: 8px;
-  background: rgba(9, 18, 21, 0.9);
+  background: var(--main-menu-panel-background);
   box-shadow: var(--main-menu-panel-shadow);
   color: var(--main-menu-panel-text);
 }
@@ -1676,7 +1815,7 @@
 .merchant-menu,
 .merchant-detail-panel {
   border: 1px solid #3a5a60;
-  background: rgba(26, 42, 47, 0.88);
+  background: var(--main-menu-panel-background);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(10px);
 }
@@ -2054,7 +2193,7 @@
   padding: 16px;
   box-sizing: border-box;
   border: 1px solid #7aa6ad;
-  background: rgba(26, 42, 47, 0.94);
+  background: var(--main-menu-panel-background);
   color: #e6f0f2;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
 }
@@ -2108,7 +2247,7 @@
   padding: 18px;
   box-sizing: border-box;
   border: 1px solid #8fb8bf;
-  background: rgba(26, 42, 47, 0.97);
+  background: var(--main-menu-panel-background);
   color: #e6f0f2;
   box-shadow: 0 20px 46px rgba(0, 0, 0, 0.36);
 }
@@ -2156,7 +2295,7 @@
   padding: 0;
   box-sizing: border-box;
   border: 1px solid #3a5a60;
-  background: rgba(26, 42, 47, 0.3);
+  background: var(--main-menu-panel-background);
   color: #e6f0f2;
 }
 
@@ -2363,7 +2502,7 @@
   min-width: 0;
   padding: 10px;
   border-color: #3a5a60;
-  background: rgba(26, 42, 47, 0.3);
+  background: var(--main-menu-panel-background);
   color: #e6f0f2;
   text-align: left;
 }
@@ -2457,7 +2596,7 @@
   min-width: 0;
   padding: 12px;
   border: 1px solid #3a5a60;
-  background: rgba(26, 42, 47, 0.3);
+  background: var(--main-menu-panel-background);
 }
 
 .menu-section-heading {
@@ -2983,7 +3122,7 @@
   padding: 12px;
   overflow: auto;
   border: 1px solid #7aa6ad;
-  background: rgba(26, 42, 47, 0.96);
+  background: var(--main-menu-panel-background);
   box-shadow: 0 18px 38px rgba(8, 13, 16, 0.36);
 }
 

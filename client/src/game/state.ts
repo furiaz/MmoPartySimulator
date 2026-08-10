@@ -25,6 +25,7 @@ import type {
   PartyIntent,
   PartyInventory,
   PartyWallet,
+  RestingCompanionsById,
   PartyFormationState,
   PartyBank,
   PartyMemberRole,
@@ -155,6 +156,8 @@ export type {
 
 export type GameState = {
   entities: Record<string, GameEntity>;
+  restingCompanionsById?: RestingCompanionsById;
+  highestCharacterLevelEver?: number;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;
   bank: PartyBank;

@@ -9,6 +9,8 @@ export function createTestGameState(
 ): GameState {
   return {
     entities: {},
+    restingCompanionsById: {},
+    highestCharacterLevelEver: 1,
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),

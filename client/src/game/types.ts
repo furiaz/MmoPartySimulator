@@ -2338,6 +2338,7 @@ export type MapVisualObjectId =
   | "hub_house"
   | "hub_cabin"
   | "hub_tent"
+  | "guild_tavern_building"
   | "hub_dock_shore_connector"
   | "passage_gate_closed"
   | "passage_gate_open"
@@ -2510,6 +2511,8 @@ export type Companion = LivingEntity & {
   roleBonus: RoleBonusState;
 };
 
+export type RestingCompanionsById = Record<string, Companion>;
+
 export type ResourceEntity = BaseEntity & {
   kind: "resource";
   resourceType: ResourceType;
@@ -2530,6 +2533,8 @@ export type NpcEntity = BaseEntity & {
     | "bounty_board"
     | "merchant"
     | "smith"
+    | "guild_coordinator"
+    | "tavern_keeper"
     | "bank_chest"
     | "dog"
     | "test_blade"

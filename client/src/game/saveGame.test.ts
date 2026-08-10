@@ -8,6 +8,8 @@ import {
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
 import { addItemToInventoryState } from "./inventory";
+import { getPartySizeLimit } from "./leveling";
+import { moveCompanionToRestingReserve } from "./partySystem";
 import { createInitialQuestStates } from "./questSystem";
 import {
   applyOfflineFarmingProgress,
@@ -127,6 +129,69 @@ describe("save game serialization", () => {
     ).toBe(true);
   });
 
+  it("preserves resting companions and highest-ever level through save restore", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const veteran: Companion = {
+      ...createCompanion("companion-2", { x: 16, y: 29 }, "companion-1", "fighter", 1),
+      characterLevel: 50,
+      characterXp: 12,
+      state: "attack",
+      currentTargetId: "enemy-1",
+      commandPriority: "direct",
+      consumableBuffs: {
+        flask: null,
+        food: {
+          itemId: "hearty_trail_rations",
+          kind: "food",
+          expiresAt: NOW_MS + 1_000,
+        },
+      },
+    };
+    const activeState = createTestGameState({
+      entities: {
+        [leader.id]: leader,
+        [veteran.id]: veteran,
+      },
+      currentMapId: MAP_ONE_ID,
+      map: createDebugMap(MAP_ONE_ID),
+      partyLeaderId: leader.id,
+    });
+    const restingState = moveCompanionToRestingReserve(activeState, veteran.id);
+    const save = createSavedGame(restingState, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restingState.entities[veteran.id]).toBeUndefined();
+    expect(restingState.restingCompanionsById?.[veteran.id]).toMatchObject({
+      id: veteran.id,
+      characterLevel: 50,
+      state: "idle",
+      currentTargetId: null,
+      commandPriority: "autonomous",
+    });
+    expect(save.state.highestCharacterLevelEver).toBe(50);
+    expect(save.state.restingCompanionsById?.[veteran.id]?.consumableBuffs).toEqual({
+      flask: null,
+      food: null,
+    });
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.entities[veteran.id]).toBeUndefined();
+    expect(restored.state.restingCompanionsById?.[veteran.id]).toMatchObject({
+      id: veteran.id,
+      characterLevel: 50,
+      characterXp: 12,
+    });
+    expect(restored.state.highestCharacterLevelEver).toBe(50);
+    expect(getPartySizeLimit(restored.state)).toBe(4);
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -210,6 +275,39 @@ describe("save game serialization", () => {
     expect(restored.state.currentMapId).toBe(HUB_TWO_MAP_ID);
     expect(restored.state.map?.id).toBe(HUB_TWO_MAP_ID);
     expect(restored.state.map?.displayName).toBe("Forward Bastion");
+  });
+
+  it("defaults missing roster foundation fields on older saves", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      characterLevel: 30,
+      state: "idle",
+      currentTargetId: null,
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        entities: {
+          [leader.id]: leader,
+        },
+        currentMapId: MAP_ONE_ID,
+        map: createDebugMap(MAP_ONE_ID),
+        partyLeaderId: leader.id,
+      }),
+      NOW_MS,
+    );
+    delete (save.state as Partial<GameState>).restingCompanionsById;
+    delete (save.state as Partial<GameState>).highestCharacterLevelEver;
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.restingCompanionsById).toEqual({});
+    expect(restored.state.highestCharacterLevelEver).toBe(30);
+    expect(getPartySizeLimit(restored.state)).toBe(4);
   });
 });
 

@@ -103,7 +103,7 @@ import {
   getQuestGiverReadyQuests,
   getPoiSearchScope,
   getTeleportWorkingStateById,
-  getTotalPartyCharacterLevel,
+  getHighestCharacterLevelEver,
   hasQuestGiverWork,
   issueCompanionDirectCommand,
   issuePartyOrder,
@@ -122,6 +122,7 @@ import {
   depositInventorySlotToBank,
   isBankChestNpc,
   isPartyLeaderNearBankChest,
+  isPartyLeaderNearGuildTavern,
   getNavigationClickCellKey,
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
@@ -311,7 +312,12 @@ type NavigationClickAccessibilityCache = {
 
 type MerchantPanel = "buy" | "sell";
 type QuestGiverPanel = "available" | "current";
-type NpcInteractionKind = "merchant" | "quest_giver" | "smith" | "bank_chest";
+type NpcInteractionKind =
+  | "merchant"
+  | "quest_giver"
+  | "smith"
+  | "bank_chest"
+  | "guild_tavern";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -435,6 +441,8 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   class_mentor: "Class Mentor",
   bounty_board: "Bounty Board",
   smith: "Smith",
+  guild_coordinator: "Guild Coordinator",
+  tavern_keeper: "Tavern Keeper",
   bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
@@ -695,6 +703,13 @@ function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
 
   if (npc.npcRole === "bank_chest") {
     return "bank_chest";
+  }
+
+  if (
+    npc.npcRole === "guild_coordinator" ||
+    npc.npcRole === "tavern_keeper"
+  ) {
+    return "guild_tavern";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -2777,7 +2792,7 @@ function App() {
   );
   const activeClassMentorFlowScreen =
     classMentorFlow[classMentorFlow.length - 1] ?? null;
-  const totalPartyLevel = getTotalPartyCharacterLevel(gameState);
+  const highestCharacterLevelEver = getHighestCharacterLevelEver(gameState);
   const leader = navigationLeader;
   const hasPartyLeader = Boolean(leader);
   const leaderCoordinateText = leader
@@ -2887,6 +2902,7 @@ function App() {
       : null;
   const activeBankCanManage =
     Boolean(activeBankChest) && isPartyLeaderNearBankChest(gameState);
+  const canUseGuildTavern = isPartyLeaderNearGuildTavern(gameState);
   const activeMerchantLocked =
     Boolean(activeMerchant) && !isMerchantUnlockedForQuests(gameState);
   const activeQuestGiver =
@@ -3037,6 +3053,26 @@ function App() {
     setBankResultMessage(null);
   }, []);
 
+  const openGuildTavernInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setCraftingResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("guildTavern");
+    void npc;
+  }, []);
+
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
     const interactionKind = getNpcInteractionKind(npc);
 
@@ -3057,9 +3093,15 @@ function App() {
 
     if (interactionKind === "bank_chest") {
       openBankChestInteraction(npc);
+      return;
+    }
+
+    if (interactionKind === "guild_tavern") {
+      openGuildTavernInteraction(npc);
     }
   }, [
     openBankChestInteraction,
+    openGuildTavernInteraction,
     openMerchantInteraction,
     openQuestGiverInteraction,
     openSmithInteraction,
@@ -5308,7 +5350,8 @@ function App() {
               selectedCompanionId={selectedMenuCompanionId}
               selectedQuestId={selectedMenuQuestId}
               craftingResultMessage={craftingResultMessage}
-              totalPartyLevel={totalPartyLevel}
+              canUseGuildTavern={canUseGuildTavern}
+              highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
               onChangeLeader={changePartyLeader}
               onChangeRole={changePartyMemberRole}

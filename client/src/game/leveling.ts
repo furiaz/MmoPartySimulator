@@ -8,6 +8,10 @@ import {
 import type { Companion, Enemy } from "./types";
 import { applyCompanionLevelUpStatGrowth } from "./stats";
 import { SUPERIOR_ENEMY_XP_MULTIPLIER, isSuperiorEnemy } from "./enemyVariants";
+import {
+  getHighestCharacterLevelEver,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 
 export const MAX_CHARACTER_LEVEL = 200;
 export const BEGINNER_CLASS_UNLOCK_LEVEL = 10;
@@ -221,6 +225,10 @@ export function grantCharacterXpToParty(
     );
 
     nextState = updateEntity(nextState, updatedCompanion);
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
     nextState = appendDebugTelemetryEvent(nextState, {
       type: "character_xp_awarded",
       entityId: entity.id,
@@ -340,17 +348,17 @@ export function getTotalPartyCharacterLevel(state: GameState): number {
 }
 
 export function getPartySizeLimit(state: GameState): number {
-  const totalPartyLevel = getTotalPartyCharacterLevel(state);
+  const highestCharacterLevelEver = getHighestCharacterLevelEver(state);
 
-  if (totalPartyLevel >= 60) {
+  if (highestCharacterLevelEver >= 60) {
     return 5;
   }
 
-  if (totalPartyLevel >= 30) {
+  if (highestCharacterLevelEver >= 30) {
     return 4;
   }
 
-  if (totalPartyLevel >= 10) {
+  if (highestCharacterLevelEver >= 10) {
     return 3;
   }
 

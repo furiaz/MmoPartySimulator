@@ -27,7 +27,10 @@ import {
   getDebugXpMultiplier,
   grantCharacterXpToCompanion,
 } from "./leveling";
-import { getPartyMembers } from "./partySystem";
+import {
+  getPartyMembers,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 import {
   addCombatFeedback,
   PROTOTYPE_VISUAL_FEEDBACK_DURATION_MS,
@@ -1521,6 +1524,10 @@ function grantQuestXpToCurrentParty(
 
     const updatedCompanion = grantCharacterXpToCompanion(companion, xpAmount);
     nextState = updateEntity(nextState, updatedCompanion);
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
     nextState = appendDebugTelemetryEvent(nextState, {
       type: "quest_reward_xp_awarded",
       entityId: companion.id,

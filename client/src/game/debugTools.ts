@@ -21,7 +21,10 @@ import {
   slimewardCampArrivalPositions,
   slimewardCampNpcStartData,
 } from "./debugMap";
-import { getPartyLeader } from "./partySystem";
+import {
+  getPartyLeader,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
 import { syncCompanionDerivedMaxHealth } from "./stats";
 import { getSubzoneAtPosition } from "./subzoneSystem";
@@ -285,6 +288,10 @@ export function debugLevelUpAllCompanions(
     const updatedCompanion = grantCharacterXpToCompanion(entity, xpNeeded);
 
     nextState = updateEntity(nextState, updatedCompanion);
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
 
     if (updatedCompanion.characterLevel > entity.characterLevel) {
       nextState = addCombatFeedback(nextState, {

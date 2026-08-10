@@ -513,6 +513,22 @@ export const entityVisualAssets = {
       height: 111,
     },
   },
+  guildCoordinator: {
+    kind: "image",
+    src: NPC_ICON_SRC.guild_coordinator ?? "",
+    naturalSize: {
+      width: 50,
+      height: 132,
+    },
+  },
+  tavernKeeper: {
+    kind: "image",
+    src: NPC_ICON_SRC.tavern_keeper ?? "",
+    naturalSize: {
+      width: 68,
+      height: 132,
+    },
+  },
 } satisfies {
   beginnerCharacter: SpriteVisualAsset;
   testCharacter: SpriteVisualAsset;
@@ -525,6 +541,8 @@ export const entityVisualAssets = {
   testBlade: ImageVisualAsset;
   testHunter: ImageVisualAsset;
   classMentor: ImageVisualAsset;
+  guildCoordinator: ImageVisualAsset;
+  tavernKeeper: ImageVisualAsset;
 };
 
 export const mapTileVisualAssets = {
@@ -560,6 +578,14 @@ export function getEntityVisualAsset(
   if (entity.kind === "npc") {
     if (entity.npcRole === "class_mentor") {
       return entityVisualAssets.classMentor;
+    }
+
+    if (entity.npcRole === "guild_coordinator") {
+      return entityVisualAssets.guildCoordinator;
+    }
+
+    if (entity.npcRole === "tavern_keeper") {
+      return entityVisualAssets.tavernKeeper;
     }
 
     const npcIconSrc = NPC_ICON_SRC[entity.npcRole];

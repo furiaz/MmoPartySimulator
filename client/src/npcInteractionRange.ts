@@ -1,8 +1,10 @@
 import type { NpcEntity } from "./game/types";
+import { GUILD_TAVERN_INTERACTION_RANGE } from "./game/guildTavern";
 
 export const questGiverInteractionRange = 2;
 export const merchantInteractionRange = 2;
 export const bankInteractionRange = 2;
+export const guildTavernInteractionRange = GUILD_TAVERN_INTERACTION_RANGE;
 export const defaultNpcInteractionRange = 1.5;
 
 export function getNpcInteractionRange(
@@ -18,6 +20,13 @@ export function getNpcInteractionRange(
 
   if (npc.npcRole === "bank_chest") {
     return bankInteractionRange;
+  }
+
+  if (
+    npc.npcRole === "guild_coordinator" ||
+    npc.npcRole === "tavern_keeper"
+  ) {
+    return guildTavernInteractionRange;
   }
 
   return defaultNpcInteractionRange;
