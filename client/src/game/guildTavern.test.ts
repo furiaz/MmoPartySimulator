@@ -23,12 +23,12 @@ describe("guild tavern proximity", () => {
     expect(isPartyLeaderNearGuildTavern(state)).toBe(true);
   });
 
-  it("detects the leader in range of the Tavern Keeper", () => {
+  it("detects the leader in range of the Inn Keeper", () => {
     const leader = createCompanion("leader", { x: 10, y: 10 }, "leader");
     const tavernKeeper = createNpc(
       "tavern-keeper",
       { x: 10, y: 12 },
-      "Tavern Keeper",
+      "Inn Keeper",
       "tavern_keeper",
     );
     const state = createTestGameState({
@@ -46,7 +46,7 @@ describe("guild tavern proximity", () => {
     const leader = createCompanion("leader", { x: 10, y: 10 }, "leader");
     const coordinator = createNpc(
       "guild-coordinator",
-      { x: 13, y: 10 },
+      { x: 15, y: 10 },
       "Guild Coordinator",
       "guild_coordinator",
     );

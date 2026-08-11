@@ -1,33 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 import {
   CLASS_DEFINITIONS,
   getGuildRecruitDestination,
-  getGuildRecruitReserveCapacity,
   getGuildRecruitState,
   getGuildNoticeBoardState,
   getActiveCompanions,
   getEnemyType,
+  getGuildCompanionCapacity,
+  getGuildSecondaryPartiesState,
+  getInnReserveCompanions,
   getItemDefinition,
   getPartySizeLimit,
+  getPartySizeUnlockRequirement,
   getRestingCompanions,
+  getTotalRosterCompanionCount,
+  getTotalRosterCompanionLevel,
+  type Companion,
+  type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
   type GameState,
+  type PartyMemberRole,
 } from "./game";
 import SpriteAnimation from "./SpriteAnimation";
 import { getClassIdleFrameSrc, getEnemyWalkingAnimation } from "./visualAssets";
 
-type GuildTavernSection = "guild" | "tavern";
-type GuildView = "hall" | "recruit" | "noticeBoard";
+type GuildTavernSection = "guild" | "inn";
+type GuildView = "hall" | "recruit" | "noticeBoard" | "secondaryParties";
 
-const tavernActions = ["Rooms", "Kitchen"];
+const MAX_MAIN_PARTY_SLOTS = 5;
+const innActions = ["Rooms", "Kitchen"];
 
 export function GuildTavernPanel({
   canUse,
   currentTime,
   recruitResultMessage,
   noticeBoardResultMessage,
+  secondaryPartyResultMessage,
   state,
   onCancelNoticeBoardQuest,
+  onMoveGuildRosterCompanion,
   onOpenNoticeBoard,
   onRecruit,
   onTakeNoticeBoardQuest,
@@ -36,8 +47,13 @@ export function GuildTavernPanel({
   currentTime: number;
   recruitResultMessage?: string | null;
   noticeBoardResultMessage?: string | null;
+  secondaryPartyResultMessage?: string | null;
   state: GameState;
   onCancelNoticeBoardQuest: () => void;
+  onMoveGuildRosterCompanion: (
+    companionId: string,
+    target: GuildRosterSlotRef,
+  ) => void;
   onOpenNoticeBoard: () => void;
   onRecruit: () => void;
   onTakeNoticeBoardQuest: () => void;
@@ -45,17 +61,20 @@ export function GuildTavernPanel({
   const [activeSection, setActiveSection] =
     useState<GuildTavernSection>("guild");
   const [guildView, setGuildView] = useState<GuildView>("hall");
+  const [selectedRosterCompanionId, setSelectedRosterCompanionId] =
+    useState<string | null>(null);
   const activeCompanions = getActiveCompanions(state);
-  const restingCompanions = getRestingCompanions(state);
   const partySizeLimit = getPartySizeLimit(state);
-  const reserveCapacity = getGuildRecruitReserveCapacity();
-  const actionStatus = canUse ? "Coming soon" : "Requires Guild & Tavern";
+  const rosterCapacity = getGuildCompanionCapacity();
+  const rosterCount = getTotalRosterCompanionCount(state);
+  const totalRosterLevel = getTotalRosterCompanionLevel(state);
+  const actionStatus = canUse ? "Coming soon" : "Requires Guild & Inn";
   const guildRecruit = getGuildRecruitState(state, currentTime);
   const recruitButtonStatus = canUse
     ? guildRecruit.candidate
       ? "Ready"
       : "Waiting"
-    : "Requires Guild & Tavern";
+    : "Requires Guild & Inn";
   const recruitButtonCountdown = formatRecruitButtonCountdown(
     guildRecruit.nextRefreshAtMs,
     currentTime,
@@ -68,23 +87,23 @@ export function GuildTavernPanel({
   );
   const noticeBoardButtonStatus = canUse
     ? getNoticeBoardButtonStatus(noticeBoardQuest)
-    : "Requires Guild & Tavern";
+    : "Requires Guild & Inn";
 
   function showPreviousSection() {
-    setActiveSection((section) => (section === "guild" ? "tavern" : "guild"));
+    setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
     setGuildView("hall");
   }
 
   function showNextSection() {
-    setActiveSection((section) => (section === "guild" ? "tavern" : "guild"));
+    setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
     setGuildView("hall");
   }
 
   return (
-    <section className="guild-tavern-panel" aria-label="Guild and Tavern">
+    <section className="guild-tavern-panel" aria-label="Guild and Inn">
       <div className="guild-tavern-header">
         <div>
-          <h2>Guild & Tavern</h2>
+          <h2>Guild & Inn</h2>
           <span>{canUse ? "Nearby" : "Reference only"}</span>
         </div>
         <dl>
@@ -95,9 +114,15 @@ export function GuildTavernPanel({
             </dd>
           </div>
           <div>
-            <dt>Resting</dt>
+            <dt>Companions</dt>
             <dd>
-              {restingCompanions.length}/{reserveCapacity}
+              {rosterCount}/{rosterCapacity}
+            </dd>
+          </div>
+          <div>
+            <dt>Total Level</dt>
+            <dd>
+              {totalRosterLevel}
             </dd>
           </div>
         </dl>
@@ -105,15 +130,15 @@ export function GuildTavernPanel({
 
       <div className="guild-tavern-section-nav">
         <button
-          aria-label="Previous Guild or Tavern section"
+          aria-label="Previous Guild or Inn section"
           onClick={showPreviousSection}
           type="button"
         >
           &lt;
         </button>
-        <strong>{activeSection === "guild" ? "Guild" : "Tavern"}</strong>
+        <strong>{activeSection === "guild" ? "Guild" : "Inn"}</strong>
         <button
-          aria-label="Next Guild or Tavern section"
+          aria-label="Next Guild or Inn section"
           onClick={showNextSection}
           type="button"
         >
@@ -140,6 +165,16 @@ export function GuildTavernPanel({
           onCancelQuest={onCancelNoticeBoardQuest}
           onTakeQuest={onTakeNoticeBoardQuest}
         />
+      ) : activeSection === "guild" && guildView === "secondaryParties" ? (
+        <GuildSecondaryPartiesView
+          canUse={canUse}
+          resultMessage={secondaryPartyResultMessage}
+          selectedCompanionId={selectedRosterCompanionId}
+          state={state}
+          onBack={() => setGuildView("hall")}
+          onMoveCompanion={onMoveGuildRosterCompanion}
+          onSelectCompanion={setSelectedRosterCompanionId}
+        />
       ) : (
         <div className="guild-tavern-section">
           <div className="guild-tavern-service-portrait" aria-hidden="true">
@@ -154,7 +189,7 @@ export function GuildTavernPanel({
           </div>
           <div className="guild-tavern-service-actions">
             <h3>
-              {activeSection === "guild" ? "Guild Hall" : "Tavern Hearth"}
+              {activeSection === "guild" ? "Guild Hall" : "Inn Hearth"}
             </h3>
             <div>
               {activeSection === "guild" ? (
@@ -184,13 +219,17 @@ export function GuildTavernPanel({
                     </span>
                     <small>{noticeBoardButtonStatus}</small>
                   </button>
-                  <button disabled type="button">
+                  <button
+                    disabled={!canUse}
+                    onClick={() => setGuildView("secondaryParties")}
+                    type="button"
+                  >
                     <span>Secondary Parties</span>
-                    <small>{actionStatus}</small>
+                    <small>{canUse ? "Ready" : actionStatus}</small>
                   </button>
                 </>
               ) : (
-                tavernActions.map((action) => (
+                innActions.map((action) => (
                   <button disabled key={action} type="button">
                     <span>{action}</span>
                     <small>{actionStatus}</small>
@@ -231,14 +270,14 @@ function GuildRecruitView({
     : null;
   const recruitDisabled = !canUse || !candidate || destination === "blocked_full";
   const blockedText = !canUse
-    ? "Requires Guild & Tavern"
+    ? "Requires Guild & Inn"
     : !candidate
       ? `Next recruit in ${formatRecruitCountdown(
           guildRecruit.nextRefreshAtMs,
           currentTime,
         )}`
       : destination === "blocked_full"
-        ? "No active slot or Tavern reserve room."
+        ? "No active slot or Inn room."
         : null;
 
   return (
@@ -332,7 +371,7 @@ function GuildNoticeBoardView({
       ? getNoticeBoardQuestStatusLabel(quest)
       : "Take Quest";
   const statusText = !canUse
-    ? "Requires Guild & Tavern"
+    ? "Requires Guild & Inn"
     : quest
       ? getNoticeBoardQuestStatusLabel(quest)
       : `Next posting in ${formatRecruitCountdown(
@@ -449,13 +488,325 @@ function GuildNoticeBoardView({
   );
 }
 
+function GuildSecondaryPartiesView({
+  canUse,
+  resultMessage,
+  selectedCompanionId,
+  state,
+  onBack,
+  onMoveCompanion,
+  onSelectCompanion,
+}: {
+  canUse: boolean;
+  resultMessage?: string | null;
+  selectedCompanionId: string | null;
+  state: GameState;
+  onBack: () => void;
+  onMoveCompanion: (companionId: string, target: GuildRosterSlotRef) => void;
+  onSelectCompanion: (companionId: string | null) => void;
+}) {
+  const [draggedCompanionId, setDraggedCompanionId] = useState<string | null>(
+    null,
+  );
+  const activeCompanions = getActiveCompanions(state).sort(compareCompanionCards);
+  const innReserveCompanions = getInnReserveCompanions(state);
+  const secondaryParties = getGuildSecondaryPartiesState(state);
+  const partySizeLimit = getPartySizeLimit(state);
+  const rosterCapacity = getGuildCompanionCapacity();
+  const rosterCount = getTotalRosterCompanionCount(state);
+  const totalRosterLevel = getTotalRosterCompanionLevel(state);
+  const companionsById = Object.fromEntries(
+    [
+      ...activeCompanions,
+      ...getRestingCompanions(state),
+    ].map((companion) => [companion.id, companion]),
+  );
+  const reserveSlotCount = innReserveCompanions.length + 1;
+
+  useEffect(() => {
+    setDraggedCompanionId(null);
+  }, [state]);
+
+  useEffect(() => {
+    if (selectedCompanionId && !companionsById[selectedCompanionId]) {
+      onSelectCompanion(null);
+    }
+  }, [companionsById, onSelectCompanion, selectedCompanionId]);
+
+  return (
+    <div className="guild-roster-view">
+      <button className="guild-recruit-back-button" onClick={onBack} type="button">
+        &lt; Back
+      </button>
+
+      <div className="guild-roster-card">
+        <div className="guild-roster-topline">
+          <div>
+            <span className="guild-recruit-kicker">Roster Board</span>
+            <h3>Secondary Parties</h3>
+          </div>
+          <dl>
+            <div>
+              <dt>Companions</dt>
+              <dd>
+                {rosterCount}/{rosterCapacity}
+              </dd>
+            </div>
+            <div>
+              <dt>Total Level</dt>
+              <dd>{totalRosterLevel}</dd>
+            </div>
+          </dl>
+        </div>
+
+        {!canUse ? (
+          <p className="guild-recruit-message">Requires Guild & Inn</p>
+        ) : null}
+        {selectedCompanionId ? (
+          <p className="guild-recruit-message">
+            Selected {companionsById[selectedCompanionId]?.id ?? "companion"}. Pick a
+            slot to move.
+          </p>
+        ) : null}
+        {resultMessage ? (
+          <p className="guild-recruit-message">{resultMessage}</p>
+        ) : null}
+
+        <div className="guild-roster-board">
+          <RosterColumn title="Main Party">
+            {Array.from({ length: MAX_MAIN_PARTY_SLOTS }, (_, index) => {
+              const isLocked = index >= partySizeLimit;
+              const unlockRequirement = getPartySizeUnlockRequirement(index + 1);
+
+              return (
+                <RosterSlot
+                  canUse={canUse}
+                  companion={activeCompanions[index] ?? null}
+                  draggedCompanionId={draggedCompanionId}
+                  key={`main-${index}`}
+                  label={
+                    isLocked && unlockRequirement
+                      ? `Slot ${index + 1} - Level ${unlockRequirement}`
+                      : `Slot ${index + 1}`
+                  }
+                  locked={isLocked}
+                  selectedCompanionId={selectedCompanionId}
+                  slotRef={{
+                    area: "main_party",
+                    slotIndex: index,
+                  }}
+                  onDragEnd={() => setDraggedCompanionId(null)}
+                  onDragStart={setDraggedCompanionId}
+                  onMoveCompanion={onMoveCompanion}
+                  onSelectCompanion={onSelectCompanion}
+                />
+              );
+            })}
+          </RosterColumn>
+
+          <RosterColumn title="Inn's Reserve">
+            {Array.from({ length: reserveSlotCount }, (_, index) => (
+              <RosterSlot
+                canUse={canUse}
+                companion={innReserveCompanions[index] ?? null}
+                draggedCompanionId={draggedCompanionId}
+                key={`reserve-${index}`}
+                label={`Reserve ${index + 1}`}
+                locked={false}
+                selectedCompanionId={selectedCompanionId}
+                slotRef={{
+                  area: "inn_reserve",
+                  slotIndex: index,
+                }}
+                onDragEnd={() => setDraggedCompanionId(null)}
+                onDragStart={setDraggedCompanionId}
+                onMoveCompanion={onMoveCompanion}
+                onSelectCompanion={onSelectCompanion}
+              />
+            ))}
+          </RosterColumn>
+
+          {secondaryParties.parties.map((party) => (
+            <RosterColumn key={party.id} title={party.displayName}>
+              {party.companionIds.map((companionId, index) => (
+                <RosterSlot
+                  canUse={canUse}
+                  companion={companionId ? companionsById[companionId] ?? null : null}
+                  draggedCompanionId={draggedCompanionId}
+                  key={`${party.id}-${index}`}
+                  label={`Slot ${index + 1}`}
+                  locked={false}
+                  selectedCompanionId={selectedCompanionId}
+                  slotRef={{
+                    area: "secondary_party",
+                    partyId: party.id,
+                    slotIndex: index,
+                  }}
+                  onDragEnd={() => setDraggedCompanionId(null)}
+                  onDragStart={setDraggedCompanionId}
+                  onMoveCompanion={onMoveCompanion}
+                  onSelectCompanion={onSelectCompanion}
+                />
+              ))}
+            </RosterColumn>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RosterColumn({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="guild-roster-column">
+      <h4>{title}</h4>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function RosterSlot({
+  canUse,
+  companion,
+  draggedCompanionId,
+  label,
+  locked,
+  selectedCompanionId,
+  slotRef,
+  onDragEnd,
+  onDragStart,
+  onMoveCompanion,
+  onSelectCompanion,
+}: {
+  canUse: boolean;
+  companion: Companion | null;
+  draggedCompanionId: string | null;
+  label: string;
+  locked: boolean;
+  selectedCompanionId: string | null;
+  slotRef: GuildRosterSlotRef;
+  onDragEnd: () => void;
+  onDragStart: (companionId: string) => void;
+  onMoveCompanion: (companionId: string, target: GuildRosterSlotRef) => void;
+  onSelectCompanion: (companionId: string | null) => void;
+}) {
+  const canReceive = canUse && !locked;
+  const isTargeting = canReceive && Boolean(draggedCompanionId || selectedCompanionId);
+
+  function moveCompanion(companionId: string) {
+    if (!canReceive || companionId === companion?.id) {
+      return;
+    }
+
+    onMoveCompanion(companionId, slotRef);
+    onDragEnd();
+    onSelectCompanion(null);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const companionId =
+      event.dataTransfer.getData("text/plain") || draggedCompanionId;
+
+    if (companionId) {
+      moveCompanion(companionId);
+    }
+  }
+
+  function handleSlotClick() {
+    if (selectedCompanionId) {
+      moveCompanion(selectedCompanionId);
+    }
+  }
+
+  return (
+    <div
+      className={`guild-roster-slot${locked ? " locked" : ""}${
+        isTargeting ? " can-receive" : ""
+      }`}
+      onClick={handleSlotClick}
+      onDragOver={(event) => {
+        if (canReceive) {
+          event.preventDefault();
+        }
+      }}
+      onDrop={handleDrop}
+    >
+      <span className="guild-roster-slot-label">{label}</span>
+      {locked ? (
+        <span className="guild-roster-locked">Locked</span>
+      ) : companion ? (
+        <CompanionRosterCard
+          canUse={canUse}
+          companion={companion}
+          isSelected={selectedCompanionId === companion.id}
+          onDragEnd={onDragEnd}
+          onDragStart={onDragStart}
+          onSelectCompanion={onSelectCompanion}
+        />
+      ) : (
+        <span className="guild-roster-empty">Empty</span>
+      )}
+    </div>
+  );
+}
+
+function CompanionRosterCard({
+  canUse,
+  companion,
+  isSelected,
+  onDragEnd,
+  onDragStart,
+  onSelectCompanion,
+}: {
+  canUse: boolean;
+  companion: Companion;
+  isSelected: boolean;
+  onDragEnd: () => void;
+  onDragStart: (companionId: string) => void;
+  onSelectCompanion: (companionId: string | null) => void;
+}) {
+  const classDefinition = CLASS_DEFINITIONS[companion.classId];
+  const idleFrameSrc = getClassIdleFrameSrc(companion.classId);
+
+  return (
+    <button
+      className={`guild-roster-companion-card${isSelected ? " selected" : ""}`}
+      draggable={canUse}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelectCompanion(isSelected ? null : companion.id);
+      }}
+      onDragEnd={onDragEnd}
+      onDragStart={(event) => {
+        event.dataTransfer.setData("text/plain", companion.id);
+        onDragStart(companion.id);
+      }}
+      type="button"
+    >
+      <span className="guild-roster-companion-sprite" aria-hidden="true">
+        {idleFrameSrc ? <img alt="" src={idleFrameSrc} /> : null}
+      </span>
+      <strong>Lv {companion.characterLevel}</strong>
+      <span>{classDefinition?.displayName ?? companion.classId}</span>
+      <small>{getRoleLabel(companion.role)}</small>
+    </button>
+  );
+}
+
 function getDestinationLabel(destination: ReturnType<typeof getGuildRecruitDestination>): string {
   if (destination === "active_party") {
     return "Active Party";
   }
 
   if (destination === "tavern_reserve") {
-    return "Tavern Reserve";
+    return "Inn's Reserve";
   }
 
   return "No room available";
@@ -483,6 +834,22 @@ function getNoticeBoardQuestStatusLabel(
   }
 
   return "Available";
+}
+
+function getRoleLabel(role: PartyMemberRole): string {
+  const roleLabels: Record<PartyMemberRole, string> = {
+    defender: "Defender",
+    fighter: "Fighter",
+    gatherer: "Gatherer",
+    support: "Support",
+    none: "None",
+  };
+
+  return roleLabels[role];
+}
+
+function compareCompanionCards(a: Companion, b: Companion): number {
+  return a.partyOrder - b.partyOrder || a.id.localeCompare(b.id);
 }
 
 function formatRecruitCountdown(refreshAtMs: number, currentTime: number): string {

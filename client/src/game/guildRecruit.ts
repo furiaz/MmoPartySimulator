@@ -1,4 +1,8 @@
 import { createCompanion } from "./entities";
+import {
+  GUILD_INN_COMPANION_CAPACITY,
+  getTotalRosterCompanionCount,
+} from "./guildSecondaryParties";
 import { getPartySizeLimit } from "./leveling";
 import {
   getActiveCompanions,
@@ -17,7 +21,7 @@ import type {
 } from "./types";
 
 export const GUILD_RECRUIT_REFRESH_INTERVAL_MS = 3 * 60 * 60 * 1000;
-export const GUILD_RECRUIT_RESERVE_CAPACITY = 3;
+export const GUILD_RECRUIT_RESERVE_CAPACITY = GUILD_INN_COMPANION_CAPACITY;
 
 export type GuildRecruitDestination =
   | "active_party"
@@ -163,15 +167,15 @@ export function recruitGuildCandidate(
 export function getGuildRecruitDestination(
   state: GameState,
 ): GuildRecruitDestination {
+  if (getTotalRosterCompanionCount(state) >= GUILD_INN_COMPANION_CAPACITY) {
+    return "blocked_full";
+  }
+
   if (getActiveCompanions(state).length < getPartySizeLimit(state)) {
     return "active_party";
   }
 
-  if (getRestingCompanions(state).length < GUILD_RECRUIT_RESERVE_CAPACITY) {
-    return "tavern_reserve";
-  }
-
-  return "blocked_full";
+  return "tavern_reserve";
 }
 
 export function getGuildRecruitReserveCapacity(): number {

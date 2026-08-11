@@ -16,6 +16,7 @@ import { createNpc } from "./entities";
 import { sanitizeGuildNoticeBoardState } from "./guildNoticeBoard";
 import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
+import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import { sanitizeKeyItemsById } from "./keyItems";
@@ -388,6 +389,10 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   });
   const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit);
   const guildNoticeBoard = sanitizeGuildNoticeBoardState(state.guildNoticeBoard);
+  const guildSecondaryParties = sanitizeGuildSecondaryPartiesState(
+    state.guildSecondaryParties,
+    restingCompanionsById,
+  );
 
   return {
     ...state,
@@ -396,6 +401,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     highestCharacterLevelEver,
     guildRecruit,
     guildNoticeBoard,
+    guildSecondaryParties,
     inventory: sanitizePartyInventory(state.inventory),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {

@@ -33,7 +33,7 @@ describe("guild recruit", () => {
     expect(result.state.restingCompanionsById?.[result.companion.id]).toBeUndefined();
   });
 
-  it("routes a recruited companion to the Tavern reserve when active party is full", () => {
+  it("routes a recruited companion to the Inn's Reserve when active party is full", () => {
     const state = createRosterState({
       activeCount: 2,
       highestCharacterLevelEver: 1,
@@ -55,10 +55,10 @@ describe("guild recruit", () => {
     });
   });
 
-  it("blocks recruitment when active party and reserve are full", () => {
+  it("blocks recruitment when total Inn companion capacity is full", () => {
     const state = createRosterState({
       activeCount: 2,
-      restingCount: 3,
+      restingCount: 2,
       highestCharacterLevelEver: 1,
     });
 
@@ -171,8 +171,8 @@ describe("guild recruit", () => {
     expect(result.state.entities["guild-recruit-3"]).toBeDefined();
   });
 
-  it("uses a three-slot MVP Tavern reserve capacity", () => {
-    expect(getGuildRecruitReserveCapacity()).toBe(3);
+  it("uses a four-companion MVP Inn capacity", () => {
+    expect(getGuildRecruitReserveCapacity()).toBe(4);
   });
 });
 

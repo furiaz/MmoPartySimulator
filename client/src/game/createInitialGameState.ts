@@ -17,6 +17,7 @@ import {
 import { createEmptyPartyBank } from "./bank";
 import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
 import { createInitialGuildRecruitState } from "./guildRecruit";
+import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import {
   addItemToInventoryState,
   createEmptyPartyInventory,
@@ -69,6 +70,7 @@ export function createInitialGameState(): GameState {
     ),
     guildRecruit: createInitialGuildRecruitState(),
     guildNoticeBoard: createInitialGuildNoticeBoardState(),
+    guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),

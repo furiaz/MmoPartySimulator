@@ -372,7 +372,7 @@ export const hubNpcStartData = [
   {
     id: "hub-tavern-keeper",
     position: { x: 61, y: 56 },
-    displayName: "Tavern Keeper",
+    displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
   },
 ] as const;
@@ -436,7 +436,7 @@ export const hubTwoNpcStartData = [
   {
     id: "hub-2-tavern-keeper",
     position: { x: 117, y: 60 },
-    displayName: "Tavern Keeper",
+    displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
   },
 ] as const;

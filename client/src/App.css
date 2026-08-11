@@ -1502,8 +1502,206 @@
   min-width: 118px;
 }
 
+.guild-roster-view {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-roster-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-roster-topline {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.guild-roster-topline h3 {
+  margin: 0;
+}
+
+.guild-roster-topline dl {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.guild-roster-topline dl div {
+  min-width: 88px;
+  padding: 7px 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.guild-roster-topline dt {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-roster-topline dd {
+  margin: 2px 0 0;
+  color: #f3df93;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.guild-roster-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-roster-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.guild-roster-column h4 {
+  margin: 0;
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-roster-column > div {
+  display: grid;
+  gap: 8px;
+}
+
+.guild-roster-slot {
+  display: grid;
+  gap: 6px;
+  min-height: 132px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.guild-roster-slot.can-receive {
+  border-color: #4e8fb5;
+  background: rgba(18, 55, 76, 0.42);
+}
+
+.guild-roster-slot.locked {
+  opacity: 0.62;
+  background: rgba(5, 11, 14, 0.24);
+}
+
+.guild-roster-slot-label {
+  min-width: 0;
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-roster-empty,
+.guild-roster-locked,
+.guild-roster-empty-note {
+  display: grid;
+  min-height: 92px;
+  place-items: center;
+  color: #b9cdd1;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.guild-roster-companion-card {
+  display: grid;
+  grid-template-rows: 54px auto auto auto;
+  gap: 3px;
+  min-width: 0;
+  min-height: 102px;
+  padding: 7px;
+  border: 1px solid #456169;
+  border-radius: 6px;
+  background: rgba(12, 28, 36, 0.72);
+  color: #eaf3f5;
+  cursor: grab;
+}
+
+.guild-roster-companion-card.selected {
+  border-color: #f3df93;
+  box-shadow: 0 0 0 1px rgba(243, 223, 147, 0.35);
+}
+
+.guild-roster-companion-card:disabled {
+  cursor: default;
+}
+
+.guild-roster-companion-sprite {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.guild-roster-companion-sprite img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.guild-roster-companion-card strong,
+.guild-roster-companion-card span,
+.guild-roster-companion-card small {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guild-roster-companion-card strong {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.guild-roster-companion-card span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.guild-roster-companion-card small {
+  color: #b9cdd1;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 @media (max-width: 720px) {
   .guild-notice-board-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guild-roster-topline,
+  .guild-roster-topline dl {
+    display: grid;
+  }
+
+  .guild-roster-board {
     grid-template-columns: minmax(0, 1fr);
   }
 }

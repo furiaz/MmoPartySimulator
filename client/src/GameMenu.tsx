@@ -27,6 +27,7 @@ import type {
   PrimaryStatId,
   SkillId,
   CraftingRecipeId,
+  GuildRosterSlotRef,
 } from "./game";
 
 export function GameMenu({
@@ -49,6 +50,7 @@ export function GameMenu({
   craftingResultMessage,
   guildRecruitResultMessage,
   guildNoticeBoardResultMessage,
+  guildSecondaryPartyResultMessage,
   canUseGuildTavern,
   highestCharacterLevelEver,
   onAllocateStatPoint,
@@ -73,6 +75,7 @@ export function GameMenu({
   onOpenGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
+  onMoveGuildRosterCompanion,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
   onTeleportWorldTravelDestination,
@@ -103,6 +106,7 @@ export function GameMenu({
   craftingResultMessage?: string | null;
   guildRecruitResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
+  guildSecondaryPartyResultMessage?: string | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
@@ -141,6 +145,10 @@ export function GameMenu({
   onOpenGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: () => void;
   onCancelGuildNoticeBoardQuest: () => void;
+  onMoveGuildRosterCompanion: (
+    companionId: string,
+    target: GuildRosterSlotRef,
+  ) => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
   onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
@@ -264,6 +272,7 @@ export function GameMenu({
                   currentTime={currentTime}
                   guildRecruitResultMessage={guildRecruitResultMessage}
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
+                  guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
                   canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
                   quests={quests}
@@ -273,6 +282,7 @@ export function GameMenu({
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
                   onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
+                  onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
                   onSelectQuest={onSelectQuest}
                   onSelectSubpage={onSelectAtlasSubpage}
                 />
@@ -305,6 +315,7 @@ function AtlasPanel({
   currentTime,
   guildRecruitResultMessage,
   guildNoticeBoardResultMessage,
+  guildSecondaryPartyResultMessage,
   canUseGuildTavern,
   gameState,
   quests,
@@ -314,6 +325,7 @@ function AtlasPanel({
   onOpenGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
+  onMoveGuildRosterCompanion,
   onSelectQuest,
   onSelectSubpage,
 }: {
@@ -322,6 +334,7 @@ function AtlasPanel({
   currentTime: number;
   guildRecruitResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
+  guildSecondaryPartyResultMessage?: string | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
@@ -331,6 +344,10 @@ function AtlasPanel({
   onOpenGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: () => void;
   onCancelGuildNoticeBoardQuest: () => void;
+  onMoveGuildRosterCompanion: (
+    companionId: string,
+    target: GuildRosterSlotRef,
+  ) => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
@@ -363,7 +380,7 @@ function AtlasPanel({
           onClick={() => onSelectSubpage("guildTavern")}
           type="button"
         >
-          Guild & Tavern
+          Guild & Inn
         </button>
       </nav>
       {activeSubpage === "quests" ? (
@@ -391,8 +408,10 @@ function AtlasPanel({
           currentTime={currentTime}
           recruitResultMessage={guildRecruitResultMessage}
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
+          secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
+          onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
           onOpenNoticeBoard={onOpenGuildNoticeBoard}
           onRecruit={onRecruitGuildCandidate}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}

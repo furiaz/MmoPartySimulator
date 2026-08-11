@@ -34,7 +34,7 @@ describe("NPC interaction ranges", () => {
     expect(merchantInteractionRange).toBe(2);
     expect(bankInteractionRange).toBe(2);
     expect(questGiverInteractionRange).toBe(2);
-    expect(guildTavernInteractionRange).toBe(2);
+    expect(guildTavernInteractionRange).toBe(4);
   });
 
   it("keeps other static NPC roles on the default range", () => {

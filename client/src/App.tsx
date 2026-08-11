@@ -126,6 +126,7 @@ import {
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
   recruitGuildCandidate,
+  moveGuildRosterCompanion,
   refreshGuildNoticeBoardState,
   refreshGuildRecruitState,
   shouldShowGuildNoticeBoardSign,
@@ -180,6 +181,8 @@ import {
   type GameEntity,
   type GameMap,
   type GameState,
+  type GuildRosterMoveFailureReason,
+  type GuildRosterSlotRef,
   type ItemDefinition,
   type ItemId,
   type MapVisualObject,
@@ -470,7 +473,7 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   bounty_board: "Bounty Board",
   smith: "Smith",
   guild_coordinator: "Guild Coordinator",
-  tavern_keeper: "Tavern Keeper",
+  tavern_keeper: "Inn Keeper",
   bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
@@ -548,6 +551,22 @@ function getBankTransferFailureMessage(reason: string): string {
       return "Invalid quantity";
     default:
       return "Bank action failed";
+  }
+}
+
+function getGuildRosterMoveFailureMessage(
+  reason: GuildRosterMoveFailureReason,
+): string {
+  switch (reason) {
+    case "locked_main_party_slot":
+      return "That Main Party slot is locked";
+    case "main_party_requires_companion":
+      return "Main Party needs at least one companion";
+    case "unknown_companion":
+      return "Companion unavailable";
+    case "invalid_target":
+    default:
+      return "That slot is unavailable";
   }
 }
 
@@ -2581,6 +2600,8 @@ function App() {
     useState<string | null>(null);
   const [guildNoticeBoardResultMessage, setGuildNoticeBoardResultMessage] =
     useState<string | null>(null);
+  const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
+    useState<string | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -4304,12 +4325,13 @@ function App() {
     if (subpage !== "guildTavern") {
       setGuildRecruitResultMessage(null);
       setGuildNoticeBoardResultMessage(null);
+      setGuildSecondaryPartyResultMessage(null);
     }
   }
 
   function recruitGuildCompanion() {
     if (!canUseGuildTavern) {
-      setGuildRecruitResultMessage("Requires Guild & Tavern");
+      setGuildRecruitResultMessage("Requires Guild & Inn");
       return;
     }
 
@@ -4320,13 +4342,13 @@ function App() {
       setGuildRecruitResultMessage(
         recruit.destination === "active_party"
           ? "Recruit joined the active party"
-          : "Recruit sent to Tavern reserve",
+          : "Recruit sent to Inn's Reserve",
       );
       setSelectedCompanionId(recruit.companion.id);
     } else {
       setGuildRecruitResultMessage(
         recruit.reason === "roster_full"
-          ? "No active slot or Tavern reserve room."
+          ? "No active slot or Inn room."
           : "No recruit available.",
       );
     }
@@ -4336,7 +4358,7 @@ function App() {
 
   function openGuildNoticeBoardMenu() {
     if (!canUseGuildTavern) {
-      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
       return;
     }
 
@@ -4362,7 +4384,7 @@ function App() {
 
   function takeGuildNoticeBoardQuestFromMenu() {
     if (!canUseGuildTavern) {
-      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
       return;
     }
 
@@ -4380,7 +4402,7 @@ function App() {
 
   function cancelGuildNoticeBoardQuestFromMenu() {
     if (!canUseGuildTavern) {
-      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
       return;
     }
 
@@ -4394,6 +4416,30 @@ function App() {
     }
 
     setGameState(canceled.state);
+  }
+
+  function moveGuildRosterCompanionFromMenu(
+    companionId: string,
+    target: GuildRosterSlotRef,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const moved = moveGuildRosterCompanion(gameState, companionId, target);
+
+    if (moved.ok) {
+      queueSaveAfterStateChange("Guild secondary party roster saved");
+      setGuildSecondaryPartyResultMessage("Roster updated");
+      setSelectedCompanionId(companionId);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        getGuildRosterMoveFailureMessage(moved.reason),
+      );
+    }
+
+    setGameState(moved.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -5534,6 +5580,7 @@ function App() {
               craftingResultMessage={craftingResultMessage}
               guildRecruitResultMessage={guildRecruitResultMessage}
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
+              guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
@@ -5558,6 +5605,7 @@ function App() {
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
               onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
+              onMoveGuildRosterCompanion={moveGuildRosterCompanionFromMenu}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onTeleportWorldTravelDestination={teleportWorldTravel}

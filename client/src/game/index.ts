@@ -62,6 +62,9 @@ export type {
   GuildNoticeBoardState,
   GuildRecruitCandidate,
   GuildRecruitState,
+  GuildRosterSlotRef,
+  GuildSecondaryPartiesState,
+  GuildSecondaryParty,
   ActiveTeleport,
   LeaderIntent,
   LeaderIntentType,
@@ -956,6 +959,22 @@ export {
   type GuildRecruitDestination,
   type GuildRecruitResult,
 } from "./guildRecruit";
+export {
+  GUILD_INN_COMPANION_CAPACITY,
+  GUILD_SECONDARY_PARTY_ID,
+  GUILD_SECONDARY_PARTY_SLOT_COUNT,
+  createInitialGuildSecondaryPartiesState,
+  getGuildCompanionCapacity,
+  getGuildSecondaryPartiesState,
+  getInnReserveCompanions,
+  getSecondaryPartyAssignedCompanionIds,
+  getTotalRosterCompanionCount,
+  getTotalRosterCompanionLevel,
+  moveGuildRosterCompanion,
+  sanitizeGuildSecondaryPartiesState,
+  type GuildRosterMoveFailureReason,
+  type GuildRosterMoveResult,
+} from "./guildSecondaryParties";
 export type { CharacterXpProgress } from "./leveling";
 export {
   BEGINNER_CLASS_UNLOCK_LEVEL,

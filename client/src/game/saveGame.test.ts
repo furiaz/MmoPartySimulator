@@ -16,6 +16,10 @@ import {
   createInitialGuildRecruitState,
   GUILD_RECRUIT_REFRESH_INTERVAL_MS,
 } from "./guildRecruit";
+import {
+  GUILD_SECONDARY_PARTY_ID,
+  createInitialGuildSecondaryPartiesState,
+} from "./guildSecondaryParties";
 import { addItemToInventoryState } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
@@ -281,6 +285,55 @@ describe("save game serialization", () => {
     expect(restored.state.guildNoticeBoard).toEqual(guildNoticeBoard);
   });
 
+  it("preserves Guild Secondary Party assignment through save restore", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const secondaryCompanion: Companion = {
+      ...createCompanion("companion-2", { x: 15, y: 29 }, "companion-1", "fighter", 1),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const guildSecondaryParties = {
+      parties: [
+        {
+          id: GUILD_SECONDARY_PARTY_ID,
+          displayName: "Secondary Party 1",
+          companionIds: [secondaryCompanion.id],
+        },
+      ],
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        entities: {
+          [leader.id]: leader,
+        },
+        restingCompanionsById: {
+          [secondaryCompanion.id]: secondaryCompanion,
+        },
+        partyLeaderId: leader.id,
+        guildSecondaryParties,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildSecondaryParties).toEqual(guildSecondaryParties);
+    expect(restored.state.restingCompanionsById?.[secondaryCompanion.id]).toMatchObject({
+      id: secondaryCompanion.id,
+      state: "idle",
+      currentTargetId: null,
+    });
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -388,6 +441,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).highestCharacterLevelEver;
     delete (save.state as Partial<GameState>).guildRecruit;
     delete (save.state as Partial<GameState>).guildNoticeBoard;
+    delete (save.state as Partial<GameState>).guildSecondaryParties;
 
     const restored = restoreGameStateFromSave(save);
 
@@ -413,6 +467,9 @@ describe("save game serialization", () => {
       sequence: 1,
     });
     expect(restored.state.guildNoticeBoard?.hasSeenCurrentRefresh).toBe(false);
+    expect(restored.state.guildSecondaryParties).toEqual(
+      createInitialGuildSecondaryPartiesState(),
+    );
     expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
       kind: "npc",
       displayName: "Guild Coordinator",
@@ -420,7 +477,7 @@ describe("save game serialization", () => {
     });
     expect(restored.state.entities["hub-tavern-keeper"]).toMatchObject({
       kind: "npc",
-      displayName: "Tavern Keeper",
+      displayName: "Inn Keeper",
       npcRole: "tavern_keeper",
     });
   });

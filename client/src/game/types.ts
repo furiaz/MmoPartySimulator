@@ -2514,6 +2514,31 @@ export type Companion = LivingEntity & {
 
 export type RestingCompanionsById = Record<string, Companion>;
 
+export type GuildSecondaryParty = {
+  id: string;
+  displayName: string;
+  companionIds: Array<string | null>;
+};
+
+export type GuildSecondaryPartiesState = {
+  parties: GuildSecondaryParty[];
+};
+
+export type GuildRosterSlotRef =
+  | {
+      area: "main_party";
+      slotIndex: number;
+    }
+  | {
+      area: "inn_reserve";
+      slotIndex: number;
+    }
+  | {
+      area: "secondary_party";
+      partyId: string;
+      slotIndex: number;
+    };
+
 export type GuildRecruitCandidate = {
   id: string;
   classId: ClassId;
