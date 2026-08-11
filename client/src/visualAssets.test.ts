@@ -11,9 +11,11 @@ import {
   firstClassCharacterVisualAssets,
   getEntityVisualAsset,
   getClassIdleFrameSrc,
+  getEnemyWalkingAnimation,
   getSpriteAnimation,
   type SpriteDirection,
 } from "./visualAssets";
+import { MAP_VISUAL_OBJECT_SRC } from "./assetIcons";
 
 const azureMassDirections = [
   "north",
@@ -232,6 +234,20 @@ describe("entity visual assets", () => {
     }
 
     expect(getClassIdleFrameSrc("beginner")).toContain("BeginnerWalkingSouth");
+  });
+
+  it("maps the Guild Notice Board sign to the generated asset", () => {
+    expect(MAP_VISUAL_OBJECT_SRC.guild_notice_board_new_quest_sign).toBe(
+      "/assets/Generated/guild-tavern/notice-board-new-quest-sign.png",
+    );
+  });
+
+  it("resolves east walking previews for Notice Board monster targets", () => {
+    const shamanAnimation = getEnemyWalkingAnimation("goblin_shaman", "east");
+    const wispAnimation = getEnemyWalkingAnimation("ash_wisp", "east");
+
+    expect(shamanAnimation.frames[0]).toContain("thorn-shaman-se.png");
+    expect(wispAnimation.frames[0]).toContain("ash-wisp-se.png");
   });
 
   it("uses the Beginner cardinal movement fallback for first-class movement", () => {

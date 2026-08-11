@@ -13,6 +13,7 @@ import {
   sanitizePartyBank,
 } from "./bank";
 import { createNpc } from "./entities";
+import { sanitizeGuildNoticeBoardState } from "./guildNoticeBoard";
 import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizePartyInventory } from "./inventory";
@@ -386,6 +387,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     restingCompanionsById,
   });
   const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit);
+  const guildNoticeBoard = sanitizeGuildNoticeBoardState(state.guildNoticeBoard);
 
   return {
     ...state,
@@ -393,6 +395,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     restingCompanionsById,
     highestCharacterLevelEver,
     guildRecruit,
+    guildNoticeBoard,
     inventory: sanitizePartyInventory(state.inventory),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {

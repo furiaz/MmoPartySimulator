@@ -1343,6 +1343,171 @@
   image-rendering: pixelated;
 }
 
+.guild-notice-board-view {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-notice-board-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-notice-board-slot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.guild-notice-board-slot strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.guild-notice-board-slot strong span {
+  display: grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid #7a5530;
+  border-radius: 4px;
+  background: #4a2f1f;
+  color: #f3df93;
+  font-weight: 900;
+}
+
+.guild-notice-board-slot small {
+  color: #f3df93;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.guild-notice-board-detail {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guild-notice-board-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(168px, 230px);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.guild-notice-board-summary dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.guild-notice-board-summary dl div {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.guild-notice-board-summary dt {
+  color: #92a8ad;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-notice-board-summary dd {
+  min-width: 0;
+  margin: 0;
+  color: #e6f0f2;
+  font-weight: 800;
+}
+
+.guild-notice-board-monsters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guild-notice-board-monsters div {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 104px;
+  padding: 6px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.guild-notice-board-monsters img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.guild-notice-board-monsters span,
+.guild-notice-board-objectives span,
+.guild-notice-board-rewards span {
+  color: #d7e4e7;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.guild-notice-board-objectives,
+.guild-notice-board-rewards {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.guild-notice-board-objectives strong,
+.guild-notice-board-rewards strong {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-notice-board-objectives span,
+.guild-notice-board-rewards span {
+  text-align: left;
+}
+
+.guild-notice-board-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.guild-notice-board-actions button {
+  min-width: 118px;
+}
+
+@media (max-width: 720px) {
+  .guild-notice-board-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .crafting-header {
   display: flex;
   align-items: start;
@@ -2599,6 +2764,29 @@
   gap: 8px;
 }
 
+.quest-list-section {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.quest-list-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+  color: rgba(174, 198, 202, 0.9);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quest-list-section-heading small {
+  color: rgba(174, 198, 202, 0.72);
+  font-size: 11px;
+}
+
 .party-companion-list-item {
   display: grid;
   gap: 6px;
@@ -2640,6 +2828,31 @@
   min-width: 0;
   padding: 10px;
   text-align: left;
+}
+
+.quest-list-item-content {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.quest-list-item-content strong,
+.quest-list-item-content small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-list-item-content small {
+  color: rgba(230, 240, 242, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notice-board-quest-list-item {
+  border: 1px solid #3a5a60;
+  background: var(--main-menu-panel-background);
+  color: #e6f0f2;
 }
 
 .quest-list-item.selected {

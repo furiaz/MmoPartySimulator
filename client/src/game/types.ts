@@ -2339,6 +2339,7 @@ export type MapVisualObjectId =
   | "hub_cabin"
   | "hub_tent"
   | "guild_tavern_building"
+  | "guild_notice_board_new_quest_sign"
   | "hub_dock_shore_connector"
   | "passage_gate_closed"
   | "passage_gate_open"
@@ -2526,6 +2527,50 @@ export type GuildRecruitState = {
   candidate: GuildRecruitCandidate | null;
   nextRefreshAtMs: number;
   recruitSequence: number;
+};
+
+export type GuildNoticeBoardQuestStatus = "available" | "taken" | "done";
+
+export type GuildNoticeBoardQuestObjective = {
+  id: string;
+  enemyTypeId: EnemyTypeId;
+  requiredCount: number;
+  currentCount: number;
+};
+
+export type GuildNoticeBoardQuestReward = {
+  crowns: number;
+  skillBookItemId: SkillBookItemId;
+};
+
+export type GuildNoticeBoardQuest = {
+  id: string;
+  title: string;
+  sequence: number;
+  status: GuildNoticeBoardQuestStatus;
+  generatedAtMs: number;
+  takenAtMs: number | null;
+  levelAnchor: number | null;
+  levelRange: {
+    min: number;
+    max: number;
+  } | null;
+  objectives: GuildNoticeBoardQuestObjective[];
+  rewards: GuildNoticeBoardQuestReward;
+  rewardClaimedAtMs: number | null;
+};
+
+export type GuildNoticeBoardClaimedReward = {
+  questTitle: string;
+  crowns: number;
+  skillBookItemId: SkillBookItemId;
+};
+
+export type GuildNoticeBoardState = {
+  slots: Array<GuildNoticeBoardQuest | null>;
+  nextRefreshAtMs: number;
+  questSequence: number;
+  hasSeenCurrentRefresh: boolean;
 };
 
 export type ResourceEntity = BaseEntity & {

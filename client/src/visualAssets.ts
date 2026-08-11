@@ -680,6 +680,32 @@ export function getClassIdleFrameSrc(
   return animation.frames[0] ?? null;
 }
 
+export function getEnemyWalkingAnimation(
+  enemyTypeId: EnemyTypeId,
+  direction: SpriteDirection = "east",
+): SpriteAnimationAsset {
+  const visualAsset = getEnemySpriteVisualAsset(enemyTypeId);
+  return getDirectionalAnimation(visualAsset.animations.run, direction);
+}
+
+function getEnemySpriteVisualAsset(enemyTypeId: EnemyTypeId): SpriteVisualAsset {
+  const prototypeEnemyVisual = prototypeEnemyVisualAssets[enemyTypeId];
+
+  if (prototypeEnemyVisual) {
+    return prototypeEnemyVisual;
+  }
+
+  if (enemyTypeId === "wolf") {
+    return entityVisualAssets.enemy;
+  }
+
+  if (enemyTypeId === "orc") {
+    return entityVisualAssets.enemy2;
+  }
+
+  return entityVisualAssets.enemy;
+}
+
 function getDirectionalAnimation(
   animation:
     | SpriteAnimationAsset

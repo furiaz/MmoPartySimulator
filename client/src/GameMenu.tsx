@@ -48,6 +48,7 @@ export function GameMenu({
   selectedQuestId,
   craftingResultMessage,
   guildRecruitResultMessage,
+  guildNoticeBoardResultMessage,
   canUseGuildTavern,
   highestCharacterLevelEver,
   onAllocateStatPoint,
@@ -69,6 +70,9 @@ export function GameMenu({
   onSelectTab,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onOpenGuildNoticeBoard,
+  onTakeGuildNoticeBoardQuest,
+  onCancelGuildNoticeBoardQuest,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
   onTeleportWorldTravelDestination,
@@ -98,6 +102,7 @@ export function GameMenu({
   selectedQuestId: QuestId | null;
   craftingResultMessage?: string | null;
   guildRecruitResultMessage?: string | null;
+  guildNoticeBoardResultMessage?: string | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
@@ -133,6 +138,9 @@ export function GameMenu({
   onSelectTab: (tab: GameMenuTab | null) => void;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onRecruitGuildCandidate: () => void;
+  onOpenGuildNoticeBoard: () => void;
+  onTakeGuildNoticeBoardQuest: () => void;
+  onCancelGuildNoticeBoardQuest: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
   onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
@@ -255,12 +263,16 @@ export function GameMenu({
                   craftingResultMessage={craftingResultMessage}
                   currentTime={currentTime}
                   guildRecruitResultMessage={guildRecruitResultMessage}
+                  guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
                   quests={quests}
                   selectedQuestId={selectedQuestId}
                   onCraftRecipe={onCraftRecipe}
                   onRecruitGuildCandidate={onRecruitGuildCandidate}
+                  onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
+                  onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
+                  onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
                   onSelectQuest={onSelectQuest}
                   onSelectSubpage={onSelectAtlasSubpage}
                 />
@@ -292,12 +304,16 @@ function AtlasPanel({
   craftingResultMessage,
   currentTime,
   guildRecruitResultMessage,
+  guildNoticeBoardResultMessage,
   canUseGuildTavern,
   gameState,
   quests,
   selectedQuestId,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onOpenGuildNoticeBoard,
+  onTakeGuildNoticeBoardQuest,
+  onCancelGuildNoticeBoardQuest,
   onSelectQuest,
   onSelectSubpage,
 }: {
@@ -305,12 +321,16 @@ function AtlasPanel({
   craftingResultMessage?: string | null;
   currentTime: number;
   guildRecruitResultMessage?: string | null;
+  guildNoticeBoardResultMessage?: string | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
   selectedQuestId: QuestId | null;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onRecruitGuildCandidate: () => void;
+  onOpenGuildNoticeBoard: () => void;
+  onTakeGuildNoticeBoardQuest: () => void;
+  onCancelGuildNoticeBoardQuest: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
@@ -348,6 +368,8 @@ function AtlasPanel({
       </nav>
       {activeSubpage === "quests" ? (
         <QuestsPanel
+          currentTime={currentTime}
+          state={gameState}
           quests={quests}
           selectedQuestId={selectedQuestId}
           onSelectQuest={onSelectQuest}
@@ -368,8 +390,12 @@ function AtlasPanel({
           canUse={canUseGuildTavern}
           currentTime={currentTime}
           recruitResultMessage={guildRecruitResultMessage}
+          noticeBoardResultMessage={guildNoticeBoardResultMessage}
           state={gameState}
+          onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
+          onOpenNoticeBoard={onOpenGuildNoticeBoard}
           onRecruit={onRecruitGuildCandidate}
+          onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
         />
       )}
     </section>

@@ -394,6 +394,7 @@ export const MAP_VISUAL_OBJECT_SRC: Record<MapVisualObjectId, string> = {
   hub_cabin: `${hubStructureAssetPath}/hub_cabin.png`,
   hub_tent: `${hubStructureAssetPath}/hub_tent.png`,
   guild_tavern_building: `${guildTavernAssetPath}/guild-tavern-building.png`,
+  guild_notice_board_new_quest_sign: `${guildTavernAssetPath}/notice-board-new-quest-sign.png`,
   hub_dock_shore_connector: `${hubStructureAssetPath}/hub_dock_shore_connector.png`,
   passage_gate_closed: `${passageBlockerAssetPath}/passage_gate_closed_edge_v2_100x350.png`,
   passage_gate_open: `${passageBlockerAssetPath}/passage_gate_open_faces_v2_100x350.png`,

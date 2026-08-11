@@ -124,8 +124,13 @@ import {
   isBankChestNpc,
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
+  openGuildNoticeBoard,
   recruitGuildCandidate,
+  refreshGuildNoticeBoardState,
   refreshGuildRecruitState,
+  shouldShowGuildNoticeBoardSign,
+  takeGuildNoticeBoardQuest,
+  cancelGuildNoticeBoardQuest,
   getNavigationClickCellKey,
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
@@ -177,6 +182,7 @@ import {
   type GameState,
   type ItemDefinition,
   type ItemId,
+  type MapVisualObject,
   type MerchantBuyFailureReason,
   type MerchantStockEntry,
   type MerchantStockGroup,
@@ -231,6 +237,25 @@ const LazyPixiWorldRenderer = lazy(() =>
     default: module.PixiWorldRenderer,
   })),
 );
+
+const guildNoticeBoardSignVisuals: Partial<Record<DebugMapId, MapVisualObject>> = {
+  [HUB_MAP_ID]: {
+    id: "hub-guild-notice-board-new-quest-sign",
+    visualId: "guild_notice_board_new_quest_sign",
+    position: { x: 48, y: 54 },
+    widthCells: 2.2,
+    heightCells: 3.2,
+    anchorY: 1,
+  },
+  [HUB_TWO_MAP_ID]: {
+    id: "hub-2-guild-notice-board-new-quest-sign",
+    visualId: "guild_notice_board_new_quest_sign",
+    position: { x: 105, y: 57 },
+    widthCells: 2.2,
+    heightCells: 3.2,
+    anchorY: 1,
+  },
+};
 
 function PixiWorldRendererFallback({ mode }: { mode: "full" | "preview" }) {
   return (
@@ -2554,6 +2579,8 @@ function App() {
     useState<string | null>(null);
   const [guildRecruitResultMessage, setGuildRecruitResultMessage] =
     useState<string | null>(null);
+  const [guildNoticeBoardResultMessage, setGuildNoticeBoardResultMessage] =
+    useState<string | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -2625,6 +2652,24 @@ function App() {
   const currentCrownBalance = getCurrencyBalance(gameState.wallet, "crowns");
   const previousCrownBalanceRef = useRef(currentCrownBalance);
   const currentMap = gameState.map ?? debugMap;
+  const renderMap = useMemo(() => {
+    const currentMapId = currentMap.id;
+    const signVisual = currentMapId
+      ? guildNoticeBoardSignVisuals[currentMapId]
+      : undefined;
+
+    if (
+      !signVisual ||
+      !shouldShowGuildNoticeBoardSign(gameState, currentTime)
+    ) {
+      return currentMap;
+    }
+
+    return {
+      ...currentMap,
+      visualObjects: [...(currentMap.visualObjects ?? []), signVisual],
+    };
+  }, [currentMap, currentTime, gameState]);
   const navigationLeader = getPartyLeader(gameState);
   const navigationLeaderCellKey = navigationLeader
     ? getNavigationClickCellKey(navigationLeader.position)
@@ -2790,10 +2835,14 @@ function App() {
     }
 
     setGameState((state) => {
-      const refreshedState = refreshGuildRecruitState(state, currentTime);
+      const refreshedRecruitState = refreshGuildRecruitState(state, currentTime);
+      const refreshedState = refreshGuildNoticeBoardState(
+        refreshedRecruitState,
+        currentTime,
+      );
 
       if (refreshedState !== state) {
-        queueSaveAfterStateChange("Guild recruit refresh saved");
+        queueSaveAfterStateChange("Guild and notice board refresh saved");
       }
 
       return refreshedState;
@@ -3050,6 +3099,7 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
   }, []);
 
   const openSmithInteraction = useCallback((npc: NpcEntity) => {
@@ -3085,6 +3135,7 @@ function App() {
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
     setActiveBankChestNpcId(npc.id);
     setBankResultMessage(null);
   }, []);
@@ -3104,6 +3155,7 @@ function App() {
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
     setIsGameMenuOpen(true);
     setActiveGameMenuTab("atlas");
     setActiveAtlasSubpage("guildTavern");
@@ -4251,6 +4303,7 @@ function App() {
     setCraftingResultMessage(null);
     if (subpage !== "guildTavern") {
       setGuildRecruitResultMessage(null);
+      setGuildNoticeBoardResultMessage(null);
     }
   }
 
@@ -4279,6 +4332,68 @@ function App() {
     }
 
     setGameState(recruit.state);
+  }
+
+  function openGuildNoticeBoardMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      return;
+    }
+
+    const opened = openGuildNoticeBoard(gameState, currentTime);
+
+    if (opened.claimedRewards.length > 0) {
+      queueSaveAfterStateChange("Guild notice board rewards saved");
+      setGuildNoticeBoardResultMessage(
+        opened.claimedRewards
+          .map((reward) => {
+            const bookName = getItemDefinition(reward.skillBookItemId).displayName;
+            return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookName}`;
+          })
+          .join(" | "),
+      );
+    } else {
+      queueSaveAfterStateChange("Guild notice board checked");
+      setGuildNoticeBoardResultMessage(null);
+    }
+
+    setGameState(opened.state);
+  }
+
+  function takeGuildNoticeBoardQuestFromMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      return;
+    }
+
+    const taken = takeGuildNoticeBoardQuest(gameState, currentTime);
+
+    if (taken.ok) {
+      queueSaveAfterStateChange("Guild notice board quest taken");
+      setGuildNoticeBoardResultMessage("Quest taken");
+    } else {
+      setGuildNoticeBoardResultMessage("No available quest");
+    }
+
+    setGameState(taken.state);
+  }
+
+  function cancelGuildNoticeBoardQuestFromMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Tavern");
+      return;
+    }
+
+    const canceled = cancelGuildNoticeBoardQuest(gameState, currentTime);
+
+    if (canceled.ok) {
+      queueSaveAfterStateChange("Guild notice board quest canceled");
+      setGuildNoticeBoardResultMessage("Quest canceled");
+    } else {
+      setGuildNoticeBoardResultMessage("No taken quest to cancel");
+    }
+
+    setGameState(canceled.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -4982,7 +5097,7 @@ function App() {
               enemyAoeChannelsByCasterId={enemyAoeChannelsByCasterId}
               entities={allEntities}
               leaderIntent={gameState.leaderIntent}
-              map={currentMap}
+              map={renderMap}
               mode="full"
               movementClickFeedbackEvents={activeMovementClickFeedbackEvents}
               navigationClickAccessibility={navigationClickAccessibility}
@@ -5031,7 +5146,7 @@ function App() {
               cellPixelSize={mapConstructionCellPixelSize}
               entities={allEntities}
               leaderIntent={gameState.leaderIntent}
-              map={currentMap}
+              map={renderMap}
               mode="preview"
               movementClickFeedbackEvents={activeMovementClickFeedbackEvents}
               navigationClickAccessibility={navigationClickAccessibility}
@@ -5418,6 +5533,7 @@ function App() {
               selectedQuestId={selectedMenuQuestId}
               craftingResultMessage={craftingResultMessage}
               guildRecruitResultMessage={guildRecruitResultMessage}
+              guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
@@ -5439,6 +5555,9 @@ function App() {
               onSelectTab={selectGameMenuTab}
               onCraftRecipe={craftSelectedRecipe}
               onRecruitGuildCandidate={recruitGuildCompanion}
+              onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
+              onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
+              onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onTeleportWorldTravelDestination={teleportWorldTravel}

@@ -9,6 +9,10 @@ import {
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
 import {
+  createInitialGuildNoticeBoardState,
+  GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+} from "./guildNoticeBoard";
+import {
   createInitialGuildRecruitState,
   GUILD_RECRUIT_REFRESH_INTERVAL_MS,
 } from "./guildRecruit";
@@ -228,6 +232,55 @@ describe("save game serialization", () => {
     expect(restored.state.guildRecruit).toEqual(guildRecruit);
   });
 
+  it("preserves Guild Notice Board quest, timer, and sequence through save restore", () => {
+    const guildNoticeBoard = {
+      ...createInitialGuildNoticeBoardState(NOW_MS),
+      questSequence: 5,
+      hasSeenCurrentRefresh: true,
+      nextRefreshAtMs: NOW_MS + GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+      slots: [
+        {
+          ...createInitialGuildNoticeBoardState(NOW_MS).slots[0]!,
+          id: "guild-notice-board-quest-5",
+          sequence: 5,
+          status: "taken" as const,
+          takenAtMs: NOW_MS,
+          levelAnchor: null,
+          levelRange: null,
+          objectives: [
+            {
+              id: "defeat-goblin_shaman",
+              enemyTypeId: "goblin_shaman" as const,
+              requiredCount: 50,
+              currentCount: 12,
+            },
+            {
+              id: "defeat-ash_wisp",
+              enemyTypeId: "ash_wisp" as const,
+              requiredCount: 50,
+              currentCount: 7,
+            },
+          ],
+        },
+      ],
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        guildNoticeBoard,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildNoticeBoard).toEqual(guildNoticeBoard);
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -334,6 +387,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).restingCompanionsById;
     delete (save.state as Partial<GameState>).highestCharacterLevelEver;
     delete (save.state as Partial<GameState>).guildRecruit;
+    delete (save.state as Partial<GameState>).guildNoticeBoard;
 
     const restored = restoreGameStateFromSave(save);
 
@@ -353,6 +407,12 @@ describe("save game serialization", () => {
       sequence: 1,
     });
     expect(restored.state.guildRecruit?.recruitSequence).toBe(1);
+    expect(restored.state.guildNoticeBoard?.slots[0]).toMatchObject({
+      id: "guild-notice-board-quest-1",
+      status: "available",
+      sequence: 1,
+    });
+    expect(restored.state.guildNoticeBoard?.hasSeenCurrentRefresh).toBe(false);
     expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
       kind: "npc",
       displayName: "Guild Coordinator",

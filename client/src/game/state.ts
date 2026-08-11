@@ -18,6 +18,7 @@ import type {
   GameMap,
   GameEntity,
   Enemy,
+  GuildNoticeBoardState,
   GuildRecruitState,
   HubDepartureFoodWarningState,
   KeyItemsById,
@@ -160,6 +161,7 @@ export type GameState = {
   restingCompanionsById?: RestingCompanionsById;
   highestCharacterLevelEver?: number;
   guildRecruit?: GuildRecruitState;
+  guildNoticeBoard?: GuildNoticeBoardState;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;
   bank: PartyBank;

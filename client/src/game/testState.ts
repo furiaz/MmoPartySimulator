@@ -1,4 +1,5 @@
 import { createEmptyPartyBank } from "./bank";
+import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
 import { createInitialGuildRecruitState } from "./guildRecruit";
 import { createEmptyPartyInventory } from "./inventory";
 import { createInitialQuestStates } from "./questSystem";
@@ -13,6 +14,7 @@ export function createTestGameState(
     restingCompanionsById: {},
     highestCharacterLevelEver: 1,
     guildRecruit: createInitialGuildRecruitState(0),
+    guildNoticeBoard: createInitialGuildNoticeBoardState(0),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),
