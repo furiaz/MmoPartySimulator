@@ -126,8 +126,12 @@ import {
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
+  cancelGuildSecondaryPartyDispatch,
+  claimGuildSecondaryPartyDispatch,
+  dispatchGuildSecondaryParty,
   purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
+  purchaseGuildSecondaryPartyUpgrade,
   recruitGuildCandidate,
   rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
@@ -187,6 +191,8 @@ import {
   type GameState,
   type GuildRosterMoveFailureReason,
   type GuildRosterSlotRef,
+  type GuildSecondaryPartyDispatchResult,
+  type GuildSecondaryPartyUpgradeId,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
   type ItemDefinition,
@@ -564,6 +570,8 @@ function getGuildRosterMoveFailureMessage(
   reason: GuildRosterMoveFailureReason,
 ): string {
   switch (reason) {
+    case "party_dispatched":
+      return "Dispatched parties are locked";
     case "locked_main_party_slot":
       return "That Main Party slot is locked";
     case "main_party_requires_companion":
@@ -575,6 +583,37 @@ function getGuildRosterMoveFailureMessage(
       return "That slot is unavailable";
   }
 }
+
+function getGuildSecondaryPartyDispatchFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_party":
+      return "Unlock this Secondary Party first.";
+    case "empty_party":
+      return "Assign at least one companion.";
+    case "already_dispatched":
+      return "This Secondary Party is already dispatched.";
+    case "unknown_destination":
+    case "unvisited_destination":
+      return "Visit that subzone before dispatching there.";
+    case "invalid_duration":
+      return "Dispatch duration is unavailable.";
+    case "estimate_unavailable":
+      return "Dispatch estimate unavailable for this subzone.";
+    case "unknown_party":
+    default:
+      return "Dispatch unavailable.";
+  }
+}
+
+type GuildSecondaryPartyAccomplishedSummary = {
+  partyName: string;
+  mapName: string;
+  subzoneName: string;
+  durationMs: number;
+  experienceEfficiency: number;
+  dropEfficiency: number;
+  result: GuildSecondaryPartyDispatchResult;
+};
 
 function getWorldTravelTeleportFailureMessage(
   reason: WorldTravelTeleportFailureReason,
@@ -2632,6 +2671,10 @@ function App() {
     useState<string | null>(null);
   const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
     useState<string | null>(null);
+  const [
+    guildSecondaryPartyAccomplishedSummary,
+    setGuildSecondaryPartyAccomplishedSummary,
+  ] = useState<GuildSecondaryPartyAccomplishedSummary | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -4382,6 +4425,7 @@ function App() {
       setGuildUpgradeResultMessage(null);
       setGuildNoticeBoardResultMessage(null);
       setGuildSecondaryPartyResultMessage(null);
+      setGuildSecondaryPartyAccomplishedSummary(null);
     }
   }
 
@@ -4460,6 +4504,39 @@ function App() {
           : purchase.reason === "max_level"
             ? "Upgrade is already maxed."
             : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function purchaseGuildSecondaryPartyUpgradeCommand(
+    upgradeId: GuildSecondaryPartyUpgradeId,
+    partyId?: string | null,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildSecondaryPartyUpgrade(
+      gameState,
+      upgradeId,
+      partyId ?? null,
+    );
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild secondary party upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "locked"
+            ? "Upgrade is locked."
+            : purchase.reason === "max_level"
+              ? "Upgrade is already maxed."
+              : "Upgrade unavailable.",
       );
     }
 
@@ -4586,6 +4663,107 @@ function App() {
     }
 
     setGameState(moved.state);
+  }
+
+  function dispatchGuildSecondaryPartyFromMenu(
+    partyId: string,
+    mapId: DebugMapId,
+    subzoneId: string,
+    durationMs: number,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const dispatched = dispatchGuildSecondaryParty(
+      gameState,
+      partyId,
+      mapId,
+      subzoneId,
+      durationMs,
+      currentTime,
+    );
+
+    if (dispatched.ok) {
+      queueSaveAfterStateChange("Guild secondary party dispatched");
+      setGuildSecondaryPartyResultMessage("Secondary Party dispatched");
+      setGuildSecondaryPartyAccomplishedSummary(null);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        getGuildSecondaryPartyDispatchFailureMessage(dispatched.reason),
+      );
+    }
+
+    setGameState(dispatched.state);
+  }
+
+  function claimGuildSecondaryPartyDispatchFromMenu(partyId: string) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const party = gameState.guildSecondaryParties?.parties.find(
+      (candidate) => candidate.id === partyId,
+    );
+    const dispatch = party?.dispatch ?? null;
+    const claimed = claimGuildSecondaryPartyDispatch(
+      gameState,
+      partyId,
+      currentTime,
+    );
+
+    if (claimed.ok) {
+      queueSaveAfterStateChange("Guild secondary party dispatch claimed");
+      setGuildSecondaryPartyResultMessage("Dispatch accomplished");
+      setGuildSecondaryPartyAccomplishedSummary(
+        dispatch
+          ? {
+              partyName: party?.displayName ?? "Secondary Party",
+              mapName: dispatch.mapName,
+              subzoneName: dispatch.subzoneName,
+              durationMs: dispatch.durationMs,
+              experienceEfficiency: dispatch.experienceEfficiency,
+              dropEfficiency: dispatch.dropEfficiency,
+              result: claimed.result,
+            }
+          : null,
+      );
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        claimed.reason === "inventory_full"
+          ? "Inventory is full. Make room before claiming."
+          : claimed.reason === "not_completed"
+            ? "Dispatch is not complete yet."
+            : "Dispatch unavailable.",
+      );
+    }
+
+    setGameState(claimed.state);
+  }
+
+  function cancelGuildSecondaryPartyDispatchFromMenu(partyId: string) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const canceled = cancelGuildSecondaryPartyDispatch(
+      gameState,
+      partyId,
+      currentTime,
+    );
+
+    if (canceled.ok) {
+      queueSaveAfterStateChange("Guild secondary party dispatch canceled");
+      setGuildSecondaryPartyResultMessage("Dispatch canceled. Rewards lost.");
+      setGuildSecondaryPartyAccomplishedSummary(null);
+    } else {
+      setGuildSecondaryPartyResultMessage("No dispatch to cancel.");
+    }
+
+    setGameState(canceled.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -5728,6 +5906,9 @@ function App() {
               guildUpgradeResultMessage={guildUpgradeResultMessage}
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+              guildSecondaryPartyAccomplishedSummary={
+                guildSecondaryPartyAccomplishedSummary
+              }
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
@@ -5753,11 +5934,24 @@ function App() {
                 purchaseGuildNoticeBoardUpgradeCommand
               }
               onPurchaseGuildRecruitUpgrade={purchaseGuildRecruitUpgradeCommand}
+              onPurchaseGuildSecondaryPartyUpgrade={
+                purchaseGuildSecondaryPartyUpgradeCommand
+              }
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
               onRerollGuildNoticeBoard={rerollGuildNoticeBoardFromMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
               onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
               onMoveGuildRosterCompanion={moveGuildRosterCompanionFromMenu}
+              onDispatchGuildSecondaryParty={dispatchGuildSecondaryPartyFromMenu}
+              onClaimGuildSecondaryPartyDispatch={
+                claimGuildSecondaryPartyDispatchFromMenu
+              }
+              onCancelGuildSecondaryPartyDispatch={
+                cancelGuildSecondaryPartyDispatchFromMenu
+              }
+              onClearGuildSecondaryPartySummary={() =>
+                setGuildSecondaryPartyAccomplishedSummary(null)
+              }
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onTeleportWorldTravelDestination={teleportWorldTravel}

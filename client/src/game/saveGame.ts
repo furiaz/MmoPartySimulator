@@ -25,6 +25,7 @@ import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import { sanitizeKeyItemsById } from "./keyItems";
@@ -453,6 +454,23 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   const guildSecondaryParties = sanitizeGuildSecondaryPartiesState(
     state.guildSecondaryParties,
     restingCompanionsById,
+    {
+      ...state,
+      entities,
+      restingCompanionsById,
+      guildUpgrades,
+      currentMapId,
+      map,
+    },
+  );
+  const worldDiscovery = sanitizeWorldDiscoveryState(
+    state.worldDiscovery,
+    {
+      ...state,
+      entities,
+      currentMapId,
+      map,
+    },
   );
 
   return {
@@ -464,6 +482,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     guildUpgrades,
     guildNoticeBoard,
     guildSecondaryParties,
+    worldDiscovery,
     inventory: sanitizePartyInventory(state.inventory),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {

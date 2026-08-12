@@ -75,6 +75,7 @@ import {
   createSimulationTiming,
   type SimulationTiming,
 } from "./simulationTiming";
+import { recordCurrentWorldDiscovery } from "./worldDiscovery";
 
 export function updateGame(
   state: GameState,
@@ -223,6 +224,8 @@ export function updateGame(
   nextState = updateSkillShieldBlockPositions(nextState);
   nextState = idleAutonomousPartyMembersWithoutPoi(nextState);
   nextState = debugApplyCompanionInfiniteHealth(nextState);
+
+  nextState = recordCurrentWorldDiscovery(nextState);
 
   return recordDebugTelemetryTick(
     state,

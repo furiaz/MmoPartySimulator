@@ -14,22 +14,51 @@ import {
 } from "./guildSecondaryParties";
 import { isPartyLeaderNearGuildTavern } from "./guildTavern";
 import { getGuildRecruitDestination } from "./guildRecruit";
+import {
+  createInitialGuildUpgradesState,
+  getGuildSecondaryPartyCount,
+} from "./guildRecruitUpgrades";
 import { isPositionAvailable } from "./movementPlanning";
 import { createTestGameState } from "./testState";
 import type { GameState } from "./state";
 import type { Companion } from "./types";
 
 describe("guild secondary parties", () => {
-  it("creates one initial Secondary Party with one empty slot", () => {
+  it("creates three locked Secondary Party shells with one empty slot each", () => {
     expect(createInitialGuildSecondaryPartiesState()).toEqual({
       parties: [
         {
           id: GUILD_SECONDARY_PARTY_ID,
           displayName: "Secondary Party 1",
           companionIds: [null],
+          dispatch: null,
+        },
+        {
+          id: "secondary-party-2",
+          displayName: "Secondary Party 2",
+          companionIds: [null],
+          dispatch: null,
+        },
+        {
+          id: "secondary-party-3",
+          displayName: "Secondary Party 3",
+          companionIds: [null],
+          dispatch: null,
         },
       ],
     });
+  });
+
+  it("starts with zero unlocked Secondary Parties", () => {
+    const state = createRosterState({
+      activeIds: ["leader"],
+      unlockedSecondaryParties: 0,
+    });
+
+    expect(getGuildSecondaryPartyCount(state)).toBe(0);
+    expect(getGuildSecondaryPartiesState(state).parties[0].companionIds).toEqual([
+      null,
+    ]);
   });
 
   it("moves an active companion to the Inn's Reserve", () => {
@@ -539,6 +568,7 @@ function createRosterState({
   levelsById = {},
   npcs = [],
   positionsById = {},
+  unlockedSecondaryParties = 1,
 }: {
   activeIds: string[];
   restingIds?: string[];
@@ -547,6 +577,7 @@ function createRosterState({
   levelsById?: Record<string, number>;
   npcs?: GameState["entities"][string][];
   positionsById?: Record<string, { x: number; y: number }>;
+  unlockedSecondaryParties?: number;
 }): GameState {
   const activeCompanions = activeIds.map((id, index) =>
     createRosterCompanion(
@@ -565,6 +596,10 @@ function createRosterState({
     ),
   );
 
+  const guildUpgrades = createInitialGuildUpgradesState();
+  guildUpgrades.secondaryParties.secondary_party_count =
+    unlockedSecondaryParties;
+
   return createTestGameState({
     entities: Object.fromEntries(
       [...activeCompanions, ...npcs].map((entity) => [entity.id, entity]),
@@ -574,6 +609,7 @@ function createRosterState({
     ),
     partyLeaderId: activeIds[0] ?? "",
     highestCharacterLevelEver,
+    guildUpgrades,
     guildSecondaryParties: {
       parties: [
         {

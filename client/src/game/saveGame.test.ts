@@ -20,6 +20,7 @@ import {
   GUILD_SECONDARY_PARTY_ID,
   createInitialGuildSecondaryPartiesState,
 } from "./guildSecondaryParties";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
@@ -309,9 +310,12 @@ describe("save game serialization", () => {
           id: GUILD_SECONDARY_PARTY_ID,
           displayName: "Secondary Party 1",
           companionIds: [secondaryCompanion.id],
+          dispatch: null,
         },
       ],
     };
+    const guildUpgrades = createInitialGuildUpgradesState();
+    guildUpgrades.secondaryParties.secondary_party_count = 1;
     const save = createSavedGame(
       createTestGameState({
         entities: {
@@ -321,6 +325,7 @@ describe("save game serialization", () => {
           [secondaryCompanion.id]: secondaryCompanion,
         },
         partyLeaderId: leader.id,
+        guildUpgrades,
         guildSecondaryParties,
       }),
       NOW_MS,
@@ -333,7 +338,9 @@ describe("save game serialization", () => {
       return;
     }
 
-    expect(restored.state.guildSecondaryParties).toEqual(guildSecondaryParties);
+    expect(restored.state.guildSecondaryParties?.parties[0].companionIds).toEqual([
+      secondaryCompanion.id,
+    ]);
     expect(restored.state.restingCompanionsById?.[secondaryCompanion.id]).toMatchObject({
       id: secondaryCompanion.id,
       state: "idle",
@@ -450,6 +457,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).guildUpgrades;
     delete (save.state as Partial<GameState>).guildNoticeBoard;
     delete (save.state as Partial<GameState>).guildSecondaryParties;
+    delete (save.state as Partial<GameState>).worldDiscovery;
 
     const restored = restoreGameStateFromSave(save);
 
@@ -479,6 +487,11 @@ describe("save game serialization", () => {
     expect(restored.state.guildSecondaryParties).toEqual(
       createInitialGuildSecondaryPartiesState(),
     );
+    expect(restored.state.guildUpgrades?.secondaryParties.secondary_party_count).toBe(0);
+    expect(restored.state.worldDiscovery).toEqual({
+      visitedMapIds: [],
+      visitedSubzonesByMapId: {},
+    });
     expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
       kind: "npc",
       displayName: "Guild Coordinator",

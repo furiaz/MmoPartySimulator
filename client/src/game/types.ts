@@ -2532,10 +2532,53 @@ export type GuildSecondaryParty = {
   id: string;
   displayName: string;
   companionIds: Array<string | null>;
+  dispatch?: GuildSecondaryPartyDispatchState | null;
 };
 
 export type GuildSecondaryPartiesState = {
   parties: GuildSecondaryParty[];
+};
+
+export type GuildSecondaryPartyDispatchStatus =
+  | "dispatched"
+  | "completed";
+
+export type GuildSecondaryPartyDispatchLoot = {
+  itemId: ItemId;
+  quantity: number;
+};
+
+export type GuildSecondaryPartyDispatchResult = {
+  enemyKills: number;
+  xpGranted: number;
+  loot: GuildSecondaryPartyDispatchLoot[];
+  resources: GuildSecondaryPartyDispatchLoot[];
+};
+
+export type GuildSecondaryPartyDispatchSnapshot = {
+  rating: string;
+  killsPerHour: number;
+  experiencePerMinute: number;
+  survivabilityPercent: number;
+  expectedDropItemIds: ItemId[];
+  expectedResourceItemIds: ItemId[];
+  warnings: string[];
+};
+
+export type GuildSecondaryPartyDispatchState = {
+  status: GuildSecondaryPartyDispatchStatus;
+  mapId: DebugMapId;
+  mapName: string;
+  subzoneId: string;
+  subzoneName: string;
+  startedAtMs: number;
+  endsAtMs: number;
+  durationMs: number;
+  rewardSeed: number;
+  experienceEfficiency: number;
+  dropEfficiency: number;
+  preview: GuildSecondaryPartyDispatchSnapshot;
+  result: GuildSecondaryPartyDispatchResult;
 };
 
 export type GuildRosterSlotRef =
@@ -2591,9 +2634,35 @@ export type GuildNoticeBoardUpgradeLevels = Record<
   number
 >;
 
+export type GuildSecondaryPartyUpgradeId =
+  | "secondary_party_count"
+  | "secondary_party_members"
+  | "secondary_party_experience_efficiency"
+  | "secondary_party_drop_efficiency"
+  | "secondary_party_dispatch_duration";
+
+export type GuildSecondaryPartyPerPartyUpgradeId = Exclude<
+  GuildSecondaryPartyUpgradeId,
+  "secondary_party_count"
+>;
+
+export type GuildSecondaryPartyUpgradeLevels = {
+  secondary_party_count: number;
+  parties: Record<
+    string,
+    Record<GuildSecondaryPartyPerPartyUpgradeId, number>
+  >;
+};
+
 export type GuildUpgradesState = {
   recruit: GuildRecruitUpgradeLevels;
   noticeBoard: GuildNoticeBoardUpgradeLevels;
+  secondaryParties: GuildSecondaryPartyUpgradeLevels;
+};
+
+export type WorldDiscoveryState = {
+  visitedMapIds: DebugMapId[];
+  visitedSubzonesByMapId: Partial<Record<DebugMapId, string[]>>;
 };
 
 export type GuildNoticeBoardQuestStatus = "available" | "taken" | "done";

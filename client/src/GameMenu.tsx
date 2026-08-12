@@ -34,7 +34,19 @@ import type {
   GuildNoticeBoardUpgradeId,
   GuildRecruitUpgradeId,
   GuildRosterSlotRef,
+  GuildSecondaryPartyDispatchResult,
+  GuildSecondaryPartyUpgradeId,
 } from "./game";
+
+export type GuildSecondaryPartyAccomplishedSummary = {
+  partyName: string;
+  mapName: string;
+  subzoneName: string;
+  durationMs: number;
+  experienceEfficiency: number;
+  dropEfficiency: number;
+  result: GuildSecondaryPartyDispatchResult;
+};
 
 export function GameMenu({
   activeTab,
@@ -58,6 +70,7 @@ export function GameMenu({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
+  guildSecondaryPartyAccomplishedSummary,
   canUseGuildTavern,
   highestCharacterLevelEver,
   onAllocateStatPoint,
@@ -81,11 +94,16 @@ export function GameMenu({
   onRecruitGuildCandidate,
   onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
+  onPurchaseGuildSecondaryPartyUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
+  onDispatchGuildSecondaryParty,
+  onClaimGuildSecondaryPartyDispatch,
+  onCancelGuildSecondaryPartyDispatch,
+  onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
   onTeleportWorldTravelDestination,
@@ -118,6 +136,7 @@ export function GameMenu({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
+  guildSecondaryPartyAccomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
@@ -157,6 +176,10 @@ export function GameMenu({
     upgradeId: GuildNoticeBoardUpgradeId,
   ) => void;
   onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
+  onPurchaseGuildSecondaryPartyUpgrade: (
+    upgradeId: GuildSecondaryPartyUpgradeId,
+    partyId?: string | null,
+  ) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -165,6 +188,15 @@ export function GameMenu({
     companionId: string,
     target: GuildRosterSlotRef,
   ) => void;
+  onDispatchGuildSecondaryParty: (
+    partyId: string,
+    mapId: DebugMapId,
+    subzoneId: string,
+    durationMs: number,
+  ) => void;
+  onClaimGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onCancelGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
   onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
@@ -290,6 +322,9 @@ export function GameMenu({
                   guildUpgradeResultMessage={guildUpgradeResultMessage}
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+                  guildSecondaryPartyAccomplishedSummary={
+                    guildSecondaryPartyAccomplishedSummary
+                  }
                   canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
                   quests={quests}
@@ -300,11 +335,24 @@ export function GameMenu({
                     onPurchaseGuildNoticeBoardUpgrade
                   }
                   onPurchaseGuildRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
+                  onPurchaseGuildSecondaryPartyUpgrade={
+                    onPurchaseGuildSecondaryPartyUpgrade
+                  }
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
                   onRerollGuildNoticeBoard={onRerollGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
                   onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
                   onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
+                  onDispatchGuildSecondaryParty={onDispatchGuildSecondaryParty}
+                  onClaimGuildSecondaryPartyDispatch={
+                    onClaimGuildSecondaryPartyDispatch
+                  }
+                  onCancelGuildSecondaryPartyDispatch={
+                    onCancelGuildSecondaryPartyDispatch
+                  }
+                  onClearGuildSecondaryPartySummary={
+                    onClearGuildSecondaryPartySummary
+                  }
                   onSelectQuest={onSelectQuest}
                   onSelectSubpage={onSelectAtlasSubpage}
                 />
@@ -339,6 +387,7 @@ function AtlasPanel({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
+  guildSecondaryPartyAccomplishedSummary,
   canUseGuildTavern,
   gameState,
   quests,
@@ -347,11 +396,16 @@ function AtlasPanel({
   onRecruitGuildCandidate,
   onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
+  onPurchaseGuildSecondaryPartyUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
+  onDispatchGuildSecondaryParty,
+  onClaimGuildSecondaryPartyDispatch,
+  onCancelGuildSecondaryPartyDispatch,
+  onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
 }: {
@@ -362,6 +416,7 @@ function AtlasPanel({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
+  guildSecondaryPartyAccomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
@@ -372,6 +427,10 @@ function AtlasPanel({
     upgradeId: GuildNoticeBoardUpgradeId,
   ) => void;
   onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
+  onPurchaseGuildSecondaryPartyUpgrade: (
+    upgradeId: GuildSecondaryPartyUpgradeId,
+    partyId?: string | null,
+  ) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -380,6 +439,15 @@ function AtlasPanel({
     companionId: string,
     target: GuildRosterSlotRef,
   ) => void;
+  onDispatchGuildSecondaryParty: (
+    partyId: string,
+    mapId: DebugMapId,
+    subzoneId: string,
+    durationMs: number,
+  ) => void;
+  onClaimGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onCancelGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
@@ -449,15 +517,25 @@ function AtlasPanel({
           upgradeResultMessage={guildUpgradeResultMessage}
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
           secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+          secondaryPartyAccomplishedSummary={
+            guildSecondaryPartyAccomplishedSummary
+          }
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
           onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
           onOpenNoticeBoard={onOpenGuildNoticeBoard}
           onPurchaseNoticeBoardUpgrade={onPurchaseGuildNoticeBoardUpgrade}
           onPurchaseRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
+          onPurchaseSecondaryPartyUpgrade={
+            onPurchaseGuildSecondaryPartyUpgrade
+          }
           onRecruit={onRecruitGuildCandidate}
           onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
+          onDispatchSecondaryParty={onDispatchGuildSecondaryParty}
+          onClaimSecondaryPartyDispatch={onClaimGuildSecondaryPartyDispatch}
+          onCancelSecondaryPartyDispatch={onCancelGuildSecondaryPartyDispatch}
+          onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />
       ) : (
         <AfkEstimatePanel state={gameState} />

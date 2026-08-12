@@ -63,6 +63,7 @@ import type {
   SlimewardDungeonRuntimeState,
   StatusEffectState,
   TeleportRuntimeState,
+  WorldDiscoveryState,
   WorldWipeRecoveryState,
 } from "./types";
 import {
@@ -167,6 +168,7 @@ export type GameState = {
   guildUpgrades?: GuildUpgradesState;
   guildNoticeBoard?: GuildNoticeBoardState;
   guildSecondaryParties?: GuildSecondaryPartiesState;
+  worldDiscovery?: WorldDiscoveryState;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;
   bank: PartyBank;

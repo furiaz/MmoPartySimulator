@@ -1,5 +1,9 @@
 import { getPartySizeLimit } from "./leveling";
 import { isPartyLeaderNearGuildTavern } from "./guildTavern";
+import {
+  getGuildSecondaryPartyCount,
+  getGuildSecondaryPartyMemberSlotCount,
+} from "./guildRecruitUpgrades";
 import { pruneMissingEntityRuntimeState } from "./mapRuntimeCleanup";
 import { isPositionAvailable } from "./movementPlanning";
 import {
@@ -20,6 +24,11 @@ import type {
 export const GUILD_INN_COMPANION_CAPACITY = 4;
 export const GUILD_SECONDARY_PARTY_ID = "secondary-party-1";
 export const GUILD_SECONDARY_PARTY_SLOT_COUNT = 1;
+export const GUILD_SECONDARY_PARTY_IDS = [
+  "secondary-party-1",
+  "secondary-party-2",
+  "secondary-party-3",
+];
 
 const ROSTER_REJOIN_OFFSETS: Position[] = [
   { x: 2.5, y: 0 },
@@ -40,7 +49,8 @@ export type GuildRosterMoveFailureReason =
   | "unknown_companion"
   | "invalid_target"
   | "locked_main_party_slot"
-  | "main_party_requires_companion";
+  | "main_party_requires_companion"
+  | "party_dispatched";
 
 export type GuildRosterMoveResult =
   | {
@@ -71,16 +81,15 @@ type RosterLocation =
 
 export function createInitialGuildSecondaryPartiesState(): GuildSecondaryPartiesState {
   return {
-    parties: [
-      {
-        id: GUILD_SECONDARY_PARTY_ID,
-        displayName: "Secondary Party 1",
-        companionIds: Array.from(
-          { length: GUILD_SECONDARY_PARTY_SLOT_COUNT },
-          () => null,
-        ),
-      },
-    ],
+    parties: GUILD_SECONDARY_PARTY_IDS.map((partyId, index) => ({
+      id: partyId,
+      displayName: `Secondary Party ${index + 1}`,
+      companionIds: Array.from(
+        { length: GUILD_SECONDARY_PARTY_SLOT_COUNT },
+        () => null,
+      ),
+      dispatch: null,
+    })),
   };
 }
 
@@ -90,15 +99,18 @@ export function getGuildSecondaryPartiesState(
   return sanitizeGuildSecondaryPartiesState(
     state.guildSecondaryParties,
     state.restingCompanionsById,
+    state,
   );
 }
 
 export function sanitizeGuildSecondaryPartiesState(
   guildSecondaryParties: GuildSecondaryPartiesState | undefined,
   restingCompanionsById: GameState["restingCompanionsById"] = {},
+  state?: GameState,
 ): GuildSecondaryPartiesState {
   const restingIds = new Set(Object.keys(restingCompanionsById ?? {}));
   const assignedIds = new Set<string>();
+  const unlockedPartyCount = state ? getGuildSecondaryPartyCount(state) : 0;
 
   return {
     parties: createInitialGuildSecondaryPartiesState().parties.map(
@@ -107,6 +119,10 @@ export function sanitizeGuildSecondaryPartiesState(
         const incomingIds = Array.isArray(incomingParty?.companionIds)
           ? incomingParty.companionIds
           : [];
+        const isUnlocked = index < unlockedPartyCount;
+        const slotCount = isUnlocked && state
+          ? getGuildSecondaryPartyMemberSlotCount(state, defaultParty.id)
+          : defaultParty.companionIds.length;
 
         return {
           id:
@@ -118,10 +134,11 @@ export function sanitizeGuildSecondaryPartiesState(
             incomingParty.displayName
               ? incomingParty.displayName
               : defaultParty.displayName,
-          companionIds: defaultParty.companionIds.map((_, slotIndex) => {
+          companionIds: Array.from({ length: slotCount }, (_, slotIndex) => {
             const companionId = incomingIds[slotIndex];
 
             if (
+              !isUnlocked ||
               typeof companionId !== "string" ||
               !restingIds.has(companionId) ||
               assignedIds.has(companionId)
@@ -132,6 +149,9 @@ export function sanitizeGuildSecondaryPartiesState(
             assignedIds.add(companionId);
             return companionId;
           }),
+          dispatch: isUnlocked
+            ? sanitizeDispatchState(incomingParty?.dispatch)
+            : null,
         };
       },
     ),
@@ -206,6 +226,14 @@ export function moveGuildRosterCompanion(
         target.slotIndex >= getPartySizeLimit(normalizedState)
           ? "locked_main_party_slot"
           : "invalid_target",
+    };
+  }
+
+  if (isRosterLocationDispatched(normalizedState, source) || isRosterLocationDispatched(normalizedState, target)) {
+    return {
+      ok: false,
+      state: normalizedState,
+      reason: "party_dispatched",
     };
   }
 
@@ -444,9 +472,28 @@ function isValidRosterTarget(
   const secondaryParty = getGuildSecondaryPartiesState(state).parties.find(
     (party) => party.id === target.partyId,
   );
+  const partyNumber = GUILD_SECONDARY_PARTY_IDS.indexOf(target.partyId) + 1;
 
   return Boolean(
-    secondaryParty && target.slotIndex < secondaryParty.companionIds.length,
+    secondaryParty &&
+      partyNumber > 0 &&
+      partyNumber <= getGuildSecondaryPartyCount(state) &&
+      target.slotIndex < secondaryParty.companionIds.length,
+  );
+}
+
+function isRosterLocationDispatched(
+  state: GameState,
+  location: RosterLocation | GuildRosterSlotRef,
+): boolean {
+  if (location.area !== "secondary_party") {
+    return false;
+  }
+
+  return Boolean(
+    getGuildSecondaryPartiesState(state).parties.find(
+      (party) => party.id === location.partyId,
+    )?.dispatch,
   );
 }
 
@@ -599,6 +646,7 @@ function cloneSecondaryParties(
   ).parties.map((party) => ({
     ...party,
     companionIds: [...party.companionIds],
+    dispatch: party.dispatch ? { ...party.dispatch } : null,
   }));
 }
 
@@ -790,4 +838,20 @@ function compareRosterCompanions(a: Companion, b: Companion): number {
 
 function sanitizeCharacterLevel(companion: Companion): number {
   return Math.max(1, Math.floor(companion.characterLevel || 1));
+}
+
+function sanitizeDispatchState(
+  dispatch: GuildSecondaryParty["dispatch"],
+): GuildSecondaryParty["dispatch"] {
+  if (
+    !dispatch ||
+    (dispatch.status !== "dispatched" && dispatch.status !== "completed")
+  ) {
+    return null;
+  }
+
+  return {
+    ...dispatch,
+    status: dispatch.status,
+  };
 }

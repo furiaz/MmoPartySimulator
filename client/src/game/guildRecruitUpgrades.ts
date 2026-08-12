@@ -4,6 +4,9 @@ import type {
   GuildNoticeBoardUpgradeLevels,
   GuildRecruitUpgradeId,
   GuildRecruitUpgradeLevels,
+  GuildSecondaryPartyPerPartyUpgradeId,
+  GuildSecondaryPartyUpgradeId,
+  GuildSecondaryPartyUpgradeLevels,
   GuildUpgradesState,
 } from "./types";
 import {
@@ -11,9 +14,29 @@ import {
   getCurrencyBalance,
   removeCurrencyFromWalletState,
 } from "./wallet";
+import { getPartySizeLimit } from "./leveling";
 
 export const GUILD_RECRUIT_UPGRADE_MAX_LEVEL = 3;
 export const GUILD_NOTICE_BOARD_UPGRADE_MAX_LEVEL = 3;
+export const GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL = 3;
+export const GUILD_SECONDARY_PARTY_MEMBER_MAX_LEVEL = 5;
+export const GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL = 15;
+export const GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL = 11;
+
+export const GUILD_SECONDARY_PARTY_UPGRADE_IDS: GuildSecondaryPartyUpgradeId[] = [
+  "secondary_party_count",
+  "secondary_party_members",
+  "secondary_party_experience_efficiency",
+  "secondary_party_drop_efficiency",
+  "secondary_party_dispatch_duration",
+];
+
+export const GUILD_SECONDARY_PARTY_PER_PARTY_UPGRADE_IDS: GuildSecondaryPartyPerPartyUpgradeId[] = [
+  "secondary_party_members",
+  "secondary_party_experience_efficiency",
+  "secondary_party_drop_efficiency",
+  "secondary_party_dispatch_duration",
+];
 
 export type GuildRecruitUpgradePurchaseFailureReason =
   | "unknown_upgrade"
@@ -92,6 +115,50 @@ export type GuildNoticeBoardUpgradeStatus = {
   canAfford: boolean;
 };
 
+export type GuildSecondaryPartyUpgradePurchaseFailureReason =
+  | "unknown_upgrade"
+  | "unknown_party"
+  | "missing_party"
+  | "max_level"
+  | "locked"
+  | "insufficient_crowns";
+
+export type GuildSecondaryPartyUpgradePurchaseResult =
+  | {
+      ok: true;
+      state: GameState;
+      upgradeId: GuildSecondaryPartyUpgradeId;
+      partyId: string | null;
+      previousLevel: number;
+      nextLevel: number;
+      costCrowns: number;
+    }
+  | {
+      ok: false;
+      state: GameState;
+      upgradeId: GuildSecondaryPartyUpgradeId;
+      partyId: string | null;
+      reason: GuildSecondaryPartyUpgradePurchaseFailureReason;
+      currentLevel: number;
+      costCrowns: number | null;
+    };
+
+export type GuildSecondaryPartyUpgradeStatus = {
+  id: GuildSecondaryPartyUpgradeId;
+  partyId: string | null;
+  displayName: string;
+  description: string;
+  level: number;
+  maxLevel: number;
+  currentEffect: string;
+  nextEffect: string | null;
+  nextCostCrowns: number | null;
+  isLocked: boolean;
+  isMaxLevel: boolean;
+  lockReason: string | null;
+  canAfford: boolean;
+};
+
 type GuildRecruitUpgradeDefinition = {
   id: GuildRecruitUpgradeId;
   displayName: string;
@@ -106,6 +173,15 @@ type GuildNoticeBoardUpgradeDefinition = {
   description: string;
   costsByNextLevel: Partial<Record<number, number>>;
   effectTextByLevel: Record<number, string>;
+};
+
+type GuildSecondaryPartyUpgradeDefinition = {
+  id: GuildSecondaryPartyUpgradeId;
+  displayName: string;
+  description: string;
+  maxLevel: number;
+  getCostForNextLevel: (nextLevel: number, partyNumber: number) => number | null;
+  getEffectText: (level: number) => string;
 };
 
 export const GUILD_RECRUIT_UPGRADE_IDS: GuildRecruitUpgradeId[] = [
@@ -278,10 +354,71 @@ const GUILD_NOTICE_BOARD_UPGRADE_DEFINITIONS: Record<
   },
 };
 
+const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
+  GuildSecondaryPartyUpgradeId,
+  GuildSecondaryPartyUpgradeDefinition
+> = {
+  secondary_party_count: {
+    id: "secondary_party_count",
+    displayName: "Number of Parties",
+    description: "Unlocks additional Secondary Parties.",
+    maxLevel: GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL,
+    getCostForNextLevel: (nextLevel) =>
+      ({ 1: 1, 2: 5000, 3: 30000 })[nextLevel] ?? null,
+    getEffectText: (level) => `${level} parties`,
+  },
+  secondary_party_members: {
+    id: "secondary_party_members",
+    displayName: "Party Members",
+    description: "Increases this Secondary Party's member capacity.",
+    maxLevel: GUILD_SECONDARY_PARTY_MEMBER_MAX_LEVEL,
+    getCostForNextLevel: (nextLevel, partyNumber) => {
+      const baseCost = ({ 2: 500, 3: 1000, 4: 3000, 5: 20000 })[nextLevel];
+
+      return baseCost ? baseCost * partyNumber : null;
+    },
+    getEffectText: (level) => `${level} members`,
+  },
+  secondary_party_experience_efficiency: {
+    id: "secondary_party_experience_efficiency",
+    displayName: "EXP Efficiency",
+    description: "Improves this Secondary Party's dispatch EXP gain.",
+    maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
+    getCostForNextLevel: (nextLevel, partyNumber) =>
+      nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
+        ? (100 + (nextLevel - 2) * 50) * partyNumber
+        : null,
+    getEffectText: (level) => `${formatMultiplier(getGuildSecondaryPartyEfficiencyForLevel(level))}x`,
+  },
+  secondary_party_drop_efficiency: {
+    id: "secondary_party_drop_efficiency",
+    displayName: "Drop Efficiency",
+    description: "Improves this Secondary Party's dispatch loot gain.",
+    maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
+    getCostForNextLevel: (nextLevel, partyNumber) =>
+      nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
+        ? (100 + (nextLevel - 2) * 50) * partyNumber
+        : null,
+    getEffectText: (level) => `${formatMultiplier(getGuildSecondaryPartyEfficiencyForLevel(level))}x`,
+  },
+  secondary_party_dispatch_duration: {
+    id: "secondary_party_dispatch_duration",
+    displayName: "Dispatch Duration",
+    description: "Unlocks longer dispatches for this Secondary Party.",
+    maxLevel: GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL,
+    getCostForNextLevel: (nextLevel, partyNumber) =>
+      nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL
+        ? (1000 + (nextLevel - 2) * 2000) * partyNumber
+        : null,
+    getEffectText: (level) => formatDurationMinutes(getGuildSecondaryPartyDispatchDurationMinutesForLevel(level)),
+  },
+};
+
 export function createInitialGuildUpgradesState(): GuildUpgradesState {
   return {
     recruit: createInitialGuildRecruitUpgradeLevels(),
     noticeBoard: createInitialGuildNoticeBoardUpgradeLevels(),
+    secondaryParties: createInitialGuildSecondaryPartyUpgradeLevels(),
   };
 }
 
@@ -295,6 +432,9 @@ export function sanitizeGuildUpgradesState(
   return {
     recruit: sanitizeGuildRecruitUpgradeLevels(guildUpgrades?.recruit),
     noticeBoard: sanitizeGuildNoticeBoardUpgradeLevels(guildUpgrades?.noticeBoard),
+    secondaryParties: sanitizeGuildSecondaryPartyUpgradeLevels(
+      guildUpgrades?.secondaryParties,
+    ),
   };
 }
 
@@ -560,6 +700,186 @@ export function purchaseGuildNoticeBoardUpgrade(
   };
 }
 
+export function getGuildSecondaryPartyUpgradeStatuses(
+  state: GameState,
+  partyId: string | null = null,
+): GuildSecondaryPartyUpgradeStatus[] {
+  const upgrades = getGuildUpgradesState(state);
+  const crowns = getCurrencyBalance(state.wallet, "crowns");
+  const ids: GuildSecondaryPartyUpgradeId[] = partyId
+    ? GUILD_SECONDARY_PARTY_PER_PARTY_UPGRADE_IDS
+    : ["secondary_party_count"];
+
+  return ids.map((upgradeId) => {
+    const definition = GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS[upgradeId];
+    const partyNumber = partyId ? getSecondaryPartyNumber(partyId) : 1;
+    const level = getGuildSecondaryPartyUpgradeLevel(upgrades, upgradeId, partyId);
+    const maxLevel = definition.maxLevel;
+    const nextLevel = level >= maxLevel ? null : level + 1;
+    const nextCostCrowns = nextLevel
+      ? definition.getCostForNextLevel(nextLevel, partyNumber)
+      : null;
+    const lockReason = getGuildSecondaryPartyUpgradeLockReason(
+      state,
+      upgrades,
+      upgradeId,
+      partyId,
+      nextLevel,
+    );
+
+    return {
+      id: upgradeId,
+      partyId,
+      displayName: definition.displayName,
+      description: definition.description,
+      level,
+      maxLevel,
+      currentEffect: definition.getEffectText(level),
+      nextEffect: nextLevel ? definition.getEffectText(nextLevel) : null,
+      nextCostCrowns,
+      isLocked: Boolean(lockReason),
+      isMaxLevel: level >= maxLevel,
+      lockReason,
+      canAfford: nextCostCrowns !== null && crowns >= nextCostCrowns,
+    };
+  });
+}
+
+export function purchaseGuildSecondaryPartyUpgrade(
+  state: GameState,
+  upgradeId: GuildSecondaryPartyUpgradeId,
+  partyId: string | null = null,
+): GuildSecondaryPartyUpgradePurchaseResult {
+  if (!GUILD_SECONDARY_PARTY_UPGRADE_IDS.includes(upgradeId)) {
+    return {
+      ok: false,
+      state,
+      upgradeId,
+      partyId,
+      reason: "unknown_upgrade",
+      currentLevel: 0,
+      costCrowns: null,
+    };
+  }
+
+  if (upgradeId !== "secondary_party_count" && !partyId) {
+    return {
+      ok: false,
+      state,
+      upgradeId,
+      partyId,
+      reason: "missing_party",
+      currentLevel: 1,
+      costCrowns: null,
+    };
+  }
+
+  const upgrades = getGuildUpgradesState(state);
+  const currentLevel = getGuildSecondaryPartyUpgradeLevel(
+    upgrades,
+    upgradeId,
+    partyId,
+  );
+  const definition = GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS[upgradeId];
+  const maxLevel = definition.maxLevel;
+  const nextLevel = currentLevel + 1;
+  const partyNumber = partyId ? getSecondaryPartyNumber(partyId) : 1;
+  const lockReason = getGuildSecondaryPartyUpgradeLockReason(
+    state,
+    upgrades,
+    upgradeId,
+    partyId,
+    nextLevel,
+  );
+
+  if (lockReason) {
+    return {
+      ok: false,
+      state: {
+        ...state,
+        guildUpgrades: upgrades,
+      },
+      upgradeId,
+      partyId,
+      reason: "locked",
+      currentLevel,
+      costCrowns: null,
+    };
+  }
+
+  if (currentLevel >= maxLevel) {
+    return {
+      ok: false,
+      state: {
+        ...state,
+        guildUpgrades: upgrades,
+      },
+      upgradeId,
+      partyId,
+      reason: "max_level",
+      currentLevel,
+      costCrowns: null,
+    };
+  }
+
+  const costCrowns = definition.getCostForNextLevel(nextLevel, partyNumber);
+
+  if (!costCrowns || !canAfford(state.wallet, "crowns", costCrowns)) {
+    return {
+      ok: false,
+      state: {
+        ...state,
+        guildUpgrades: upgrades,
+      },
+      upgradeId,
+      partyId,
+      reason: "insufficient_crowns",
+      currentLevel,
+      costCrowns,
+    };
+  }
+
+  const currencyRemoval = removeCurrencyFromWalletState(
+    {
+      ...state,
+      guildUpgrades: upgrades,
+    },
+    "crowns",
+    costCrowns,
+    "guild_upgrade",
+  );
+
+  if (currencyRemoval.result.status !== "success") {
+    return {
+      ok: false,
+      state: currencyRemoval.state,
+      upgradeId,
+      partyId,
+      reason: "insufficient_crowns",
+      currentLevel,
+      costCrowns,
+    };
+  }
+
+  return {
+    ok: true,
+    state: {
+      ...currencyRemoval.state,
+      guildUpgrades: setGuildSecondaryPartyUpgradeLevel(
+        upgrades,
+        upgradeId,
+        partyId,
+        nextLevel,
+      ),
+    },
+    upgradeId,
+    partyId,
+    previousLevel: currentLevel,
+    nextLevel,
+    costCrowns,
+  };
+}
+
 export function getGuildRecruitSlotCount(state: GameState): number {
   return getGuildUpgradesState(state).recruit.recruit_slots;
 }
@@ -618,6 +938,71 @@ export function getGuildNoticeBoardDailyRerollLimit(state: GameState): number {
   return getGuildUpgradesState(state).noticeBoard.notice_board_scouts;
 }
 
+export function getGuildSecondaryPartyCount(state: GameState): number {
+  return getGuildUpgradesState(state).secondaryParties.secondary_party_count;
+}
+
+export function getGuildSecondaryPartyMemberSlotCount(
+  state: GameState,
+  partyId: string,
+): number {
+  const level = getGuildSecondaryPartyPerPartyUpgradeLevels(
+    state,
+    partyId,
+  ).secondary_party_members;
+
+  return Math.min(level, getPartySizeLimit(state));
+}
+
+export function getGuildSecondaryPartyExperienceEfficiency(
+  state: GameState,
+  partyId: string,
+): number {
+  return getGuildSecondaryPartyEfficiencyForLevel(
+    getGuildSecondaryPartyPerPartyUpgradeLevels(
+      state,
+      partyId,
+    ).secondary_party_experience_efficiency,
+  );
+}
+
+export function getGuildSecondaryPartyDropEfficiency(
+  state: GameState,
+  partyId: string,
+): number {
+  return getGuildSecondaryPartyEfficiencyForLevel(
+    getGuildSecondaryPartyPerPartyUpgradeLevels(
+      state,
+      partyId,
+    ).secondary_party_drop_efficiency,
+  );
+}
+
+export function getGuildSecondaryPartyDispatchDurationMs(
+  state: GameState,
+  partyId: string,
+): number {
+  const minutes = getGuildSecondaryPartyDispatchDurationMinutesForLevel(
+    getGuildSecondaryPartyPerPartyUpgradeLevels(
+      state,
+      partyId,
+    ).secondary_party_dispatch_duration,
+  );
+
+  return minutes * 60 * 1000;
+}
+
+export function getGuildSecondaryPartyPerPartyUpgradeLevels(
+  state: GameState,
+  partyId: string,
+): Record<GuildSecondaryPartyPerPartyUpgradeId, number> {
+  const upgrades = getGuildUpgradesState(state).secondaryParties;
+
+  return sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
+    upgrades.parties[partyId],
+  );
+}
+
 function createInitialGuildRecruitUpgradeLevels(): GuildRecruitUpgradeLevels {
   return {
     recruit_slots: 1,
@@ -635,6 +1020,30 @@ function createInitialGuildNoticeBoardUpgradeLevels(): GuildNoticeBoardUpgradeLe
     notice_board_reward_quality: 1,
     notice_board_refresh_rate: 1,
     notice_board_scouts: 0,
+  };
+}
+
+function createInitialGuildSecondaryPartyUpgradeLevels(): GuildSecondaryPartyUpgradeLevels {
+  return {
+    secondary_party_count: 0,
+    parties: Object.fromEntries(
+      [1, 2, 3].map((partyNumber) => [
+        getSecondaryPartyIdForNumber(partyNumber),
+        createInitialGuildSecondaryPartyPerPartyUpgradeLevels(),
+      ]),
+    ),
+  };
+}
+
+function createInitialGuildSecondaryPartyPerPartyUpgradeLevels(): Record<
+  GuildSecondaryPartyPerPartyUpgradeId,
+  number
+> {
+  return {
+    secondary_party_members: 1,
+    secondary_party_experience_efficiency: 1,
+    secondary_party_drop_efficiency: 1,
+    secondary_party_dispatch_duration: 1,
   };
 }
 
@@ -668,6 +1077,68 @@ function sanitizeGuildNoticeBoardUpgradeLevels(
   ) as GuildNoticeBoardUpgradeLevels;
 }
 
+function sanitizeGuildSecondaryPartyUpgradeLevels(
+  levels: Partial<GuildSecondaryPartyUpgradeLevels> | undefined,
+): GuildSecondaryPartyUpgradeLevels {
+  const defaults = createInitialGuildSecondaryPartyUpgradeLevels();
+
+  return {
+    secondary_party_count: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_count,
+      defaults.secondary_party_count,
+      0,
+      GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL,
+    ),
+    parties: Object.fromEntries(
+      [1, 2, 3].map((partyNumber) => {
+        const partyId = getSecondaryPartyIdForNumber(partyNumber);
+
+        return [
+          partyId,
+          sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
+            levels?.parties?.[partyId],
+          ),
+        ];
+      }),
+    ),
+  };
+}
+
+function sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
+  levels:
+    | Partial<Record<GuildSecondaryPartyPerPartyUpgradeId, number>>
+    | undefined,
+): Record<GuildSecondaryPartyPerPartyUpgradeId, number> {
+  const defaults = createInitialGuildSecondaryPartyPerPartyUpgradeLevels();
+
+  return {
+    secondary_party_members: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_members,
+      defaults.secondary_party_members,
+      1,
+      GUILD_SECONDARY_PARTY_MEMBER_MAX_LEVEL,
+    ),
+    secondary_party_experience_efficiency: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_experience_efficiency,
+      defaults.secondary_party_experience_efficiency,
+      1,
+      GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
+    ),
+    secondary_party_drop_efficiency: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_drop_efficiency,
+      defaults.secondary_party_drop_efficiency,
+      1,
+      GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
+    ),
+    secondary_party_dispatch_duration: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_dispatch_duration,
+      defaults.secondary_party_dispatch_duration,
+      1,
+      GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL,
+    ),
+  };
+}
+
 function sanitizeUpgradeLevel(level: number | undefined, fallback: number): number {
   return sanitizeUpgradeLevelWithMinimum(level, fallback, 1);
 }
@@ -676,10 +1147,11 @@ function sanitizeUpgradeLevelWithMinimum(
   level: number | undefined,
   fallback: number,
   minimumLevel: number,
+  maximumLevel = GUILD_RECRUIT_UPGRADE_MAX_LEVEL,
 ): number {
   return typeof level === "number" && Number.isFinite(level)
     ? Math.min(
-        GUILD_RECRUIT_UPGRADE_MAX_LEVEL,
+        maximumLevel,
         Math.max(minimumLevel, Math.floor(level)),
       )
     : fallback;
@@ -697,4 +1169,130 @@ function getGuildRecruitUpgradeLockReason(
   }
 
   return null;
+}
+
+function getGuildSecondaryPartyUpgradeLevel(
+  upgrades: GuildUpgradesState,
+  upgradeId: GuildSecondaryPartyUpgradeId,
+  partyId: string | null,
+): number {
+  if (upgradeId === "secondary_party_count") {
+    return upgrades.secondaryParties.secondary_party_count;
+  }
+
+  if (!partyId) {
+    return createInitialGuildSecondaryPartyPerPartyUpgradeLevels()[upgradeId];
+  }
+
+  return sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
+    upgrades.secondaryParties.parties[partyId],
+  )[upgradeId];
+}
+
+function setGuildSecondaryPartyUpgradeLevel(
+  upgrades: GuildUpgradesState,
+  upgradeId: GuildSecondaryPartyUpgradeId,
+  partyId: string | null,
+  nextLevel: number,
+): GuildUpgradesState {
+  if (upgradeId === "secondary_party_count") {
+    return {
+      ...upgrades,
+      secondaryParties: {
+        ...upgrades.secondaryParties,
+        secondary_party_count: nextLevel,
+      },
+    };
+  }
+
+  if (!partyId) {
+    return upgrades;
+  }
+
+  const partyLevels = sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
+    upgrades.secondaryParties.parties[partyId],
+  );
+
+  return {
+    ...upgrades,
+    secondaryParties: {
+      ...upgrades.secondaryParties,
+      parties: {
+        ...upgrades.secondaryParties.parties,
+        [partyId]: {
+          ...partyLevels,
+          [upgradeId]: nextLevel,
+        },
+      },
+    },
+  };
+}
+
+function getGuildSecondaryPartyUpgradeLockReason(
+  state: GameState,
+  upgrades: GuildUpgradesState,
+  upgradeId: GuildSecondaryPartyUpgradeId,
+  partyId: string | null,
+  nextLevel: number | null,
+): string | null {
+  if (upgradeId === "secondary_party_count") {
+    return null;
+  }
+
+  if (!partyId) {
+    return "Select a Secondary Party";
+  }
+
+  const partyNumber = getSecondaryPartyNumber(partyId);
+
+  if (partyNumber < 1 || partyNumber > GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL) {
+    return "Unknown Secondary Party";
+  }
+
+  if (upgrades.secondaryParties.secondary_party_count < partyNumber) {
+    return `Unlock Secondary Party ${partyNumber}`;
+  }
+
+  if (
+    upgradeId === "secondary_party_members" &&
+    nextLevel !== null &&
+    nextLevel > getPartySizeLimit(state)
+  ) {
+    return `Requires main party slot ${nextLevel} unlock`;
+  }
+
+  return null;
+}
+
+function getSecondaryPartyIdForNumber(partyNumber: number): string {
+  return `secondary-party-${partyNumber}`;
+}
+
+function getSecondaryPartyNumber(partyId: string): number {
+  const match = /^secondary-party-(\d+)$/.exec(partyId);
+
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function getGuildSecondaryPartyEfficiencyForLevel(level: number): number {
+  return Math.min(0.8, 0.1 + (Math.max(1, level) - 1) * 0.05);
+}
+
+function getGuildSecondaryPartyDispatchDurationMinutesForLevel(level: number): number {
+  return Math.min(360, 60 + (Math.max(1, level) - 1) * 30);
+}
+
+function formatMultiplier(value: number): string {
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDurationMinutes(minutes: number): string {
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`;
+  }
+
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
