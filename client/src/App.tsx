@@ -96,6 +96,7 @@ import {
   SKILL_DEFINITIONS,
   acceptQuestFromQuestGiver,
   applyOfflineFarmingProgress,
+  claimPendingOfflineFarmingLoot,
   finishReadyQuestsForQuestGiver,
   createSavedGame,
   getPartyLeader,
@@ -2496,20 +2497,16 @@ function StartScreen({
 function OfflineSummaryToast({
   summary,
   onClose,
+  onClaimPending,
 }: {
   summary: OfflineFarmingSummary;
   onClose: () => void;
+  onClaimPending: () => void;
 }) {
-  const resourceText =
-    summary.resourcesAdded.length > 0
-      ? summary.resourcesAdded
-          .map((resource) => {
-            const item = getItemDefinition(resource.itemId);
-
-            return `${item.displayName} x${resource.quantity}`;
-          })
-          .join(", ")
-      : "None";
+  const resourceText = formatOfflineLootList(summary.resourcesAdded);
+  const lootText = formatOfflineLootList(summary.lootAdded);
+  const pendingText = formatOfflineLootList(summary.pendingLoot);
+  const hasPendingLoot = summary.pendingLoot.length > 0;
 
   return (
     <section className="offline-summary-toast" role="status">
@@ -2523,12 +2520,38 @@ function OfflineSummaryToast({
       </p>
       <p>XP earned: {summary.xpGranted}</p>
       <p>Gathered: {resourceText}</p>
+      <p>Drops: {lootText}</p>
+      {hasPendingLoot ? <p>Pending: {pendingText}</p> : null}
       {summary.skippedReason ? <p>{summary.skippedReason}</p> : null}
-      <button aria-label="Close Continue summary" onClick={onClose} type="button">
+      {hasPendingLoot ? (
+        <button onClick={onClaimPending} type="button">
+          Claim Pending
+        </button>
+      ) : null}
+      <button
+        aria-label="Close Continue summary"
+        disabled={hasPendingLoot}
+        onClick={onClose}
+        type="button"
+      >
         Close
       </button>
     </section>
   );
+}
+
+function formatOfflineLootList(
+  loot: OfflineFarmingSummary["resourcesAdded"],
+): string {
+  return loot.length > 0
+    ? loot
+        .map((resource) => {
+          const item = getItemDefinition(resource.itemId);
+
+          return `${item.displayName} x${resource.quantity}`;
+        })
+        .join(", ")
+    : "None";
 }
 
 function formatOfflineDuration(durationMs: number): string {
@@ -3378,6 +3401,8 @@ function App() {
             enemyKills: 0,
             xpGranted: 0,
             resourcesAdded: [],
+            lootAdded: [],
+            pendingLoot: restored.state.pendingOfflineFarmingLoot?.pendingLoot ?? [],
             skippedReason: loadedSave.save.offlineFarmingBlockedReason,
           },
         }
@@ -3394,6 +3419,25 @@ function App() {
     setHasLocalSaveFile(true);
     setSaveStatusMessage("Save loaded.");
     enterGameState(offlineResult.state);
+  }
+
+  function claimPendingOfflineLoot() {
+    const now = Date.now();
+    const result = claimPendingOfflineFarmingLoot(gameState, now);
+    const saved = writeLocalSave(result.state, now);
+
+    if (!saved.ok) {
+      setSaveStatusMessage(`Pending loot save failed: ${saved.reason}`);
+      return;
+    }
+
+    setOfflineSummary(result.summary);
+    setSaveStatusMessage(
+      result.summary.pendingLoot.length > 0
+        ? "Inventory still has pending AFK loot."
+        : "Pending AFK loot claimed.",
+    );
+    enterGameState(result.state);
   }
 
   function startNewGame() {
@@ -5731,6 +5775,7 @@ function App() {
         {offlineSummary ? (
           <OfflineSummaryToast
             summary={offlineSummary}
+            onClaimPending={claimPendingOfflineLoot}
             onClose={() => setOfflineSummary(null)}
           />
         ) : null}

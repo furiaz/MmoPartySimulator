@@ -26,6 +26,7 @@ import type {
   KeyItemsById,
   LeaderIntent,
   NewsBroadcastEvent,
+  OfflineFarmingPendingLootState,
   PartyIntent,
   PartyInventory,
   PartyWallet,
@@ -250,6 +251,7 @@ export type GameState = {
   flaskRechargeEnemyKillCounter?: number;
   flaskRechargeCountedEnemyDefeats?: Record<string, number>;
   dropVisualEvents?: DropVisualEvent[];
+  pendingOfflineFarmingLoot?: OfflineFarmingPendingLootState | null;
   newsBroadcasts?: NewsBroadcastEvent[];
   autonomousTargetSuppressionsByEnemyId?: Record<string, AutonomousTargetSuppressionState>;
   slimewardDungeon?: SlimewardDungeonRuntimeState;

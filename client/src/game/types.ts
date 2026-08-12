@@ -832,6 +832,19 @@ export type SlimewardDungeonRuntimeState = {
   azureMass?: AzureMassRuntimeState;
 };
 
+export type OfflineFarmingPendingLootState = {
+  mapId?: DebugMapId;
+  subzoneId?: string;
+  subzoneName?: string;
+  creditedMs: number;
+  enemyKills: number;
+  xpGranted: number;
+  rolledLoot: InventorySlot[];
+  collectedLoot: InventorySlot[];
+  pendingLoot: InventorySlot[];
+  createdAtMs: number;
+};
+
 export type CurrencyId = "crowns";
 
 export type CurrencyDefinition = {

@@ -1099,6 +1099,152 @@
   color: #ffffff;
 }
 
+.afk-estimate-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.afk-estimate-empty {
+  margin: 0;
+  color: #b7c9cd;
+}
+
+.afk-estimate-location {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.afk-estimate-location span {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.afk-estimate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.afk-estimate-stat,
+.afk-estimate-detail,
+.afk-estimate-warnings span {
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.afk-estimate-stat {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 8px;
+  position: relative;
+}
+
+.afk-estimate-stat:focus-visible {
+  outline: 2px solid rgba(122, 166, 173, 0.92);
+  outline-offset: 2px;
+}
+
+.afk-estimate-stat-label,
+.afk-estimate-enemy small,
+.afk-estimate-detail p {
+  color: #92a8ad;
+  font-size: 11px;
+}
+
+.afk-estimate-stat strong {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.afk-estimate-tooltip {
+  display: none;
+  gap: 6px;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: min(360px, 82vw);
+  padding: 10px 12px;
+  border: 1px solid #5f7f86;
+  border-radius: 6px;
+  background: #071117;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42);
+  color: #dbe8eb;
+}
+
+.afk-estimate-stat:hover .afk-estimate-tooltip,
+.afk-estimate-stat:focus-within .afk-estimate-tooltip {
+  display: grid;
+}
+
+.afk-estimate-tooltip strong {
+  color: #f3df93;
+  font-size: 12px;
+}
+
+.afk-estimate-tooltip span {
+  color: #c6d8dc;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.afk-estimate-detail {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.afk-estimate-detail h3,
+.afk-estimate-detail p {
+  margin: 0;
+}
+
+.afk-estimate-enemy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.afk-estimate-enemy {
+  display: grid;
+  gap: 2px;
+}
+
+.afk-estimate-enemy span {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.afk-estimate-warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.afk-estimate-warnings span {
+  padding: 6px 8px;
+  color: #ffd0a8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.afk-estimate-footnote {
+  margin: 0;
+  color: rgba(218, 235, 241, 0.72);
+  font-size: 12px;
+}
+
 .guild-tavern-panel {
   display: grid;
   gap: 10px;

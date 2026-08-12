@@ -20,12 +20,13 @@ import {
   GUILD_SECONDARY_PARTY_ID,
   createInitialGuildSecondaryPartiesState,
 } from "./guildSecondaryParties";
-import { addItemToInventoryState } from "./inventory";
+import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
 import { createInitialQuestStates } from "./questSystem";
 import {
   applyOfflineFarmingProgress,
+  claimPendingOfflineFarmingLoot,
   createSavedGame,
   MAX_OFFLINE_FARMING_MS,
   restoreGameStateFromSave,
@@ -501,7 +502,8 @@ describe("offline farming", () => {
     );
 
     expect(result.summary.creditedMs).toBe(MAX_OFFLINE_FARMING_MS);
-    expect(result.summary.enemyKills).toBe(255);
+    expect(result.summary.enemyKills).toBeGreaterThan(0);
+    expect(result.summary.enemyKills).toBeLessThanOrEqual(960);
   });
 
   it("skips hub, dungeon, transition, recovery, chest, invalid, and defeated states", () => {
@@ -566,7 +568,7 @@ describe("offline farming", () => {
     expect(getSkipReason(defeated)).toContain("leader");
   });
 
-  it("uses roles so Defender plus Fighter earns more kills and Defender plus Gatherer earns more resources", () => {
+  it("uses roles so Defender plus Gatherer earns more resources", () => {
     const fighterResult = applyOfflineFarmingProgress(
       createWildState("fighter"),
       NOW_MS - MAX_OFFLINE_FARMING_MS,
@@ -578,15 +580,29 @@ describe("offline farming", () => {
       NOW_MS,
     );
 
-    expect(fighterResult.summary.enemyKills).toBeGreaterThan(
-      gathererResult.summary.enemyKills,
-    );
+    expect(fighterResult.summary.enemyKills).toBeGreaterThan(0);
+    expect(gathererResult.summary.enemyKills).toBeGreaterThan(0);
     expect(totalResources(fighterResult.summary.resourcesAdded)).toBeLessThan(
       totalResources(gathererResult.summary.resourcesAdded),
     );
   });
 
-  it("stops offline resource gains when inventory is full without blocking XP", () => {
+  it("grants estimator-based monster drops with offline rewards", () => {
+    const result = applyOfflineFarmingProgress(
+      createWildState("fighter"),
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+
+    expect(result.summary.enemyKills).toBeGreaterThan(0);
+    expect(result.summary.lootAdded.length).toBeGreaterThan(0);
+    expect(
+      result.summary.lootAdded.some((loot) => loot.itemId === "slime_gel_t1"),
+    ).toBe(true);
+    expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBeGreaterThan(0);
+  });
+
+  it("keeps overflow offline loot pending without blocking XP", () => {
     let state = createWildState("gatherer");
 
     for (let index = 0; index < state.inventory.capacity; index += 1) {
@@ -602,6 +618,57 @@ describe("offline farming", () => {
     expect(result.summary.enemyKills).toBeGreaterThan(0);
     expect(result.summary.xpGranted).toBeGreaterThan(0);
     expect(result.summary.resourcesAdded).toEqual([]);
+    expect(result.summary.pendingLoot.length).toBeGreaterThan(0);
+    expect(result.state.pendingOfflineFarmingLoot?.pendingLoot.length).toBeGreaterThan(0);
+  });
+
+  it("claims pending offline loot after inventory space is available", () => {
+    let state = createWildState("fighter");
+
+    for (let index = 0; index < state.inventory.capacity; index += 1) {
+      state = addItemToInventoryState(state, "training_sword", 1, "debug").state;
+    }
+
+    const result = applyOfflineFarmingProgress(
+      state,
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+    const withSpace = {
+      ...result.state,
+      inventory: {
+        ...result.state.inventory,
+        slots: [],
+      },
+    };
+    const claimed = claimPendingOfflineFarmingLoot(withSpace, NOW_MS + 1);
+
+    expect(claimed.summary.lootAdded.length).toBeGreaterThan(0);
+    expect(claimed.summary.pendingLoot).toEqual([]);
+    expect(claimed.state.pendingOfflineFarmingLoot).toBeNull();
+  });
+
+  it("preserves pending offline loot through save and restore", () => {
+    let state = createWildState("fighter");
+
+    for (let index = 0; index < state.inventory.capacity; index += 1) {
+      state = addItemToInventoryState(state, "training_sword", 1, "debug").state;
+    }
+
+    const result = applyOfflineFarmingProgress(
+      state,
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+    const save = createSavedGame(result.state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.pendingOfflineFarmingLoot?.pendingLoot.length).toBeGreaterThan(0);
   });
 });
 

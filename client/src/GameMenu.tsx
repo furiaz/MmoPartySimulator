@@ -14,7 +14,11 @@ import {
   PartyManagementPanel,
   PartyMenuPanel,
 } from "./CompanionPanels";
+import { estimateCurrentPartyAfkCombat, getItemDefinition } from "./game";
 import type {
+  AfkCombatEstimate,
+  AfkCombatEstimateWarning,
+  AfkCombatMultiplierSource,
   Companion,
   GameState,
   PartyInventory,
@@ -410,6 +414,13 @@ function AtlasPanel({
         >
           Guild & Inn
         </button>
+        <button
+          className={activeSubpage === "afkEstimate" ? "active" : ""}
+          onClick={() => onSelectSubpage("afkEstimate")}
+          type="button"
+        >
+          AFK Estimate
+        </button>
       </nav>
       {activeSubpage === "quests" ? (
         <QuestsPanel
@@ -430,7 +441,7 @@ function AtlasPanel({
           canManage={false}
           state={gameState}
         />
-      ) : (
+      ) : activeSubpage === "guildTavern" ? (
         <GuildTavernPanel
           canUse={canUseGuildTavern}
           currentTime={currentTime}
@@ -448,9 +459,257 @@ function AtlasPanel({
           onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
         />
+      ) : (
+        <AfkEstimatePanel state={gameState} />
       )}
     </section>
   );
+}
+
+function AfkEstimatePanel({ state }: { state: GameState }) {
+  const estimate = estimateCurrentPartyAfkCombat(state);
+
+  if (!estimate.available) {
+    return (
+      <section className="afk-estimate-panel" aria-label="AFK Estimate">
+        <div className="menu-section-heading">
+          <h2>AFK Estimate</h2>
+          <span>Unavailable</span>
+        </div>
+        <p className="afk-estimate-empty">{estimate.message}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="afk-estimate-panel" aria-label="AFK Estimate">
+      <div className="menu-section-heading">
+        <h2>AFK Estimate</h2>
+        <span>{estimate.rating}</span>
+      </div>
+      <div className="afk-estimate-location">
+        <strong>{estimate.mapName}</strong>
+        <span>{estimate.subzoneName}</span>
+      </div>
+      <div className="afk-estimate-grid">
+        <AfkEstimateStat
+          label="Damage / min"
+          tooltipLines={[
+            "Estimated party damage per minute before enemy availability limits.",
+            "Includes auto attacks, usable attack skills averaged by cooldown, combat role efficiency, role passives, equipment stats, and offensive buff uptime.",
+          ]}
+          value={formatWhole(estimate.partyDamagePerMinute)}
+        />
+        <AfkEstimateStat
+          label="Kills / hour"
+          tooltipLines={[
+            "Final deterministic AFK kills for one hour in this subzone.",
+            "Uses damage potential, access efficiency, spawn cap, and survivability.",
+          ]}
+          value={formatWhole(estimate.killsPerHour)}
+        />
+        <AfkEstimateStat
+          label="EXP / min"
+          tooltipLines={[
+            "Estimated combat XP per minute from the final kill rate.",
+            "Uses average enemy XP and the current EXP gain modifiers shown below.",
+          ]}
+          value={formatWhole(estimate.experiencePerMinute)}
+        />
+        <AfkEstimateStat
+          label="Survivability"
+          tooltipLines={[
+            "How safely the party can sustain this subzone over AFK time.",
+            "Considers enemy pressure against party health, defense, magic defense, block, evasion, regeneration, healing, mitigation, shields, and role survivability.",
+            "100% means the party can sustain itself perfectly with flasks and support tools included in the estimate.",
+          ]}
+          value={`${estimate.survivabilityPercent}%`}
+        />
+        <AfkEstimateStat
+          label="Party kill potential"
+          tooltipLines={[
+            "Kills per minute from party damage divided by average enemy health.",
+            "This is the raw combat result before access downtime, spawn cap, and survivability reduce it.",
+          ]}
+          value={`${formatDecimal(estimate.partyKillPotentialPerMinute)}/min`}
+        />
+        <AfkEstimateStat
+          label="Access efficiency"
+          tooltipLines={[
+            "How much combat time remains after AFK movement and targeting losses.",
+            "Includes retargeting, moving between enemy packs, party formation catch-up, and the current AFK control efficiency.",
+            `${estimate.accessEfficiencyPercent}% means roughly ${estimate.accessEfficiencyPercent}% of time becomes useful combat time before spawn and safety limits.`,
+          ]}
+          value={`${estimate.accessEfficiencyPercent}%`}
+        />
+        <AfkEstimateStat
+          label="Downtime / kill"
+          tooltipLines={[
+            "Estimated non-damaging seconds spent per kill.",
+            "Covers retargeting, travel between enemy packs, and extra formation delay for larger parties.",
+          ]}
+          value={`${formatDecimal(estimate.downtimeSecondsPerKill)}s`}
+        />
+        <AfkEstimateStat
+          label="Subzone spawn cap"
+          tooltipLines={[
+            "Maximum possible kills per minute from enemy count and respawn timing.",
+            "This prevents AFK rewards from exceeding what the subzone can actually supply.",
+          ]}
+          value={`${formatDecimal(estimate.subzoneSpawnCapPerMinute)}/min`}
+        />
+        <AfkEstimateStat
+          label="EXP gain"
+          tooltipLines={getMultiplierTooltipLines(
+            estimate.combatExperienceMultiplier,
+            estimate.combatExperienceMultiplierSources,
+          )}
+          value={`${formatDecimal(estimate.combatExperienceMultiplier * 100)}%`}
+        />
+        <AfkEstimateStat
+          label="Drop gain"
+          tooltipLines={getMultiplierTooltipLines(
+            estimate.combatDropMultiplier,
+            estimate.combatDropMultiplierSources,
+          )}
+          value={`${formatDecimal(estimate.combatDropMultiplier * 100)}%`}
+        />
+        <AfkEstimateStat
+          label="Resources / min"
+          tooltipLines={[
+            "Estimated natural resources gathered per minute from this subzone.",
+            "The Gatherer role improves this number. Combat-focused roles do not improve combat AFK resources the same way.",
+          ]}
+          value={formatDecimal(estimate.resourceEstimatePerMinute)}
+        />
+      </div>
+      <AfkEnemySummary estimate={estimate} />
+      <AfkDropSummary estimate={estimate} />
+      <AfkWarningList warnings={estimate.warnings} />
+      <p className="afk-estimate-footnote">
+        Continue rewards use this estimator with the current 30 minute AFK cap.
+      </p>
+    </section>
+  );
+}
+
+function AfkEstimateStat({
+  label,
+  tooltipLines,
+  value,
+}: {
+  label: string;
+  tooltipLines?: string[];
+  value: string;
+}) {
+  return (
+    <div
+      className="afk-estimate-stat"
+      tabIndex={tooltipLines && tooltipLines.length > 0 ? 0 : undefined}
+    >
+      <span className="afk-estimate-stat-label">{label}</span>
+      <strong>{value}</strong>
+      {tooltipLines && tooltipLines.length > 0 ? (
+        <div className="afk-estimate-tooltip" role="tooltip">
+          <strong>{label}</strong>
+          {tooltipLines.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function getMultiplierTooltipLines(
+  totalMultiplier: number,
+  sources: AfkCombatMultiplierSource[],
+): string[] {
+  return [
+    `Total: ${formatDecimal(totalMultiplier * 100)}%.`,
+    ...sources.map((source) =>
+      `${source.label}: ${formatDecimal(source.multiplier * 100)}%. ${source.description}`,
+    ),
+  ];
+}
+
+function AfkEnemySummary({ estimate }: { estimate: AfkCombatEstimate }) {
+  return (
+    <div className="afk-estimate-detail">
+      <h3>Enemies</h3>
+      <div className="afk-estimate-enemy-list">
+        {estimate.enemies.map((enemy) => (
+          <div key={enemy.enemyTypeId} className="afk-estimate-enemy">
+            <strong>{enemy.displayName}</strong>
+            <span>Lv {enemy.level}</span>
+            <small>
+              HP {enemy.maxHealth} / ATK {enemy.attack} / DEF {enemy.defense}
+            </small>
+          </div>
+        ))}
+      </div>
+      <p>
+        Resources: {estimate.resources.length > 0
+          ? estimate.resources.join(", ")
+          : "None"}
+      </p>
+    </div>
+  );
+}
+
+function AfkDropSummary({ estimate }: { estimate: AfkCombatEstimate }) {
+  return (
+    <div className="afk-estimate-detail">
+      <h3>Estimated Drops / hour</h3>
+      {estimate.estimatedDropsPerHour.length > 0 ? (
+        <div className="afk-estimate-enemy-list">
+          {estimate.estimatedDropsPerHour.map((drop) => {
+            const item = getItemDefinition(drop.itemId);
+
+            return (
+              <div key={drop.itemId} className="afk-estimate-enemy">
+                <strong>{item.displayName}</strong>
+                <span>x{formatWhole(drop.quantityPerHour)}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p>None</p>
+      )}
+    </div>
+  );
+}
+
+function AfkWarningList({ warnings }: { warnings: AfkCombatEstimateWarning[] }) {
+  if (warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="afk-estimate-warnings">
+      {warnings.map((warning) => (
+        <span key={warning}>{AFK_WARNING_LABELS[warning]}</span>
+      ))}
+    </div>
+  );
+}
+
+const AFK_WARNING_LABELS: Record<AfkCombatEstimateWarning, string> = {
+  low_damage: "Damage is low for this subzone.",
+  low_survivability: "Survivability is below perfect sustain.",
+  enemy_data_incomplete: "Some enemy data was estimated.",
+  respawn_data_estimated: "Respawn cap uses the prototype respawn timer.",
+};
+
+function formatWhole(value: number): string {
+  return Math.max(0, Math.floor(value)).toLocaleString();
+}
+
+function formatDecimal(value: number): string {
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  });
 }
 
 function OptionsPanel({

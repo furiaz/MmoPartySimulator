@@ -129,6 +129,7 @@ export function createInitialGameState(): GameState {
     skillVisualEvents: [],
     companionAoeChannelsByCasterId: {},
     dropVisualEvents: [],
+    pendingOfflineFarmingLoot: null,
     newsBroadcasts: [],
     lastCompanionDamageTakenAtByCompanionId: {},
   });

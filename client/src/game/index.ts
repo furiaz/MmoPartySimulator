@@ -207,6 +207,7 @@ export {
   SAVE_VERSION,
   MAX_OFFLINE_FARMING_MS,
   applyOfflineFarmingProgress,
+  claimPendingOfflineFarmingLoot,
   createSavedGame,
   restoreGameStateFromSave,
   sanitizeGameStateForSave,
@@ -217,6 +218,17 @@ export {
   type SavedGame,
   type SaveValidationResult,
 } from "./saveGame";
+export {
+  estimateAfkCombatForParty,
+  estimateCurrentPartyAfkCombat,
+  type AfkCombatEnemySummary,
+  type AfkCombatEstimate,
+  type AfkCombatEstimateResult,
+  type AfkCombatEstimateWarning,
+  type AfkCombatMultiplierSource,
+  type AfkCombatRating,
+  type UnavailableAfkCombatEstimate,
+} from "./afkCombatEstimate";
 
 export {
   createCompanion,
