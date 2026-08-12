@@ -62,6 +62,9 @@ export type {
   GuildNoticeBoardState,
   GuildRecruitCandidate,
   GuildRecruitState,
+  GuildRecruitUpgradeId,
+  GuildRecruitUpgradeLevels,
+  GuildUpgradesState,
   GuildRosterSlotRef,
   GuildSecondaryPartiesState,
   GuildSecondaryParty,
@@ -959,6 +962,23 @@ export {
   type GuildRecruitDestination,
   type GuildRecruitResult,
 } from "./guildRecruit";
+export {
+  GUILD_RECRUIT_UPGRADE_IDS,
+  GUILD_RECRUIT_UPGRADE_MAX_LEVEL,
+  createInitialGuildUpgradesState,
+  getGuildRecruitEquipmentChancePercent,
+  getGuildRecruitLevelRange,
+  getGuildRecruitRefreshIntervalMs,
+  getGuildRecruitSkillChancePercent,
+  getGuildRecruitSlotCount,
+  getGuildRecruitUpgradeStatuses,
+  getGuildUpgradesState,
+  purchaseGuildRecruitUpgrade,
+  sanitizeGuildUpgradesState,
+  type GuildRecruitUpgradePurchaseFailureReason,
+  type GuildRecruitUpgradePurchaseResult,
+  type GuildRecruitUpgradeStatus,
+} from "./guildRecruitUpgrades";
 export {
   GUILD_INN_COMPANION_CAPACITY,
   GUILD_SECONDARY_PARTY_ID,

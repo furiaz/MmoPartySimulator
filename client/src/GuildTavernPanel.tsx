@@ -3,8 +3,10 @@ import {
   CLASS_DEFINITIONS,
   getGuildRecruitDestination,
   getGuildRecruitState,
+  getGuildRecruitUpgradeStatuses,
   getGuildNoticeBoardState,
   getActiveCompanions,
+  getCurrencyBalance,
   getEnemyType,
   getGuildCompanionCapacity,
   getGuildSecondaryPartiesState,
@@ -15,7 +17,10 @@ import {
   getRestingCompanions,
   getTotalRosterCompanionCount,
   getTotalRosterCompanionLevel,
+  SKILL_DEFINITIONS,
   type Companion,
+  type GuildRecruitCandidate,
+  type GuildRecruitUpgradeId,
   type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
   type GameState,
@@ -25,7 +30,14 @@ import SpriteAnimation from "./SpriteAnimation";
 import { getClassIdleFrameSrc, getEnemyWalkingAnimation } from "./visualAssets";
 
 type GuildTavernSection = "guild" | "inn";
-type GuildView = "hall" | "recruit" | "noticeBoard" | "secondaryParties";
+type GuildView =
+  | "hall"
+  | "recruit"
+  | "noticeBoard"
+  | "secondaryParties"
+  | "recruitUpgrades"
+  | "noticeBoardUpgrades"
+  | "secondaryPartyUpgrades";
 
 const MAX_MAIN_PARTY_SLOTS = 5;
 const innActions = ["Rooms", "Kitchen"];
@@ -34,18 +46,21 @@ export function GuildTavernPanel({
   canUse,
   currentTime,
   recruitResultMessage,
+  upgradeResultMessage,
   noticeBoardResultMessage,
   secondaryPartyResultMessage,
   state,
   onCancelNoticeBoardQuest,
   onMoveGuildRosterCompanion,
   onOpenNoticeBoard,
+  onPurchaseRecruitUpgrade,
   onRecruit,
   onTakeNoticeBoardQuest,
 }: {
   canUse: boolean;
   currentTime: number;
   recruitResultMessage?: string | null;
+  upgradeResultMessage?: string | null;
   noticeBoardResultMessage?: string | null;
   secondaryPartyResultMessage?: string | null;
   state: GameState;
@@ -55,7 +70,8 @@ export function GuildTavernPanel({
     target: GuildRosterSlotRef,
   ) => void;
   onOpenNoticeBoard: () => void;
-  onRecruit: () => void;
+  onPurchaseRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
+  onRecruit: (candidateId?: string) => void;
   onTakeNoticeBoardQuest: () => void;
 }) {
   const [activeSection, setActiveSection] =
@@ -70,8 +86,9 @@ export function GuildTavernPanel({
   const totalRosterLevel = getTotalRosterCompanionLevel(state);
   const actionStatus = canUse ? "Coming soon" : "Requires Guild & Inn";
   const guildRecruit = getGuildRecruitState(state, currentTime);
+  const readyRecruitCount = guildRecruit.candidates.filter(Boolean).length;
   const recruitButtonStatus = canUse
-    ? guildRecruit.candidate
+    ? readyRecruitCount > 0
       ? "Ready"
       : "Waiting"
     : "Requires Guild & Inn";
@@ -153,6 +170,7 @@ export function GuildTavernPanel({
           recruitResultMessage={recruitResultMessage}
           state={state}
           onBack={() => setGuildView("hall")}
+          onOpenUpgrades={() => setGuildView("recruitUpgrades")}
           onRecruit={onRecruit}
         />
       ) : activeSection === "guild" && guildView === "noticeBoard" ? (
@@ -163,6 +181,7 @@ export function GuildTavernPanel({
           state={state}
           onBack={() => setGuildView("hall")}
           onCancelQuest={onCancelNoticeBoardQuest}
+          onOpenUpgrades={() => setGuildView("noticeBoardUpgrades")}
           onTakeQuest={onTakeNoticeBoardQuest}
         />
       ) : activeSection === "guild" && guildView === "secondaryParties" ? (
@@ -173,7 +192,32 @@ export function GuildTavernPanel({
           state={state}
           onBack={() => setGuildView("hall")}
           onMoveCompanion={onMoveGuildRosterCompanion}
+          onOpenUpgrades={() => setGuildView("secondaryPartyUpgrades")}
           onSelectCompanion={setSelectedRosterCompanionId}
+        />
+      ) : activeSection === "guild" && guildView === "recruitUpgrades" ? (
+        <GuildRecruitUpgradesView
+          canUse={canUse}
+          resultMessage={upgradeResultMessage}
+          state={state}
+          onBack={() => setGuildView("recruit")}
+          onPurchase={onPurchaseRecruitUpgrade}
+        />
+      ) : activeSection === "guild" && guildView === "noticeBoardUpgrades" ? (
+        <GuildPlaceholderUpgradesView
+          canUse={canUse}
+          kicker="Guild Investment"
+          title="Notice Board Upgrades"
+          state={state}
+          onBack={() => setGuildView("noticeBoard")}
+        />
+      ) : activeSection === "guild" && guildView === "secondaryPartyUpgrades" ? (
+        <GuildPlaceholderUpgradesView
+          canUse={canUse}
+          kicker="Guild Investment"
+          title="Secondary Party Upgrades"
+          state={state}
+          onBack={() => setGuildView("secondaryParties")}
         />
       ) : (
         <div className="guild-tavern-section">
@@ -229,12 +273,14 @@ export function GuildTavernPanel({
                   </button>
                 </>
               ) : (
-                innActions.map((action) => (
-                  <button disabled key={action} type="button">
-                    <span>{action}</span>
-                    <small>{actionStatus}</small>
-                  </button>
-                ))
+                <>
+                  {innActions.map((action) => (
+                    <button disabled key={action} type="button">
+                      <span>{action}</span>
+                      <small>{actionStatus}</small>
+                    </button>
+                  ))}
+                </>
               )}
             </div>
           </div>
@@ -250,6 +296,7 @@ function GuildRecruitView({
   recruitResultMessage,
   state,
   onBack,
+  onOpenUpgrades,
   onRecruit,
 }: {
   canUse: boolean;
@@ -257,10 +304,18 @@ function GuildRecruitView({
   recruitResultMessage?: string | null;
   state: GameState;
   onBack: () => void;
-  onRecruit: () => void;
+  onOpenUpgrades: () => void;
+  onRecruit: (candidateId?: string) => void;
 }) {
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
+    null,
+  );
   const guildRecruit = getGuildRecruitState(state, currentTime);
-  const candidate = guildRecruit.candidate;
+  const candidates = guildRecruit.candidates;
+  const candidate =
+    candidates.find((item) => item?.id === selectedCandidateId) ??
+    candidates.find(Boolean) ??
+    null;
   const destination = getGuildRecruitDestination(state);
   const classDefinition = candidate
     ? CLASS_DEFINITIONS[candidate.classId]
@@ -282,11 +337,50 @@ function GuildRecruitView({
 
   return (
     <div className="guild-recruit-view">
-      <button className="guild-recruit-back-button" onClick={onBack} type="button">
-        &lt; Back
-      </button>
+      <div className="guild-submenu-actions">
+        <button className="guild-recruit-back-button" onClick={onBack} type="button">
+          &lt; Back
+        </button>
+        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+          Upgrade
+        </button>
+      </div>
 
       <div className="guild-recruit-card">
+        <div className="guild-recruit-slot-list" aria-label="Recruit slots">
+          {candidates.map((slotCandidate, index) => (
+            <button
+              className={
+                candidate?.id === slotCandidate?.id
+                  ? "guild-recruit-slot selected"
+                  : "guild-recruit-slot"
+              }
+              disabled={!slotCandidate}
+              key={slotCandidate?.id ?? `empty-${index}`}
+              onClick={() => setSelectedCandidateId(slotCandidate?.id ?? null)}
+              type="button"
+            >
+              <strong>Slot {index + 1}</strong>
+              <span>
+                {slotCandidate
+                  ? `Lv ${slotCandidate.characterLevel} ${
+                      CLASS_DEFINITIONS[slotCandidate.classId]?.displayName ??
+                      slotCandidate.classId
+                    }`
+                  : "Empty"}
+              </span>
+              <small>
+                {slotCandidate
+                  ? "Available"
+                  : `Refresh ${formatRecruitCountdown(
+                      guildRecruit.nextRefreshAtMs,
+                      currentTime,
+                    )}`}
+              </small>
+            </button>
+          ))}
+        </div>
+
         <div className="guild-recruit-details">
           <span className="guild-recruit-kicker">Available Recruit</span>
           {candidate && classDefinition ? (
@@ -301,7 +395,11 @@ function GuildRecruitView({
                 </div>
                 <div>
                   <dt>Gear</dt>
-                  <dd>None</dd>
+                  <dd>{formatCandidateGear(candidate)}</dd>
+                </div>
+                <div>
+                  <dt>Skills</dt>
+                  <dd>{formatCandidateSkills(candidate)}</dd>
                 </div>
                 <div>
                   <dt>Destination</dt>
@@ -322,7 +420,15 @@ function GuildRecruitView({
           {recruitResultMessage ? (
             <p className="guild-recruit-message">{recruitResultMessage}</p>
           ) : null}
-          <button disabled={recruitDisabled} onClick={onRecruit} type="button">
+          <button
+            disabled={recruitDisabled}
+            onClick={() => {
+              if (candidate) {
+                onRecruit(candidate.id);
+              }
+            }}
+            type="button"
+          >
             Recruit
           </button>
         </div>
@@ -349,6 +455,7 @@ function GuildNoticeBoardView({
   state,
   onBack,
   onCancelQuest,
+  onOpenUpgrades,
   onTakeQuest,
 }: {
   canUse: boolean;
@@ -357,6 +464,7 @@ function GuildNoticeBoardView({
   state: GameState;
   onBack: () => void;
   onCancelQuest: () => void;
+  onOpenUpgrades: () => void;
   onTakeQuest: () => void;
 }) {
   const board = getGuildNoticeBoardState(state, currentTime);
@@ -381,9 +489,14 @@ function GuildNoticeBoardView({
 
   return (
     <div className="guild-notice-board-view">
-      <button className="guild-recruit-back-button" onClick={onBack} type="button">
-        &lt; Back
-      </button>
+      <div className="guild-submenu-actions">
+        <button className="guild-recruit-back-button" onClick={onBack} type="button">
+          &lt; Back
+        </button>
+        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+          Upgrade
+        </button>
+      </div>
 
       <div className="guild-notice-board-card">
         <div className="guild-notice-board-slot">
@@ -488,6 +601,140 @@ function GuildNoticeBoardView({
   );
 }
 
+function GuildRecruitUpgradesView({
+  canUse,
+  resultMessage,
+  state,
+  onBack,
+  onPurchase,
+}: {
+  canUse: boolean;
+  resultMessage?: string | null;
+  state: GameState;
+  onBack: () => void;
+  onPurchase: (upgradeId: GuildRecruitUpgradeId) => void;
+}) {
+  const upgradeStatuses = getGuildRecruitUpgradeStatuses(state);
+  const crowns = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <div className="guild-upgrades-view">
+      <button className="guild-recruit-back-button" onClick={onBack} type="button">
+        &lt; Back
+      </button>
+
+      <div className="guild-upgrades-card">
+        <div className="guild-roster-topline">
+          <div>
+            <span className="guild-recruit-kicker">Guild Investment</span>
+            <h3>Recruit Upgrades</h3>
+          </div>
+          <strong className="guild-upgrade-crowns">
+            Crowns: {crowns.toLocaleString()}
+          </strong>
+        </div>
+
+        {!canUse ? (
+          <p className="guild-recruit-message">Requires Guild & Inn</p>
+        ) : null}
+        {resultMessage ? (
+          <p className="guild-recruit-message">{resultMessage}</p>
+        ) : null}
+
+        <div className="guild-upgrade-list">
+          {upgradeStatuses.map((upgrade) => {
+            const purchaseDisabled =
+              !canUse ||
+              upgrade.isLocked ||
+              upgrade.isMaxLevel ||
+              !upgrade.canAfford;
+            const statusText = upgrade.isLocked
+              ? upgrade.lockReason
+              : upgrade.isMaxLevel
+                ? "Max"
+                : upgrade.canAfford
+                  ? `${upgrade.nextCostCrowns} Crowns`
+                  : `Need ${upgrade.nextCostCrowns} Crowns`;
+
+            return (
+              <article className="guild-upgrade-row" key={upgrade.id}>
+                <div>
+                  <strong>{upgrade.displayName}</strong>
+                  <span>Lv {upgrade.level}</span>
+                </div>
+                <p>{upgrade.description}</p>
+                <dl>
+                  <div>
+                    <dt>Current</dt>
+                    <dd>{upgrade.currentEffect}</dd>
+                  </div>
+                  <div>
+                    <dt>Next</dt>
+                    <dd>{upgrade.nextEffect ?? "Max"}</dd>
+                  </div>
+                </dl>
+                <button
+                  disabled={purchaseDisabled}
+                  onClick={() => onPurchase(upgrade.id)}
+                  type="button"
+                >
+                  {statusText}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuildPlaceholderUpgradesView({
+  canUse,
+  kicker,
+  title,
+  state,
+  onBack,
+}: {
+  canUse: boolean;
+  kicker: string;
+  title: string;
+  state: GameState;
+  onBack: () => void;
+}) {
+  const crowns = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <div className="guild-upgrades-view">
+      <div className="guild-submenu-actions">
+        <button className="guild-recruit-back-button" onClick={onBack} type="button">
+          &lt; Back
+        </button>
+      </div>
+
+      <div className="guild-upgrades-card">
+        <div className="guild-roster-topline">
+          <div>
+            <span className="guild-recruit-kicker">{kicker}</span>
+            <h3>{title}</h3>
+          </div>
+          <strong className="guild-upgrade-crowns">
+            Crowns: {crowns.toLocaleString()}
+          </strong>
+        </div>
+
+        {!canUse ? (
+          <p className="guild-recruit-message">Requires Guild & Inn</p>
+        ) : null}
+        <p className="guild-recruit-message">
+          Coming soon. This upgrade screen is reserved for this mechanic's
+          expansion ticket.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GuildSecondaryPartiesView({
   canUse,
   resultMessage,
@@ -495,6 +742,7 @@ function GuildSecondaryPartiesView({
   state,
   onBack,
   onMoveCompanion,
+  onOpenUpgrades,
   onSelectCompanion,
 }: {
   canUse: boolean;
@@ -503,6 +751,7 @@ function GuildSecondaryPartiesView({
   state: GameState;
   onBack: () => void;
   onMoveCompanion: (companionId: string, target: GuildRosterSlotRef) => void;
+  onOpenUpgrades: () => void;
   onSelectCompanion: (companionId: string | null) => void;
 }) {
   const [draggedCompanionId, setDraggedCompanionId] = useState<string | null>(
@@ -535,9 +784,14 @@ function GuildSecondaryPartiesView({
 
   return (
     <div className="guild-roster-view">
-      <button className="guild-recruit-back-button" onClick={onBack} type="button">
-        &lt; Back
-      </button>
+      <div className="guild-submenu-actions">
+        <button className="guild-recruit-back-button" onClick={onBack} type="button">
+          &lt; Back
+        </button>
+        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+          Upgrade
+        </button>
+      </div>
 
       <div className="guild-roster-card">
         <div className="guild-roster-topline">
@@ -810,6 +1064,32 @@ function getDestinationLabel(destination: ReturnType<typeof getGuildRecruitDesti
   }
 
   return "No room available";
+}
+
+function formatCandidateGear(candidate: GuildRecruitCandidate): string {
+  const equipmentItemIds = candidate.equipmentItemIds ?? [];
+
+  if (equipmentItemIds.length <= 0) {
+    return "None";
+  }
+
+  return equipmentItemIds
+    .map((itemId) => getItemDefinition(itemId).displayName)
+    .join(", ");
+}
+
+function formatCandidateSkills(candidate: GuildRecruitCandidate): string {
+  const skillRows = Object.entries(candidate.startingSkillRanksBySkillId ?? {})
+    .map(([skillId, rank]) => {
+      const skillDefinition = SKILL_DEFINITIONS[skillId as keyof typeof SKILL_DEFINITIONS];
+
+      return skillDefinition
+        ? `${skillDefinition.displayName} Lv ${rank}`
+        : null;
+    })
+    .filter((row): row is string => Boolean(row));
+
+  return skillRows.length > 0 ? skillRows.join(", ") : "None";
 }
 
 function getNoticeBoardButtonStatus(

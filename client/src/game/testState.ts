@@ -1,6 +1,7 @@
 import { createEmptyPartyBank } from "./bank";
 import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
 import { createInitialGuildRecruitState } from "./guildRecruit";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { createEmptyPartyInventory } from "./inventory";
 import { createInitialQuestStates } from "./questSystem";
@@ -15,6 +16,7 @@ export function createTestGameState(
     restingCompanionsById: {},
     highestCharacterLevelEver: 1,
     guildRecruit: createInitialGuildRecruitState(0),
+    guildUpgrades: createInitialGuildUpgradesState(),
     guildNoticeBoard: createInitialGuildNoticeBoardState(0),
     guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
     inventory: createEmptyPartyInventory(),

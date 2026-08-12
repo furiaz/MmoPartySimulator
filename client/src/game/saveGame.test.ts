@@ -209,14 +209,20 @@ describe("save game serialization", () => {
     const guildRecruit = {
       ...createInitialGuildRecruitState(NOW_MS),
       recruitSequence: 7,
-      candidate: {
-        id: "guild-recruit-candidate-7",
-        classId: "beginner" as const,
-        characterLevel: 1,
-        role: "none" as const,
-        generatedAtMs: NOW_MS,
-        sequence: 7,
-      },
+      candidates: [
+        {
+          id: "guild-recruit-candidate-7",
+          classId: "beginner" as const,
+          characterLevel: 1,
+          role: "none" as const,
+          generatedAtMs: NOW_MS,
+          sequence: 7,
+          equipmentItemIds: ["training_sword" as const],
+          startingSkillRanksBySkillId: {
+            first_aid: 2,
+          },
+        },
+      ],
       nextRefreshAtMs: NOW_MS + GUILD_RECRUIT_REFRESH_INTERVAL_MS,
     };
     const save = createSavedGame(
@@ -440,6 +446,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).restingCompanionsById;
     delete (save.state as Partial<GameState>).highestCharacterLevelEver;
     delete (save.state as Partial<GameState>).guildRecruit;
+    delete (save.state as Partial<GameState>).guildUpgrades;
     delete (save.state as Partial<GameState>).guildNoticeBoard;
     delete (save.state as Partial<GameState>).guildSecondaryParties;
 
@@ -453,7 +460,7 @@ describe("save game serialization", () => {
     expect(restored.state.restingCompanionsById).toEqual({});
     expect(restored.state.highestCharacterLevelEver).toBe(30);
     expect(getPartySizeLimit(restored.state)).toBe(4);
-    expect(restored.state.guildRecruit?.candidate).toMatchObject({
+    expect(restored.state.guildRecruit?.candidates[0]).toMatchObject({
       id: "guild-recruit-candidate-1",
       classId: "beginner",
       characterLevel: 1,
@@ -461,6 +468,7 @@ describe("save game serialization", () => {
       sequence: 1,
     });
     expect(restored.state.guildRecruit?.recruitSequence).toBe(1);
+    expect(restored.state.guildUpgrades?.recruit.recruit_slots).toBe(1);
     expect(restored.state.guildNoticeBoard?.slots[0]).toMatchObject({
       id: "guild-notice-board-quest-1",
       status: "available",

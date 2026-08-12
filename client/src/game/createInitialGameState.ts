@@ -17,6 +17,7 @@ import {
 import { createEmptyPartyBank } from "./bank";
 import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
 import { createInitialGuildRecruitState } from "./guildRecruit";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import {
   addItemToInventoryState,
@@ -69,6 +70,7 @@ export function createInitialGameState(): GameState {
       secondCompanion.characterLevel,
     ),
     guildRecruit: createInitialGuildRecruitState(),
+    guildUpgrades: createInitialGuildUpgradesState(),
     guildNoticeBoard: createInitialGuildNoticeBoardState(),
     guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
     inventory: createEmptyPartyInventory(),

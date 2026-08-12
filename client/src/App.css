@@ -1213,7 +1213,7 @@
 
 .guild-tavern-service-actions button {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(86px, auto);
+  grid-template-columns: minmax(150px, 1fr) minmax(86px, 96px) minmax(118px, 132px);
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -1230,6 +1230,10 @@
 .guild-tavern-service-actions button span {
   overflow-wrap: anywhere;
   font-weight: 900;
+}
+
+.guild-tavern-service-actions button > span:first-child {
+  text-align: center;
 }
 
 .guild-tavern-service-actions button small {
@@ -1250,16 +1254,26 @@
 .guild-recruit-view {
   display: grid;
   gap: 10px;
+  justify-self: center;
+  width: min(100%, 980px);
   min-width: 0;
 }
 
-.guild-recruit-back-button {
-  justify-self: start;
+.guild-submenu-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.guild-submenu-actions button {
+  min-width: 112px;
 }
 
 .guild-recruit-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(176px, 28%);
+  grid-template-columns: minmax(132px, 0.7fr) minmax(0, 1.25fr) minmax(176px, 28%);
   gap: 12px;
   align-items: stretch;
   min-width: 0;
@@ -1267,6 +1281,58 @@
   border: 1px solid #263c42;
   border-radius: 6px;
   background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-recruit-slot-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.guild-recruit-slot {
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 9px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.64);
+  color: #dcebed;
+  text-align: left;
+}
+
+.guild-recruit-slot.selected {
+  border-color: #65aac0;
+  background: rgba(23, 55, 66, 0.78);
+}
+
+.guild-recruit-slot:disabled {
+  color: #71878c;
+  cursor: not-allowed;
+}
+
+.guild-recruit-slot strong,
+.guild-recruit-slot span,
+.guild-recruit-slot small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.guild-recruit-slot strong {
+  color: #f3df93;
+  font-size: 12px;
+}
+
+.guild-recruit-slot span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.guild-recruit-slot small {
+  color: #9fb6bb;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .guild-recruit-details {
@@ -1343,9 +1409,105 @@
   image-rendering: pixelated;
 }
 
+.guild-upgrades-view {
+  display: grid;
+  gap: 10px;
+  justify-self: center;
+  width: min(100%, 980px);
+  min-width: 0;
+}
+
+.guild-upgrades-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-upgrade-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.guild-upgrade-crowns {
+  justify-self: end;
+  color: #f3df93;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.guild-upgrade-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 1.2fr) minmax(160px, 0.8fr) minmax(120px, auto);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.64);
+}
+
+.guild-upgrade-row > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.guild-upgrade-row strong {
+  color: #f3df93;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.guild-upgrade-row span,
+.guild-upgrade-row p,
+.guild-upgrade-row dd {
+  color: #dcebed;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.guild-upgrade-row p {
+  margin: 0;
+  color: #a9bec3;
+  overflow-wrap: anywhere;
+}
+
+.guild-upgrade-row dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.guild-upgrade-row dt {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-upgrade-row dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.guild-upgrade-row button {
+  min-width: 112px;
+}
+
 .guild-notice-board-view {
   display: grid;
   gap: 10px;
+  justify-self: center;
+  width: min(100%, 980px);
   min-width: 0;
 }
 
@@ -1505,6 +1667,8 @@
 .guild-roster-view {
   display: grid;
   gap: 10px;
+  justify-self: center;
+  width: min(100%, 980px);
   min-width: 0;
 }
 
@@ -1692,6 +1856,11 @@
 }
 
 @media (max-width: 720px) {
+  .guild-recruit-card,
+  .guild-upgrade-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .guild-notice-board-summary {
     grid-template-columns: minmax(0, 1fr);
   }

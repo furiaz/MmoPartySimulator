@@ -27,6 +27,7 @@ import type {
   PrimaryStatId,
   SkillId,
   CraftingRecipeId,
+  GuildRecruitUpgradeId,
   GuildRosterSlotRef,
 } from "./game";
 
@@ -49,6 +50,7 @@ export function GameMenu({
   selectedQuestId,
   craftingResultMessage,
   guildRecruitResultMessage,
+  guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   canUseGuildTavern,
@@ -72,6 +74,7 @@ export function GameMenu({
   onSelectTab,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onPurchaseGuildRecruitUpgrade,
   onOpenGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
@@ -105,6 +108,7 @@ export function GameMenu({
   selectedQuestId: QuestId | null;
   craftingResultMessage?: string | null;
   guildRecruitResultMessage?: string | null;
+  guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   canUseGuildTavern: boolean;
@@ -141,7 +145,8 @@ export function GameMenu({
   onSelectQuest: (questId: QuestId) => void;
   onSelectTab: (tab: GameMenuTab | null) => void;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
-  onRecruitGuildCandidate: () => void;
+  onRecruitGuildCandidate: (candidateId?: string) => void;
+  onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: () => void;
   onCancelGuildNoticeBoardQuest: () => void;
@@ -271,6 +276,7 @@ export function GameMenu({
                   craftingResultMessage={craftingResultMessage}
                   currentTime={currentTime}
                   guildRecruitResultMessage={guildRecruitResultMessage}
+                  guildUpgradeResultMessage={guildUpgradeResultMessage}
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
                   canUseGuildTavern={canUseGuildTavern}
@@ -279,6 +285,7 @@ export function GameMenu({
                   selectedQuestId={selectedQuestId}
                   onCraftRecipe={onCraftRecipe}
                   onRecruitGuildCandidate={onRecruitGuildCandidate}
+                  onPurchaseGuildRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
                   onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
@@ -314,6 +321,7 @@ function AtlasPanel({
   craftingResultMessage,
   currentTime,
   guildRecruitResultMessage,
+  guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   canUseGuildTavern,
@@ -322,6 +330,7 @@ function AtlasPanel({
   selectedQuestId,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onPurchaseGuildRecruitUpgrade,
   onOpenGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
@@ -333,6 +342,7 @@ function AtlasPanel({
   craftingResultMessage?: string | null;
   currentTime: number;
   guildRecruitResultMessage?: string | null;
+  guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   canUseGuildTavern: boolean;
@@ -340,7 +350,8 @@ function AtlasPanel({
   quests: GameState["quests"];
   selectedQuestId: QuestId | null;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
-  onRecruitGuildCandidate: () => void;
+  onRecruitGuildCandidate: (candidateId?: string) => void;
+  onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: () => void;
   onCancelGuildNoticeBoardQuest: () => void;
@@ -407,12 +418,14 @@ function AtlasPanel({
           canUse={canUseGuildTavern}
           currentTime={currentTime}
           recruitResultMessage={guildRecruitResultMessage}
+          upgradeResultMessage={guildUpgradeResultMessage}
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
           secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
           onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
           onOpenNoticeBoard={onOpenGuildNoticeBoard}
+          onPurchaseRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
           onRecruit={onRecruitGuildCandidate}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
         />

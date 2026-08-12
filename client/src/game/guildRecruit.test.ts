@@ -71,12 +71,12 @@ describe("guild recruit", () => {
     }
 
     expect(result.reason).toBe("roster_full");
-    expect(result.state.guildRecruit?.candidate?.id).toBe(
-      state.guildRecruit?.candidate?.id,
+    expect(result.state.guildRecruit?.candidates[0]?.id).toBe(
+      state.guildRecruit?.candidates[0]?.id,
     );
   });
 
-  it("consumes the candidate and starts the refresh timer after recruitment", () => {
+  it("consumes only the recruited candidate and keeps the shared refresh timer", () => {
     const state = createRosterState({
       activeCount: 1,
       highestCharacterLevelEver: 10,
@@ -89,7 +89,7 @@ describe("guild recruit", () => {
       return;
     }
 
-    expect(result.state.guildRecruit?.candidate).toBeNull();
+    expect(result.state.guildRecruit?.candidates[0]).toBeNull();
     expect(result.state.guildRecruit?.nextRefreshAtMs).toBe(
       NOW_MS + GUILD_RECRUIT_REFRESH_INTERVAL_MS,
     );
@@ -106,7 +106,7 @@ describe("guild recruit", () => {
       NOW_MS + GUILD_RECRUIT_REFRESH_INTERVAL_MS,
     );
 
-    expect(refreshed.guildRecruit?.candidate).toMatchObject({
+    expect(refreshed.guildRecruit?.candidates[0]).toMatchObject({
       id: "guild-recruit-candidate-2",
       sequence: 2,
       classId: "beginner",
@@ -118,7 +118,7 @@ describe("guild recruit", () => {
     );
   });
 
-  it("creates a level 1 Beginner with no gear and None role", () => {
+  it("creates a level 1 Beginner with None role and valid recruit defaults", () => {
     const state = createRosterState({
       activeCount: 1,
       highestCharacterLevelEver: 10,
@@ -137,8 +137,11 @@ describe("guild recruit", () => {
       classId: "beginner",
       role: "none",
     });
-    expect(Object.values(result.companion.equipment).every((item) => item === null))
-      .toBe(true);
+    expect(
+      Object.values(result.companion.equipment).every(
+        (item) => item === null || typeof item === "string",
+      ),
+    ).toBe(true);
   });
 
   it("keeps recruited companion ids unique across active and resting companions", () => {

@@ -21,6 +21,7 @@ import type {
   GuildSecondaryPartiesState,
   GuildNoticeBoardState,
   GuildRecruitState,
+  GuildUpgradesState,
   HubDepartureFoodWarningState,
   KeyItemsById,
   LeaderIntent,
@@ -162,6 +163,7 @@ export type GameState = {
   restingCompanionsById?: RestingCompanionsById;
   highestCharacterLevelEver?: number;
   guildRecruit?: GuildRecruitState;
+  guildUpgrades?: GuildUpgradesState;
   guildNoticeBoard?: GuildNoticeBoardState;
   guildSecondaryParties?: GuildSecondaryPartiesState;
   inventory: PartyInventory;

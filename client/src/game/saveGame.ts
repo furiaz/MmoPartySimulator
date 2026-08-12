@@ -16,6 +16,7 @@ import { createNpc } from "./entities";
 import { sanitizeGuildNoticeBoardState } from "./guildNoticeBoard";
 import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
+import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
@@ -387,7 +388,11 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     entities,
     restingCompanionsById,
   });
-  const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit);
+  const guildUpgrades = sanitizeGuildUpgradesState(state.guildUpgrades);
+  const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit, undefined, {
+    ...state,
+    guildUpgrades,
+  });
   const guildNoticeBoard = sanitizeGuildNoticeBoardState(state.guildNoticeBoard);
   const guildSecondaryParties = sanitizeGuildSecondaryPartiesState(
     state.guildSecondaryParties,
@@ -400,6 +405,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     restingCompanionsById,
     highestCharacterLevelEver,
     guildRecruit,
+    guildUpgrades,
     guildNoticeBoard,
     guildSecondaryParties,
     inventory: sanitizePartyInventory(state.inventory),

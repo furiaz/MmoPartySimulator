@@ -125,6 +125,7 @@ import {
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
+  purchaseGuildRecruitUpgrade,
   recruitGuildCandidate,
   moveGuildRosterCompanion,
   refreshGuildNoticeBoardState,
@@ -183,6 +184,7 @@ import {
   type GameState,
   type GuildRosterMoveFailureReason,
   type GuildRosterSlotRef,
+  type GuildRecruitUpgradeId,
   type ItemDefinition,
   type ItemId,
   type MapVisualObject,
@@ -2598,6 +2600,8 @@ function App() {
     useState<string | null>(null);
   const [guildRecruitResultMessage, setGuildRecruitResultMessage] =
     useState<string | null>(null);
+  const [guildUpgradeResultMessage, setGuildUpgradeResultMessage] =
+    useState<string | null>(null);
   const [guildNoticeBoardResultMessage, setGuildNoticeBoardResultMessage] =
     useState<string | null>(null);
   const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
@@ -3091,6 +3095,7 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
     setActiveMerchantNpcId(npc.id);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(
@@ -3120,6 +3125,7 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
     setGuildNoticeBoardResultMessage(null);
   }, []);
 
@@ -3156,6 +3162,7 @@ function App() {
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
     setGuildNoticeBoardResultMessage(null);
     setActiveBankChestNpcId(npc.id);
     setBankResultMessage(null);
@@ -3176,6 +3183,7 @@ function App() {
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
     setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
     setGuildNoticeBoardResultMessage(null);
     setIsGameMenuOpen(true);
     setActiveGameMenuTab("atlas");
@@ -4324,18 +4332,19 @@ function App() {
     setCraftingResultMessage(null);
     if (subpage !== "guildTavern") {
       setGuildRecruitResultMessage(null);
+      setGuildUpgradeResultMessage(null);
       setGuildNoticeBoardResultMessage(null);
       setGuildSecondaryPartyResultMessage(null);
     }
   }
 
-  function recruitGuildCompanion() {
+  function recruitGuildCompanion(candidateId?: string) {
     if (!canUseGuildTavern) {
       setGuildRecruitResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const recruit = recruitGuildCandidate(gameState, currentTime);
+    const recruit = recruitGuildCandidate(gameState, currentTime, candidateId);
 
     if (recruit.ok) {
       queueSaveAfterStateChange("Guild recruit saved");
@@ -4354,6 +4363,34 @@ function App() {
     }
 
     setGameState(recruit.state);
+  }
+
+  function purchaseGuildRecruitUpgradeCommand(upgradeId: GuildRecruitUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildRecruitUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild upgrade saved");
+      setGuildUpgradeResultMessage(
+        `Upgraded to Lv ${purchase.nextLevel}. Next recruits use the new benefits after refresh.`,
+      );
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "locked"
+            ? "Upgrade is locked."
+            : purchase.reason === "max_level"
+              ? "Upgrade is already maxed."
+              : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
   }
 
   function openGuildNoticeBoardMenu() {
@@ -5579,6 +5616,7 @@ function App() {
               selectedQuestId={selectedMenuQuestId}
               craftingResultMessage={craftingResultMessage}
               guildRecruitResultMessage={guildRecruitResultMessage}
+              guildUpgradeResultMessage={guildUpgradeResultMessage}
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
               canUseGuildTavern={canUseGuildTavern}
@@ -5602,6 +5640,7 @@ function App() {
               onSelectTab={selectGameMenuTab}
               onCraftRecipe={craftSelectedRecipe}
               onRecruitGuildCandidate={recruitGuildCompanion}
+              onPurchaseGuildRecruitUpgrade={purchaseGuildRecruitUpgradeCommand}
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
               onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}

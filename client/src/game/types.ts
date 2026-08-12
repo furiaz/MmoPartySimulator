@@ -865,6 +865,7 @@ export type CurrencyMutationSource =
   | "crafting"
   | "merchant"
   | "chest"
+  | "guild_upgrade"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2546,12 +2547,28 @@ export type GuildRecruitCandidate = {
   role: PartyMemberRole;
   generatedAtMs: number;
   sequence: number;
+  equipmentItemIds?: EquipmentItemId[];
+  startingSkillRanksBySkillId?: Partial<Record<SkillId, number>>;
 };
 
 export type GuildRecruitState = {
-  candidate: GuildRecruitCandidate | null;
+  candidates: Array<GuildRecruitCandidate | null>;
   nextRefreshAtMs: number;
   recruitSequence: number;
+};
+
+export type GuildRecruitUpgradeId =
+  | "recruit_slots"
+  | "recruit_max_level"
+  | "recruit_min_level"
+  | "recruit_refresh_rate"
+  | "recruit_equipment_chance"
+  | "recruit_skill_chance";
+
+export type GuildRecruitUpgradeLevels = Record<GuildRecruitUpgradeId, number>;
+
+export type GuildUpgradesState = {
+  recruit: GuildRecruitUpgradeLevels;
 };
 
 export type GuildNoticeBoardQuestStatus = "available" | "taken" | "done";
