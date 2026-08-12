@@ -27,6 +27,7 @@ import type {
   PrimaryStatId,
   SkillId,
   CraftingRecipeId,
+  GuildNoticeBoardUpgradeId,
   GuildRecruitUpgradeId,
   GuildRosterSlotRef,
 } from "./game";
@@ -74,8 +75,10 @@ export function GameMenu({
   onSelectTab,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
   onOpenGuildNoticeBoard,
+  onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
@@ -146,10 +149,14 @@ export function GameMenu({
   onSelectTab: (tab: GameMenuTab | null) => void;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onRecruitGuildCandidate: (candidateId?: string) => void;
+  onPurchaseGuildNoticeBoardUpgrade: (
+    upgradeId: GuildNoticeBoardUpgradeId,
+  ) => void;
   onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
-  onTakeGuildNoticeBoardQuest: () => void;
-  onCancelGuildNoticeBoardQuest: () => void;
+  onRerollGuildNoticeBoard: () => void;
+  onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
+  onCancelGuildNoticeBoardQuest: (slotIndex?: number) => void;
   onMoveGuildRosterCompanion: (
     companionId: string,
     target: GuildRosterSlotRef,
@@ -285,8 +292,12 @@ export function GameMenu({
                   selectedQuestId={selectedQuestId}
                   onCraftRecipe={onCraftRecipe}
                   onRecruitGuildCandidate={onRecruitGuildCandidate}
+                  onPurchaseGuildNoticeBoardUpgrade={
+                    onPurchaseGuildNoticeBoardUpgrade
+                  }
                   onPurchaseGuildRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
+                  onRerollGuildNoticeBoard={onRerollGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
                   onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
                   onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
@@ -330,8 +341,10 @@ function AtlasPanel({
   selectedQuestId,
   onCraftRecipe,
   onRecruitGuildCandidate,
+  onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
   onOpenGuildNoticeBoard,
+  onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
@@ -351,10 +364,14 @@ function AtlasPanel({
   selectedQuestId: QuestId | null;
   onCraftRecipe: (recipeId: CraftingRecipeId) => void;
   onRecruitGuildCandidate: (candidateId?: string) => void;
+  onPurchaseGuildNoticeBoardUpgrade: (
+    upgradeId: GuildNoticeBoardUpgradeId,
+  ) => void;
   onPurchaseGuildRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
-  onTakeGuildNoticeBoardQuest: () => void;
-  onCancelGuildNoticeBoardQuest: () => void;
+  onRerollGuildNoticeBoard: () => void;
+  onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
+  onCancelGuildNoticeBoardQuest: (slotIndex?: number) => void;
   onMoveGuildRosterCompanion: (
     companionId: string,
     target: GuildRosterSlotRef,
@@ -425,8 +442,10 @@ function AtlasPanel({
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
           onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
           onOpenNoticeBoard={onOpenGuildNoticeBoard}
+          onPurchaseNoticeBoardUpgrade={onPurchaseGuildNoticeBoardUpgrade}
           onPurchaseRecruitUpgrade={onPurchaseGuildRecruitUpgrade}
           onRecruit={onRecruitGuildCandidate}
+          onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
         />
       )}

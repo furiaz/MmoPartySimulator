@@ -1521,16 +1521,58 @@
   background: rgba(9, 19, 24, 0.56);
 }
 
+.guild-notice-board-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.guild-notice-board-topline h3 {
+  margin: 2px 0 0;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.guild-notice-board-topline button {
+  flex: 0 0 auto;
+  min-width: 126px;
+}
+
+.guild-notice-board-topline small {
+  color: #92a8ad;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-notice-board-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
 .guild-notice-board-slot {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+  grid-template-rows: auto minmax(32px, auto) auto;
+  gap: 5px;
+  align-items: start;
   min-width: 0;
+  min-height: 104px;
   padding: 9px 10px;
   border: 1px solid #334a50;
   border-radius: 6px;
   background: rgba(5, 11, 14, 0.42);
+  color: #e6f0f2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guild-notice-board-slot.selected {
+  border-color: #7aa6ad;
+  background: rgba(58, 90, 96, 0.54);
 }
 
 .guild-notice-board-slot strong {
@@ -1540,6 +1582,15 @@
   min-width: 0;
   color: #ffffff;
   font-size: 14px;
+}
+
+.guild-notice-board-slot > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #d7e4e7;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .guild-notice-board-slot strong span {
@@ -1556,7 +1607,9 @@
 }
 
 .guild-notice-board-slot small {
+  justify-self: start;
   color: #f3df93;
+  font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
 }

@@ -2,6 +2,12 @@ import { addItemToInventoryState } from "./inventory";
 import { getItemDefinition } from "./items";
 import type { GameState } from "./state";
 import {
+  getGuildNoticeBoardDailyRerollLimit,
+  getGuildNoticeBoardRefreshIntervalMs,
+  getGuildNoticeBoardRewardPercent,
+  getGuildNoticeBoardSlotCount,
+} from "./guildRecruitUpgrades";
+import {
   SKILL_BOOK_ITEM_IDS_BY_SKILL_ID,
   isSkillBookItemDefinition,
 } from "./skillProgression";
@@ -40,6 +46,28 @@ export type GuildNoticeBoardOpenResult = {
   claimedRewards: GuildNoticeBoardClaimedReward[];
 };
 
+export type GuildNoticeBoardRerollResult =
+  | {
+      ok: true;
+      state: GameState;
+      claimedRewards: GuildNoticeBoardClaimedReward[];
+      rerollsRemaining: number;
+    }
+  | {
+      ok: false;
+      state: GameState;
+      claimedRewards: GuildNoticeBoardClaimedReward[];
+      reason: "locked" | "no_rerolls";
+    };
+
+export type GuildNoticeBoardRerollDisplayState = {
+  isUnlocked: boolean;
+  dailyLimit: number;
+  usedToday: number;
+  remaining: number;
+  nextResetAtMs: number;
+};
+
 const questTemplates: GuildNoticeBoardTemplate[] = [
   {
     title: "Ashwatch Field Orders",
@@ -48,6 +76,14 @@ const questTemplates: GuildNoticeBoardTemplate[] = [
   {
     title: "Shaman Watch Culling",
     targetEnemyTypeIds: ["ash_wisp", "goblin_shaman"],
+  },
+  {
+    title: "Orc Approach Patrol",
+    targetEnemyTypeIds: ["orc", "ash_wisp"],
+  },
+  {
+    title: "Hollow Threat Sweep",
+    targetEnemyTypeIds: ["goblin_shaman", "orc"],
   },
 ];
 
@@ -59,12 +95,18 @@ const allSkillBookItemIds = Object.values(
 
 export function createInitialGuildNoticeBoardState(
   nowMs = Date.now(),
+  state?: GameState,
 ): GuildNoticeBoardState {
+  const slotCount = getGuildNoticeBoardSlotCount(state);
   return {
-    slots: [createGuildNoticeBoardQuest(1, nowMs)],
-    nextRefreshAtMs: nowMs + GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
-    questSequence: 1,
+    slots: Array.from({ length: slotCount }, (_, index) =>
+      createGuildNoticeBoardQuest(index + 1, nowMs),
+    ),
+    nextRefreshAtMs: nowMs + getNoticeBoardRefreshIntervalMs(state),
+    questSequence: slotCount,
     hasSeenCurrentRefresh: false,
+    rerollsUsedToday: 0,
+    rerollDayStartMs: getLocalDayStartMs(nowMs),
   };
 }
 
@@ -73,7 +115,7 @@ export function getGuildNoticeBoardState(
   nowMs = Date.now(),
 ): GuildNoticeBoardState {
   return refreshGuildNoticeBoardState(state, nowMs).guildNoticeBoard ??
-    createInitialGuildNoticeBoardState(nowMs);
+    createInitialGuildNoticeBoardState(nowMs, state);
 }
 
 export function refreshGuildNoticeBoardState(
@@ -81,7 +123,10 @@ export function refreshGuildNoticeBoardState(
   nowMs = Date.now(),
 ): GameState {
   const hadGuildNoticeBoard = Boolean(state.guildNoticeBoard);
-  const board = sanitizeGuildNoticeBoardState(state.guildNoticeBoard, nowMs);
+  const board = resetGuildNoticeBoardRerollDayIfNeeded(
+    sanitizeGuildNoticeBoardState(state.guildNoticeBoard, nowMs, state),
+    nowMs,
+  );
 
   if (board.nextRefreshAtMs > nowMs) {
     return hadGuildNoticeBoard ? { ...state, guildNoticeBoard: board } : state;
@@ -101,9 +146,11 @@ export function refreshGuildNoticeBoardState(
 
   const nextBoard: GuildNoticeBoardState = {
     slots,
-    nextRefreshAtMs: nowMs + GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+    nextRefreshAtMs: nowMs + getNoticeBoardRefreshIntervalMs(state),
     questSequence: Math.max(sequence, board.questSequence),
     hasSeenCurrentRefresh: changedSlot ? false : board.hasSeenCurrentRefresh,
+    rerollsUsedToday: board.rerollsUsedToday,
+    rerollDayStartMs: board.rerollDayStartMs,
   };
 
   return {
@@ -129,8 +176,8 @@ export function openGuildNoticeBoard(
 
     const rewardResult = grantGuildNoticeBoardReward(
       nextState,
-      slot.title,
-      slot.rewards,
+      slot,
+      getGuildNoticeBoardRewardPercent(nextState),
     );
     nextState = rewardResult.state;
     claimedRewards.push(rewardResult.claimedReward);
@@ -158,18 +205,18 @@ export function openGuildNoticeBoard(
 export function takeGuildNoticeBoardQuest(
   state: GameState,
   nowMs = Date.now(),
+  slotIndex?: number,
 ): GuildNoticeBoardTakeResult {
   const refreshedState = refreshGuildNoticeBoardState(state, nowMs);
   const board = getGuildNoticeBoardState(refreshedState, nowMs);
-  const slotIndex = board.slots.findIndex(
-    (slot) => slot?.status === "available",
-  );
+  const targetSlotIndex =
+    slotIndex ?? board.slots.findIndex((slot) => slot?.status === "available");
 
-  if (slotIndex < 0) {
+  if (targetSlotIndex < 0) {
     return { ok: false, state: refreshedState, reason: "no_available_quest" };
   }
 
-  const slot = board.slots[slotIndex];
+  const slot = board.slots[targetSlotIndex];
 
   if (!slot) {
     return { ok: false, state: refreshedState, reason: "no_available_quest" };
@@ -183,7 +230,7 @@ export function takeGuildNoticeBoardQuest(
     levelRange: null,
   };
   const slots = [...board.slots];
-  slots[slotIndex] = quest;
+  slots[targetSlotIndex] = quest;
 
   return {
     ok: true,
@@ -202,17 +249,19 @@ export function takeGuildNoticeBoardQuest(
 export function cancelGuildNoticeBoardQuest(
   state: GameState,
   nowMs = Date.now(),
+  slotIndex?: number,
 ): GuildNoticeBoardCancelResult {
   const refreshedState = refreshGuildNoticeBoardState(state, nowMs);
   const board = getGuildNoticeBoardState(refreshedState, nowMs);
-  const slotIndex = board.slots.findIndex((slot) => slot?.status === "taken");
+  const targetSlotIndex =
+    slotIndex ?? board.slots.findIndex((slot) => slot?.status === "taken");
 
-  if (slotIndex < 0) {
+  if (targetSlotIndex < 0) {
     return { ok: false, state: refreshedState, reason: "no_taken_quest" };
   }
 
   const slots = [...board.slots];
-  slots[slotIndex] = null;
+  slots[targetSlotIndex] = null;
 
   return {
     ok: true,
@@ -226,6 +275,90 @@ export function cancelGuildNoticeBoardQuest(
   };
 }
 
+export function rerollGuildNoticeBoard(
+  state: GameState,
+  nowMs = Date.now(),
+): GuildNoticeBoardRerollResult {
+  const opened = openGuildNoticeBoard(state, nowMs);
+  let nextState = opened.state;
+  const board = resetGuildNoticeBoardRerollDayIfNeeded(
+    getGuildNoticeBoardState(nextState, nowMs),
+    nowMs,
+  );
+  const dailyLimit = getGuildNoticeBoardDailyRerollLimit(nextState);
+
+  if (dailyLimit <= 0) {
+    return {
+      ok: false,
+      state: {
+        ...nextState,
+        guildNoticeBoard: board,
+      },
+      claimedRewards: opened.claimedRewards,
+      reason: "locked",
+    };
+  }
+
+  if (board.rerollsUsedToday >= dailyLimit) {
+    return {
+      ok: false,
+      state: {
+        ...nextState,
+        guildNoticeBoard: board,
+      },
+      claimedRewards: opened.claimedRewards,
+      reason: "no_rerolls",
+    };
+  }
+
+  let sequence = board.questSequence;
+  const slots = board.slots.map((slot) => {
+    if (slot?.status === "taken") {
+      return slot;
+    }
+
+    sequence += 1;
+    return createGuildNoticeBoardQuest(sequence, nowMs);
+  });
+  const rerollsUsedToday = board.rerollsUsedToday + 1;
+
+  nextState = {
+    ...nextState,
+    guildNoticeBoard: {
+      ...board,
+      slots,
+      questSequence: Math.max(sequence, board.questSequence),
+      rerollsUsedToday,
+      hasSeenCurrentRefresh: true,
+    },
+  };
+
+  return {
+    ok: true,
+    state: nextState,
+    claimedRewards: opened.claimedRewards,
+    rerollsRemaining: Math.max(0, dailyLimit - rerollsUsedToday),
+  };
+}
+
+export function getGuildNoticeBoardRerollDisplayState(
+  state: GameState,
+  nowMs = Date.now(),
+): GuildNoticeBoardRerollDisplayState {
+  const board = resetGuildNoticeBoardRerollDayIfNeeded(
+    getGuildNoticeBoardState(state, nowMs),
+    nowMs,
+  );
+  const dailyLimit = getGuildNoticeBoardDailyRerollLimit(state);
+  return {
+    isUnlocked: dailyLimit > 0,
+    dailyLimit,
+    usedToday: Math.min(board.rerollsUsedToday, dailyLimit),
+    remaining: Math.max(0, dailyLimit - board.rerollsUsedToday),
+    nextResetAtMs: getNextLocalDayStartMs(nowMs),
+  };
+}
+
 export function recordEnemyDefeatedForGuildNoticeBoard(
   state: GameState,
   defeatedEnemy: Enemy,
@@ -235,7 +368,7 @@ export function recordEnemyDefeatedForGuildNoticeBoard(
   }
 
   const defeatedEnemyTypeId = defeatedEnemy.enemyTypeId;
-  const board = sanitizeGuildNoticeBoardState(state.guildNoticeBoard);
+  const board = sanitizeGuildNoticeBoardState(state.guildNoticeBoard, undefined, state);
   let changed = false;
   const slots = board.slots.map((slot) => {
     if (!slot || slot.status !== "taken") {
@@ -303,28 +436,58 @@ export function shouldShowGuildNoticeBoardSign(
 export function sanitizeGuildNoticeBoardState(
   guildNoticeBoard: GuildNoticeBoardState | undefined,
   nowMs = Date.now(),
+  state?: GameState,
 ): GuildNoticeBoardState {
   if (!guildNoticeBoard) {
-    return createInitialGuildNoticeBoardState(nowMs);
+    return createInitialGuildNoticeBoardState(nowMs, state);
   }
 
   const questSequence = sanitizeSequence(guildNoticeBoard.questSequence);
-  const slots = Array.from({ length: GUILD_NOTICE_BOARD_SLOT_COUNT }, (_, index) =>
-    sanitizeGuildNoticeBoardQuest(
-      guildNoticeBoard.slots?.[index],
-      Math.max(1, questSequence),
-      nowMs,
-    ),
+  let maxSequence = questSequence;
+  const slots = Array.from(
+    { length: getGuildNoticeBoardSlotCount(state) },
+    (_, index) => {
+      if (
+        Array.isArray(guildNoticeBoard.slots) &&
+        index < guildNoticeBoard.slots.length &&
+        guildNoticeBoard.slots[index] === null
+      ) {
+        return null;
+      }
+
+      const fallbackSequence = Math.max(1, questSequence + index);
+      const quest = sanitizeGuildNoticeBoardQuest(
+        guildNoticeBoard.slots?.[index],
+        fallbackSequence,
+        nowMs,
+      );
+
+      if (quest) {
+        maxSequence = Math.max(maxSequence, quest.sequence);
+        return quest;
+      }
+
+      maxSequence += 1;
+      return createGuildNoticeBoardQuest(maxSequence, nowMs);
+    },
   );
 
   return {
     slots,
     nextRefreshAtMs: sanitizeTimestamp(
       guildNoticeBoard.nextRefreshAtMs,
-      nowMs + GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+      nowMs + getNoticeBoardRefreshIntervalMs(state),
     ),
-    questSequence,
+    questSequence: maxSequence,
     hasSeenCurrentRefresh: Boolean(guildNoticeBoard.hasSeenCurrentRefresh),
+    rerollsUsedToday: Math.max(
+      0,
+      Math.floor(guildNoticeBoard.rerollsUsedToday ?? 0),
+    ),
+    rerollDayStartMs: sanitizeDayStartTimestamp(
+      guildNoticeBoard.rerollDayStartMs,
+      getLocalDayStartMs(nowMs),
+    ),
   };
 }
 
@@ -465,28 +628,36 @@ function areObjectivesComplete(
 
 function grantGuildNoticeBoardReward(
   state: GameState,
-  questTitle: string,
-  reward: GuildNoticeBoardQuestReward,
+  quest: GuildNoticeBoardQuest,
+  rewardPercent: number,
 ): { state: GameState; claimedReward: GuildNoticeBoardClaimedReward } {
+  const crowns = Math.floor((quest.rewards.crowns * rewardPercent) / 100);
+  const skillBookCount = getScaledItemRewardCount(
+    rewardPercent,
+    quest.sequence,
+  );
   let nextState = addCurrencyToWalletState(
     state,
     "crowns",
-    reward.crowns,
+    crowns,
     "quest_reward",
   ).state;
   nextState = addItemToInventoryState(
     nextState,
-    reward.skillBookItemId,
-    1,
+    quest.rewards.skillBookItemId,
+    skillBookCount,
     "quest_reward",
   ).state;
 
   return {
     state: nextState,
     claimedReward: {
-      questTitle,
-      crowns: reward.crowns,
-      skillBookItemId: reward.skillBookItemId,
+      questTitle: quest.title,
+      crowns,
+      skillBookItemIds: Array.from(
+        { length: skillBookCount },
+        () => quest.rewards.skillBookItemId,
+      ),
     },
   };
 }
@@ -513,6 +684,66 @@ function sanitizeTimestamp(timestamp: number | undefined, fallback: number): num
   return Number.isFinite(timestamp) ? Math.max(0, timestamp ?? fallback) : fallback;
 }
 
+function sanitizeDayStartTimestamp(
+  timestamp: number | undefined,
+  fallback: number,
+): number {
+  return Number.isFinite(timestamp) ? Math.floor(timestamp ?? fallback) : fallback;
+}
+
 function sanitizeNullableTimestamp(timestamp: number | null | undefined): number | null {
   return Number.isFinite(timestamp) ? Math.max(0, timestamp ?? 0) : null;
+}
+
+function getNoticeBoardRefreshIntervalMs(state?: GameState): number {
+  return state
+    ? getGuildNoticeBoardRefreshIntervalMs(state)
+    : GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS;
+}
+
+function resetGuildNoticeBoardRerollDayIfNeeded(
+  board: GuildNoticeBoardState,
+  nowMs: number,
+): GuildNoticeBoardState {
+  const dayStartMs = getLocalDayStartMs(nowMs);
+
+  if (board.rerollDayStartMs === dayStartMs) {
+    return board;
+  }
+
+  return {
+    ...board,
+    rerollsUsedToday: 0,
+    rerollDayStartMs: dayStartMs,
+  };
+}
+
+function getLocalDayStartMs(nowMs: number): number {
+  const date = new Date(Number.isFinite(nowMs) ? nowMs : Date.now());
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  ).getTime();
+}
+
+function getNextLocalDayStartMs(nowMs: number): number {
+  const date = new Date(getLocalDayStartMs(nowMs));
+  date.setDate(date.getDate() + 1);
+  return date.getTime();
+}
+
+function getScaledItemRewardCount(rewardPercent: number, sequence: number): number {
+  const wholeItems = Math.max(0, Math.floor(rewardPercent / 100));
+  const remainderChance = Math.max(0, Math.floor(rewardPercent % 100));
+  const extraItem =
+    remainderChance > 0 && getRewardChanceRoll(sequence) < remainderChance
+      ? 1
+      : 0;
+
+  return wholeItems + extraItem;
+}
+
+function getRewardChanceRoll(sequence: number): number {
+  return Math.abs(sequence * 37 + 17) % 100;
 }

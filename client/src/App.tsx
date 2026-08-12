@@ -125,8 +125,10 @@ import {
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
+  purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
   recruitGuildCandidate,
+  rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
   refreshGuildNoticeBoardState,
   refreshGuildRecruitState,
@@ -184,6 +186,7 @@ import {
   type GameState,
   type GuildRosterMoveFailureReason,
   type GuildRosterSlotRef,
+  type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
   type ItemDefinition,
   type ItemId,
@@ -4393,6 +4396,32 @@ function App() {
     setGameState(purchase.state);
   }
 
+  function purchaseGuildNoticeBoardUpgradeCommand(
+    upgradeId: GuildNoticeBoardUpgradeId,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildNoticeBoardUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild notice board upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
   function openGuildNoticeBoardMenu() {
     if (!canUseGuildTavern) {
       setGuildNoticeBoardResultMessage("Requires Guild & Inn");
@@ -4406,8 +4435,10 @@ function App() {
       setGuildNoticeBoardResultMessage(
         opened.claimedRewards
           .map((reward) => {
-            const bookName = getItemDefinition(reward.skillBookItemId).displayName;
-            return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookName}`;
+            const bookNames = reward.skillBookItemIds
+              .map((itemId) => getItemDefinition(itemId).displayName)
+              .join(", ");
+            return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookNames}`;
           })
           .join(" | "),
       );
@@ -4419,13 +4450,13 @@ function App() {
     setGameState(opened.state);
   }
 
-  function takeGuildNoticeBoardQuestFromMenu() {
+  function takeGuildNoticeBoardQuestFromMenu(slotIndex?: number) {
     if (!canUseGuildTavern) {
       setGuildNoticeBoardResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const taken = takeGuildNoticeBoardQuest(gameState, currentTime);
+    const taken = takeGuildNoticeBoardQuest(gameState, currentTime, slotIndex);
 
     if (taken.ok) {
       queueSaveAfterStateChange("Guild notice board quest taken");
@@ -4437,13 +4468,13 @@ function App() {
     setGameState(taken.state);
   }
 
-  function cancelGuildNoticeBoardQuestFromMenu() {
+  function cancelGuildNoticeBoardQuestFromMenu(slotIndex?: number) {
     if (!canUseGuildTavern) {
       setGuildNoticeBoardResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const canceled = cancelGuildNoticeBoardQuest(gameState, currentTime);
+    const canceled = cancelGuildNoticeBoardQuest(gameState, currentTime, slotIndex);
 
     if (canceled.ok) {
       queueSaveAfterStateChange("Guild notice board quest canceled");
@@ -4453,6 +4484,40 @@ function App() {
     }
 
     setGameState(canceled.state);
+  }
+
+  function rerollGuildNoticeBoardFromMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const rerolled = rerollGuildNoticeBoard(gameState, currentTime);
+    const claimedMessage = rerolled.claimedRewards
+      .map((reward) => {
+        const bookNames = reward.skillBookItemIds
+          .map((itemId) => getItemDefinition(itemId).displayName)
+          .join(", ");
+        return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookNames}`;
+      })
+      .join(" | ");
+
+    if (rerolled.ok) {
+      queueSaveAfterStateChange("Guild notice board reroll saved");
+      setGuildNoticeBoardResultMessage(
+        claimedMessage
+          ? `Rerolled postings. Claimed ${claimedMessage}`
+          : "Rerolled postings",
+      );
+    } else {
+      setGuildNoticeBoardResultMessage(
+        rerolled.reason === "locked"
+          ? "Unlock Scouts to reroll postings."
+          : "No rerolls remaining today.",
+      );
+    }
+
+    setGameState(rerolled.state);
   }
 
   function moveGuildRosterCompanionFromMenu(
@@ -5640,8 +5705,12 @@ function App() {
               onSelectTab={selectGameMenuTab}
               onCraftRecipe={craftSelectedRecipe}
               onRecruitGuildCandidate={recruitGuildCompanion}
+              onPurchaseGuildNoticeBoardUpgrade={
+                purchaseGuildNoticeBoardUpgradeCommand
+              }
               onPurchaseGuildRecruitUpgrade={purchaseGuildRecruitUpgradeCommand}
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
+              onRerollGuildNoticeBoard={rerollGuildNoticeBoardFromMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
               onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
               onMoveGuildRosterCompanion={moveGuildRosterCompanionFromMenu}

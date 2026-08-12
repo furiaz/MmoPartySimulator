@@ -2567,8 +2567,20 @@ export type GuildRecruitUpgradeId =
 
 export type GuildRecruitUpgradeLevels = Record<GuildRecruitUpgradeId, number>;
 
+export type GuildNoticeBoardUpgradeId =
+  | "notice_board_slots"
+  | "notice_board_reward_quality"
+  | "notice_board_refresh_rate"
+  | "notice_board_scouts";
+
+export type GuildNoticeBoardUpgradeLevels = Record<
+  GuildNoticeBoardUpgradeId,
+  number
+>;
+
 export type GuildUpgradesState = {
   recruit: GuildRecruitUpgradeLevels;
+  noticeBoard: GuildNoticeBoardUpgradeLevels;
 };
 
 export type GuildNoticeBoardQuestStatus = "available" | "taken" | "done";
@@ -2605,7 +2617,7 @@ export type GuildNoticeBoardQuest = {
 export type GuildNoticeBoardClaimedReward = {
   questTitle: string;
   crowns: number;
-  skillBookItemId: SkillBookItemId;
+  skillBookItemIds: SkillBookItemId[];
 };
 
 export type GuildNoticeBoardState = {
@@ -2613,6 +2625,8 @@ export type GuildNoticeBoardState = {
   nextRefreshAtMs: number;
   questSequence: number;
   hasSeenCurrentRefresh: boolean;
+  rerollsUsedToday: number;
+  rerollDayStartMs: number;
 };
 
 export type ResourceEntity = BaseEntity & {

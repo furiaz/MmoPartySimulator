@@ -393,7 +393,14 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     ...state,
     guildUpgrades,
   });
-  const guildNoticeBoard = sanitizeGuildNoticeBoardState(state.guildNoticeBoard);
+  const guildNoticeBoard = sanitizeGuildNoticeBoardState(
+    state.guildNoticeBoard,
+    undefined,
+    {
+      ...state,
+      guildUpgrades,
+    },
+  );
   const guildSecondaryParties = sanitizeGuildSecondaryPartiesState(
     state.guildSecondaryParties,
     restingCompanionsById,

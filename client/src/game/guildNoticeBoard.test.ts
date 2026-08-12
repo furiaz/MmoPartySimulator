@@ -174,6 +174,9 @@ describe("guild notice board", () => {
     expect(
       reward ? countInventoryItem(opened.state.inventory, reward.skillBookItemId) : 0,
     ).toBe(1);
+    expect(opened.claimedRewards[0]?.skillBookItemIds).toEqual([
+      reward?.skillBookItemId,
+    ]);
     expect(opened.state.guildNoticeBoard?.slots[0]?.rewardClaimedAtMs).toBe(NOW_MS);
   });
 
