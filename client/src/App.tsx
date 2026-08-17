@@ -587,11 +587,11 @@ function getGuildRosterMoveFailureMessage(
 function getGuildSecondaryPartyDispatchFailureMessage(reason: string): string {
   switch (reason) {
     case "locked_party":
-      return "Unlock this Secondary Party first.";
+      return "Unlock this Field Team first.";
     case "empty_party":
       return "Assign at least one companion.";
     case "already_dispatched":
-      return "This Secondary Party is already dispatched.";
+      return "This Field Team is already dispatched.";
     case "unknown_destination":
     case "unvisited_destination":
       return "Visit that subzone before dispatching there.";
@@ -4526,7 +4526,7 @@ function App() {
     );
 
     if (purchase.ok) {
-      queueSaveAfterStateChange("Guild secondary party upgrade saved");
+      queueSaveAfterStateChange("Guild field team upgrade saved");
       setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
     } else {
       setGuildUpgradeResultMessage(
@@ -4653,7 +4653,7 @@ function App() {
     const moved = moveGuildRosterCompanion(gameState, companionId, target);
 
     if (moved.ok) {
-      queueSaveAfterStateChange("Guild secondary party roster saved");
+      queueSaveAfterStateChange("Guild field team roster saved");
       setGuildSecondaryPartyResultMessage("Roster updated");
       setSelectedCompanionId(companionId);
     } else {
@@ -4686,8 +4686,8 @@ function App() {
     );
 
     if (dispatched.ok) {
-      queueSaveAfterStateChange("Guild secondary party dispatched");
-      setGuildSecondaryPartyResultMessage("Secondary Party dispatched");
+      queueSaveAfterStateChange("Guild field team dispatched");
+      setGuildSecondaryPartyResultMessage("Field Team dispatched");
       setGuildSecondaryPartyAccomplishedSummary(null);
     } else {
       setGuildSecondaryPartyResultMessage(
@@ -4715,12 +4715,12 @@ function App() {
     );
 
     if (claimed.ok) {
-      queueSaveAfterStateChange("Guild secondary party dispatch claimed");
+      queueSaveAfterStateChange("Guild field team dispatch claimed");
       setGuildSecondaryPartyResultMessage("Dispatch accomplished");
       setGuildSecondaryPartyAccomplishedSummary(
         dispatch
           ? {
-              partyName: party?.displayName ?? "Secondary Party",
+              partyName: party?.displayName ?? "Field Team",
               mapName: dispatch.mapName,
               subzoneName: dispatch.subzoneName,
               durationMs: dispatch.durationMs,
@@ -4756,7 +4756,7 @@ function App() {
     );
 
     if (canceled.ok) {
-      queueSaveAfterStateChange("Guild secondary party dispatch canceled");
+      queueSaveAfterStateChange("Guild field team dispatch canceled");
       setGuildSecondaryPartyResultMessage("Dispatch canceled. Rewards lost.");
       setGuildSecondaryPartyAccomplishedSummary(null);
     } else {

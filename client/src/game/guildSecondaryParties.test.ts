@@ -24,24 +24,24 @@ import type { GameState } from "./state";
 import type { Companion } from "./types";
 
 describe("guild secondary parties", () => {
-  it("creates three locked Secondary Party shells with one empty slot each", () => {
+  it("creates three locked Field Team shells with one empty slot each", () => {
     expect(createInitialGuildSecondaryPartiesState()).toEqual({
       parties: [
         {
           id: GUILD_SECONDARY_PARTY_ID,
-          displayName: "Secondary Party 1",
+          displayName: "Field Team 1",
           companionIds: [null],
           dispatch: null,
         },
         {
           id: "secondary-party-2",
-          displayName: "Secondary Party 2",
+          displayName: "Field Team 2",
           companionIds: [null],
           dispatch: null,
         },
         {
           id: "secondary-party-3",
-          displayName: "Secondary Party 3",
+          displayName: "Field Team 3",
           companionIds: [null],
           dispatch: null,
         },
@@ -49,7 +49,7 @@ describe("guild secondary parties", () => {
     });
   });
 
-  it("starts with zero unlocked Secondary Parties", () => {
+  it("starts with zero unlocked Field Teams", () => {
     const state = createRosterState({
       activeIds: ["leader"],
       unlockedSecondaryParties: 0,
@@ -87,7 +87,7 @@ describe("guild secondary parties", () => {
     ]);
   });
 
-  it("moves an active companion to Secondary Party 1", () => {
+  it("moves an active companion to Field Team 1", () => {
     const state = createRosterState({
       activeIds: ["leader", "ally"],
     });
@@ -260,7 +260,7 @@ describe("guild secondary parties", () => {
     expect(result.state.partyFormation).toBeUndefined();
   });
 
-  it("swaps occupied slots between Main Party and Secondary Party", () => {
+  it("swaps occupied slots between Main Party and Field Team", () => {
     const state = createRosterState({
       activeIds: ["leader", "ally"],
       restingIds: ["secondary"],
@@ -293,7 +293,7 @@ describe("guild secondary parties", () => {
     expect(result.state.restingCompanionsById?.ally).toBeDefined();
   });
 
-  it("swaps occupied slots between Inn's Reserve and Secondary Party", () => {
+  it("swaps occupied slots between Inn's Reserve and Field Team", () => {
     const state = createRosterState({
       activeIds: ["leader"],
       restingIds: ["reserve", "secondary"],
@@ -521,7 +521,7 @@ describe("guild secondary parties", () => {
     expect(result.state.restingCompanionsById?.reserve).toBeDefined();
   });
 
-  it("counts total roster capacity and level across Main Party, Inn's Reserve, and Secondary Party", () => {
+  it("counts total roster capacity and level across Main Party, Inn's Reserve, and Field Team", () => {
     const state = createRosterState({
       activeIds: ["leader", "ally"],
       restingIds: ["reserve", "secondary"],
@@ -614,7 +614,7 @@ function createRosterState({
       parties: [
         {
           id: GUILD_SECONDARY_PARTY_ID,
-          displayName: "Secondary Party 1",
+          displayName: "Field Team 1",
           companionIds: secondaryIds,
         },
       ],

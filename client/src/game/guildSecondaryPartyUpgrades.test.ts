@@ -16,8 +16,8 @@ import { createSavedGame, restoreGameStateFromSave } from "./saveGame";
 import { createTestGameState } from "./testState";
 import { getCurrencyBalance, setCurrencyBalanceForDebug } from "./wallet";
 
-describe("guild secondary party upgrades", () => {
-  it("starts with zero unlocked Secondary Parties and Lv 1 per-party baselines", () => {
+describe("guild field team upgrades", () => {
+  it("starts with zero unlocked Field Teams and Lv 1 per-team baselines", () => {
     const state = createUpgradeState();
 
     expect(getGuildSecondaryPartyCount(state)).toBe(0);
@@ -27,7 +27,7 @@ describe("guild secondary party upgrades", () => {
     expect(getGuildSecondaryPartyDispatchDurationMs(state, GUILD_SECONDARY_PARTY_ID)).toBe(60 * 60 * 1000);
   });
 
-  it("purchases Secondary Party count upgrades with high scaling costs", () => {
+  it("purchases Field Team count upgrades with high scaling costs", () => {
     let state = createUpgradeState(40_000);
 
     const first = purchaseGuildSecondaryPartyUpgrade(state, "secondary_party_count");
@@ -138,7 +138,7 @@ describe("guild secondary party upgrades", () => {
     }
   });
 
-  it("preserves secondary party upgrades through save restore", () => {
+  it("preserves Field Team upgrades through save restore", () => {
     let state = createUpgradeState(2_000);
     state = purchaseGuildSecondaryPartyUpgrade(state, "secondary_party_count").state;
     state = purchaseGuildSecondaryPartyUpgrade(

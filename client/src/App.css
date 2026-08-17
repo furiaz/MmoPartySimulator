@@ -1589,7 +1589,7 @@
 
 .guild-upgrade-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(0, 1.2fr) minmax(160px, 0.8fr) minmax(120px, auto);
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 1.2fr) minmax(160px, 0.8fr) 132px;
   gap: 10px;
   align-items: center;
   min-width: 0;
@@ -1646,7 +1646,13 @@
 }
 
 .guild-upgrade-row button {
+  width: 132px;
   min-width: 112px;
+  min-height: 38px;
+  font-size: 11px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .guild-notice-board-view {
@@ -1944,9 +1950,12 @@
 }
 
 .guild-roster-column > small {
+  display: block;
+  min-height: 12px;
   color: #92a8ad;
   font-size: 10px;
   font-weight: 900;
+  line-height: 1.2;
 }
 
 .guild-roster-column > div {
@@ -2016,7 +2025,7 @@
 
 .guild-roster-companion-card {
   display: grid;
-  grid-template-rows: 78px auto auto;
+  grid-template-rows: 70px minmax(14px, auto) minmax(12px, auto);
   gap: 2px;
   min-width: 0;
   min-height: 116px;
@@ -2039,7 +2048,7 @@
 
 .guild-roster-companion-sprite {
   display: grid;
-  height: 78px;
+  height: 70px;
   place-items: center;
   overflow: hidden;
 }
@@ -2055,6 +2064,8 @@
 .guild-roster-companion-card strong,
 .guild-roster-companion-card span,
 .guild-roster-companion-card small {
+  display: block;
+  min-width: 0;
   overflow: hidden;
   text-align: center;
   text-overflow: ellipsis;
@@ -2065,12 +2076,16 @@
   color: #f3df93;
   font-size: 11px;
   font-weight: 900;
+  line-height: 1.2;
+  min-height: 14px;
 }
 
 .guild-roster-companion-card small {
   color: #b9cdd1;
   font-size: 10px;
   font-weight: 800;
+  line-height: 1.2;
+  min-height: 12px;
 }
 
 .guild-dispatch-actions,

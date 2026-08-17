@@ -83,7 +83,7 @@ export function createInitialGuildSecondaryPartiesState(): GuildSecondaryParties
   return {
     parties: GUILD_SECONDARY_PARTY_IDS.map((partyId, index) => ({
       id: partyId,
-      displayName: `Secondary Party ${index + 1}`,
+      displayName: getFieldTeamDisplayName(index),
       companionIds: Array.from(
         { length: GUILD_SECONDARY_PARTY_SLOT_COUNT },
         () => null,
@@ -129,11 +129,7 @@ export function sanitizeGuildSecondaryPartiesState(
             typeof incomingParty?.id === "string" && incomingParty.id
               ? incomingParty.id
               : defaultParty.id,
-          displayName:
-            typeof incomingParty?.displayName === "string" &&
-            incomingParty.displayName
-              ? incomingParty.displayName
-              : defaultParty.displayName,
+          displayName: defaultParty.displayName,
           companionIds: Array.from({ length: slotCount }, (_, slotIndex) => {
             const companionId = incomingIds[slotIndex];
 
@@ -156,6 +152,10 @@ export function sanitizeGuildSecondaryPartiesState(
       },
     ),
   };
+}
+
+function getFieldTeamDisplayName(index: number): string {
+  return `Field Team ${index + 1}`;
 }
 
 export function getSecondaryPartyAssignedCompanionIds(

@@ -360,8 +360,8 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
 > = {
   secondary_party_count: {
     id: "secondary_party_count",
-    displayName: "Number of Parties",
-    description: "Unlocks additional Secondary Parties.",
+    displayName: "Number of Field Teams",
+    description: "Unlocks additional Field Teams.",
     maxLevel: GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL,
     getCostForNextLevel: (nextLevel) =>
       ({ 1: 1, 2: 5000, 3: 30000 })[nextLevel] ?? null,
@@ -369,8 +369,8 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   },
   secondary_party_members: {
     id: "secondary_party_members",
-    displayName: "Party Members",
-    description: "Increases this Secondary Party's member capacity.",
+    displayName: "Field Team Members",
+    description: "Increases this Field Team's member capacity.",
     maxLevel: GUILD_SECONDARY_PARTY_MEMBER_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) => {
       const baseCost = ({ 2: 500, 3: 1000, 4: 3000, 5: 20000 })[nextLevel];
@@ -382,7 +382,7 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   secondary_party_experience_efficiency: {
     id: "secondary_party_experience_efficiency",
     displayName: "EXP Efficiency",
-    description: "Improves this Secondary Party's dispatch EXP gain.",
+    description: "Improves this Field Team's dispatch EXP gain.",
     maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
@@ -393,7 +393,7 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   secondary_party_drop_efficiency: {
     id: "secondary_party_drop_efficiency",
     displayName: "Drop Efficiency",
-    description: "Improves this Secondary Party's dispatch loot gain.",
+    description: "Improves this Field Team's dispatch loot gain.",
     maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
@@ -404,7 +404,7 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   secondary_party_dispatch_duration: {
     id: "secondary_party_dispatch_duration",
     displayName: "Dispatch Duration",
-    description: "Unlocks longer dispatches for this Secondary Party.",
+    description: "Unlocks longer dispatches for this Field Team.",
     maxLevel: GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL
@@ -1240,17 +1240,17 @@ function getGuildSecondaryPartyUpgradeLockReason(
   }
 
   if (!partyId) {
-    return "Select a Secondary Party";
+    return "Select a Field Team";
   }
 
   const partyNumber = getSecondaryPartyNumber(partyId);
 
   if (partyNumber < 1 || partyNumber > GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL) {
-    return "Unknown Secondary Party";
+    return "Unknown Field Team";
   }
 
   if (upgrades.secondaryParties.secondary_party_count < partyNumber) {
-    return `Unlock Secondary Party ${partyNumber}`;
+    return `Unlock Field Team ${partyNumber}`;
   }
 
   if (

@@ -293,7 +293,7 @@ describe("save game serialization", () => {
     expect(restored.state.guildNoticeBoard).toEqual(guildNoticeBoard);
   });
 
-  it("preserves Guild Secondary Party assignment through save restore", () => {
+  it("preserves Guild Field Team assignment through save restore", () => {
     const leader: Companion = {
       ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
       state: "idle",
@@ -308,7 +308,7 @@ describe("save game serialization", () => {
       parties: [
         {
           id: GUILD_SECONDARY_PARTY_ID,
-          displayName: "Secondary Party 1",
+          displayName: "Field Team 1",
           companionIds: [secondaryCompanion.id],
           dispatch: null,
         },

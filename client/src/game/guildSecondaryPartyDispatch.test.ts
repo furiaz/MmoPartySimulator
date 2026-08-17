@@ -25,7 +25,7 @@ const NOW_MS = 1_000_000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const SHORE_FRINGE_ID = "shore-fringe";
 
-describe("guild secondary party dispatch", () => {
+describe("guild field team dispatch", () => {
   it("records visited wild subzones as dispatch destinations", () => {
     const state = recordCurrentWorldDiscovery(createDispatchState());
 
@@ -164,7 +164,7 @@ describe("guild secondary party dispatch", () => {
     expect(claimed.state.restingCompanionsById?.secondary.characterXp).toBeGreaterThan(0);
   });
 
-  it("shares completed dispatch XP across that secondary party's members", () => {
+  it("shares completed dispatch XP across that Field Team's members", () => {
     const dispatched = dispatchGuildSecondaryParty(
       createDispatchState({ secondaryPartyOneSecondCompanion: true }),
       GUILD_SECONDARY_PARTY_ID,
@@ -371,7 +371,7 @@ function createDispatchState({
       parties: [
         {
           id: "secondary-party-1",
-          displayName: "Secondary Party 1",
+          displayName: "Field Team 1",
           companionIds: secondaryPartyOneSecondCompanion
             ? ["secondary", "secondary-two"]
             : ["secondary"],
@@ -379,7 +379,7 @@ function createDispatchState({
         },
         {
           id: "secondary-party-2",
-          displayName: "Secondary Party 2",
+          displayName: "Field Team 2",
           companionIds:
             secondaryPartyTwoCompanion && !secondaryPartyOneSecondCompanion
               ? ["secondary-two"]

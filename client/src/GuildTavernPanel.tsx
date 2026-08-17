@@ -325,7 +325,7 @@ export function GuildTavernPanel({
                     onClick={() => setGuildView("secondaryParties")}
                     type="button"
                   >
-                    <span>Secondary Parties</span>
+                    <span>Field Teams</span>
                     <small>{canUse ? "Ready" : actionStatus}</small>
                   </button>
                 </>
@@ -913,7 +913,7 @@ function GuildSecondaryPartyUpgradesView({
         <div className="guild-roster-topline">
           <div>
             <span className="guild-recruit-kicker">Guild Investment</span>
-            <h3>Secondary Party Upgrades</h3>
+            <h3>Field Team Upgrades</h3>
           </div>
           <strong className="guild-upgrade-crowns">
             Crowns: {crowns.toLocaleString()}
@@ -951,7 +951,7 @@ function GuildSecondaryPartyUpgradesView({
                 <div>
                   <h4>{party.displayName}</h4>
                   <small>
-                    {isUnlocked ? "Unlocked" : `Unlock Secondary Party ${index + 1}`}
+                    {isUnlocked ? "Unlocked" : `Unlock Field Team ${index + 1}`}
                   </small>
                 </div>
                 <div className="guild-upgrade-list">
@@ -1155,7 +1155,7 @@ function GuildSecondaryPartiesView({
         <div className="guild-roster-topline">
           <div>
             <span className="guild-recruit-kicker">Roster Board</span>
-            <h3>Secondary Parties</h3>
+            <h3>Field Teams</h3>
           </div>
           <dl>
             <div>
@@ -1289,7 +1289,7 @@ function GuildSecondaryPartiesView({
                 subtitle={
                   isUnlocked
                     ? getDispatchStatusLabel(displayDispatch, currentTime)
-                    : `Unlock Secondary Party ${partyIndex + 1}`
+                    : `Unlock Field Team ${partyIndex + 1}`
                 }
                 title={party.displayName}
               >
@@ -1330,7 +1330,7 @@ function GuildSecondaryPartiesView({
                 })}
                 <div className="guild-dispatch-actions">
                   {!isUnlocked ? (
-                    <small>Buy Number of Parties to unlock.</small>
+                    <small>Buy Number of Field Teams to unlock.</small>
                   ) : displayDispatch?.status === "completed" ? (
                     <>
                       <strong>Returned</strong>
@@ -1519,7 +1519,7 @@ function RosterColumn({
   return (
     <div className="guild-roster-column">
       <h4>{title}</h4>
-      {subtitle ? <small>{subtitle}</small> : null}
+      <small aria-hidden={subtitle ? undefined : true}>{subtitle ?? ""}</small>
       <div>{children}</div>
     </div>
   );

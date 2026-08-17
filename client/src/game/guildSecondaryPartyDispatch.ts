@@ -123,11 +123,11 @@ export function getGuildSecondaryPartyDispatchPreview(
   );
 
   if (!party) {
-    return { ok: false, reason: "unknown_party", message: "Unknown Secondary Party." };
+    return { ok: false, reason: "unknown_party", message: "Unknown Field Team." };
   }
 
   if (!isPartyUnlocked(state, partyId)) {
-    return { ok: false, reason: "locked_party", message: "Unlock this Secondary Party first." };
+    return { ok: false, reason: "locked_party", message: "Unlock this Field Team first." };
   }
 
   const companions = getSecondaryPartyCompanions(state, party);
