@@ -44,6 +44,12 @@ import {
   type ResourceType,
 } from "./game";
 import SpriteAnimation from "./SpriteAnimation";
+import {
+  getInnRoomEquipmentRows,
+  getInnRoomOverview,
+  getInnRoomSkillGroups,
+  type InnRoomCard,
+} from "./innRoomsPresentation";
 import { getClassIdleFrameSrc, getEnemyWalkingAnimation } from "./visualAssets";
 
 type GuildTavernSection = "guild" | "inn";
@@ -52,12 +58,12 @@ type GuildView =
   | "recruit"
   | "noticeBoard"
   | "secondaryParties"
+  | "rooms"
   | "recruitUpgrades"
   | "noticeBoardUpgrades"
   | "secondaryPartyUpgrades";
 
 const MAX_MAIN_PARTY_SLOTS = 5;
-const innActions = ["Rooms", "Kitchen"];
 
 export type GuildSecondaryPartyRedeemSummary = {
   partyName: string;
@@ -129,6 +135,10 @@ export function GuildTavernPanel({
   const [guildView, setGuildView] = useState<GuildView>("hall");
   const [selectedRosterCompanionId, setSelectedRosterCompanionId] =
     useState<string | null>(null);
+  const [selectedInnRoomCompanionId, setSelectedInnRoomCompanionId] =
+    useState<string | null>(null);
+  const [isInnRoomSelectionLocked, setInnRoomSelectionLocked] =
+    useState(false);
   const activeCompanions = getActiveCompanions(state);
   const partySizeLimit = getPartySizeLimit(state);
   const rosterCapacity = getGuildCompanionCapacity();
@@ -155,6 +165,7 @@ export function GuildTavernPanel({
   const noticeBoardButtonStatus = canUse
     ? getNoticeBoardButtonStatus(noticeBoardQuest)
     : "Requires Guild & Inn";
+  const innRoomOverview = getInnRoomOverview(state);
 
   function showPreviousSection() {
     setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
@@ -252,6 +263,26 @@ export function GuildTavernPanel({
           onOpenUpgrades={() => setGuildView("secondaryPartyUpgrades")}
           onSelectCompanion={setSelectedRosterCompanionId}
         />
+      ) : activeSection === "inn" && guildView === "rooms" ? (
+        <InnRoomsView
+          isSelectionLocked={isInnRoomSelectionLocked}
+          selectedCompanionId={selectedInnRoomCompanionId}
+          state={state}
+          onBack={() => {
+            setInnRoomSelectionLocked(false);
+            setGuildView("hall");
+          }}
+          onClearSelectionLock={() => setInnRoomSelectionLocked(false)}
+          onLockCompanion={(companionId) => {
+            setSelectedInnRoomCompanionId(companionId);
+            setInnRoomSelectionLocked(true);
+          }}
+          onPreviewCompanion={(companionId) => {
+            if (!isInnRoomSelectionLocked) {
+              setSelectedInnRoomCompanionId(companionId);
+            }
+          }}
+        />
       ) : activeSection === "guild" && guildView === "recruitUpgrades" ? (
         <GuildRecruitUpgradesView
           canUse={canUse}
@@ -331,12 +362,21 @@ export function GuildTavernPanel({
                 </>
               ) : (
                 <>
-                  {innActions.map((action) => (
-                    <button disabled key={action} type="button">
-                      <span>{action}</span>
-                      <small>{actionStatus}</small>
-                    </button>
-                  ))}
+                  <button
+                    disabled={!canUse}
+                    onClick={() => setGuildView("rooms")}
+                    type="button"
+                  >
+                    <span>Rooms</span>
+                    <span className="guild-recruit-button-timer">
+                      {innRoomOverview.occupiedRooms}/{innRoomOverview.capacity}
+                    </span>
+                    <small>{canUse ? "Ready" : actionStatus}</small>
+                  </button>
+                  <button disabled type="button">
+                    <span>Kitchen</span>
+                    <small>{actionStatus}</small>
+                  </button>
                 </>
               )}
             </div>
@@ -344,6 +384,256 @@ export function GuildTavernPanel({
         </div>
       )}
     </section>
+  );
+}
+
+function InnRoomsView({
+  isSelectionLocked,
+  selectedCompanionId,
+  state,
+  onBack,
+  onClearSelectionLock,
+  onLockCompanion,
+  onPreviewCompanion,
+}: {
+  isSelectionLocked: boolean;
+  selectedCompanionId: string | null;
+  state: GameState;
+  onBack: () => void;
+  onClearSelectionLock: () => void;
+  onLockCompanion: (companionId: string) => void;
+  onPreviewCompanion: (companionId: string | null) => void;
+}) {
+  const overview = getInnRoomOverview(state);
+  const firstCompanionCard = overview.cards.find(
+    (card): card is Extract<InnRoomCard, { kind: "companion" }> =>
+      card.kind === "companion",
+  );
+  const selectedCard =
+    overview.cards.find(
+      (card): card is Extract<InnRoomCard, { kind: "companion" }> =>
+        card.kind === "companion" && card.companion.id === selectedCompanionId,
+    ) ??
+    firstCompanionCard ??
+    null;
+
+  return (
+    <div
+      className="guild-inn-rooms-view"
+      onClick={(event) => {
+        if (
+          event.target instanceof HTMLElement &&
+          !event.target.closest("button")
+        ) {
+          onClearSelectionLock();
+        }
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onClearSelectionLock();
+      }}
+    >
+      <div className="guild-roster-topline">
+        <div>
+          <span className="guild-recruit-kicker">Inn Rooms</span>
+          <h3>
+            Rooms {overview.occupiedRooms}/{overview.capacity}
+          </h3>
+        </div>
+        <button onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+      {overview.isOverCapacity ? (
+        <p className="guild-recruit-message">
+          Inn is over room capacity. All companions are still shown.
+        </p>
+      ) : null}
+      <div className="guild-inn-rooms-layout">
+        <div
+          className="guild-inn-room-grid-panel"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              onClearSelectionLock();
+            }
+          }}
+        >
+          <div className="guild-inn-room-grid">
+            {overview.cards.map((card) => (
+              <InnRoomCardButton
+                card={card}
+                isSelectionLocked={isSelectionLocked}
+                isSelected={
+                  card.kind === "companion" &&
+                  selectedCard?.companion.id === card.companion.id
+                }
+                key={`${card.kind}-${card.slotNumber}-${
+                  card.kind === "companion" ? card.companion.id : "empty"
+                }`}
+                onClearSelectionLock={onClearSelectionLock}
+                onLockCompanion={onLockCompanion}
+                onPreviewCompanion={onPreviewCompanion}
+              />
+            ))}
+          </div>
+        </div>
+        <InnRoomDetailsPanel selectedCard={selectedCard} />
+      </div>
+    </div>
+  );
+}
+
+function InnRoomCardButton({
+  card,
+  isSelectionLocked,
+  isSelected,
+  onClearSelectionLock,
+  onLockCompanion,
+  onPreviewCompanion,
+}: {
+  card: InnRoomCard;
+  isSelectionLocked: boolean;
+  isSelected: boolean;
+  onClearSelectionLock: () => void;
+  onLockCompanion: (companionId: string) => void;
+  onPreviewCompanion: (companionId: string | null) => void;
+}) {
+  if (card.kind === "empty") {
+    return (
+      <button
+        className="guild-inn-room-card empty"
+        onClick={() => {
+          onPreviewCompanion(null);
+          onClearSelectionLock();
+        }}
+        type="button"
+      >
+        <span className="guild-inn-room-number">Room {card.slotNumber}</span>
+        <strong>Empty Room</strong>
+        <small>Available</small>
+      </button>
+    );
+  }
+
+  const classDefinition = CLASS_DEFINITIONS[card.companion.classId];
+  const idleFrameSrc = getClassIdleFrameSrc(card.companion.classId);
+
+  return (
+    <button
+      className={`guild-inn-room-card ${card.visualState}${
+        isSelected ? " selected" : ""
+      }${isSelected && isSelectionLocked ? " locked-selection" : ""}`}
+      onClick={() => onLockCompanion(card.companion.id)}
+      onMouseEnter={() => {
+        if (!isSelectionLocked) {
+          onPreviewCompanion(card.companion.id);
+        }
+      }}
+      title={card.locationLabel}
+      type="button"
+    >
+      <span className="guild-inn-room-number">Room {card.slotNumber}</span>
+      <span className="guild-roster-companion-sprite" aria-hidden="true">
+        {idleFrameSrc ? <img alt="" src={idleFrameSrc} /> : null}
+      </span>
+      <strong>
+        Lv {card.companion.characterLevel}{" "}
+        {classDefinition?.displayName ?? card.companion.classId}
+      </strong>
+      <small>{card.statusLabel}</small>
+      {card.badgeText ? (
+        <span className="guild-inn-room-badge">{card.badgeText}</span>
+      ) : null}
+    </button>
+  );
+}
+
+function InnRoomDetailsPanel({
+  selectedCard,
+}: {
+  selectedCard: Extract<InnRoomCard, { kind: "companion" }> | null;
+}) {
+  if (!selectedCard) {
+    return (
+      <aside className="guild-inn-room-details">
+        <span className="guild-recruit-kicker">Companion Details</span>
+        <h3>Select a room</h3>
+        <p className="guild-recruit-message">
+          Empty rooms are available for future companions.
+        </p>
+      </aside>
+    );
+  }
+
+  const { companion } = selectedCard;
+  const classDefinition = CLASS_DEFINITIONS[companion.classId];
+  const equipmentRows = getInnRoomEquipmentRows(companion);
+  const skillGroups = getInnRoomSkillGroups(companion);
+
+  return (
+    <aside className="guild-inn-room-details">
+      <span className="guild-recruit-kicker">Companion Details</span>
+      <h3>{companion.id}</h3>
+      <dl className="guild-inn-room-detail-list">
+        <div>
+          <dt>Status</dt>
+          <dd>{selectedCard.statusLabel}</dd>
+        </div>
+        <div>
+          <dt>Level</dt>
+          <dd>{companion.characterLevel}</dd>
+        </div>
+        <div>
+          <dt>Class</dt>
+          <dd>{classDefinition?.displayName ?? companion.classId}</dd>
+        </div>
+        <div>
+          <dt>Role</dt>
+          <dd>{getRoleLabel(companion.role)}</dd>
+        </div>
+        <div>
+          <dt>HP</dt>
+          <dd>
+            {companion.health}/{companion.maxHealth}
+          </dd>
+        </div>
+      </dl>
+
+      <section className="guild-inn-room-detail-section">
+        <h4>Equipment</h4>
+        <div className="guild-inn-room-equipment-list">
+          {equipmentRows.map((row) => (
+            <div key={row.slot}>
+              <span>{row.label}</span>
+              <strong>{row.itemName}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="guild-inn-room-detail-section">
+        <h4>Skills</h4>
+        {skillGroups.length > 0 ? (
+          <div className="guild-inn-room-skill-groups">
+            {skillGroups.map((group) => (
+              <div key={group.classId} className="guild-inn-room-skill-group">
+                <strong>{group.className}</strong>
+                {group.skills.map((skill) => (
+                  <div key={skill.skillId}>
+                    <span>{skill.enabled ? "[ON]" : "[OFF]"}</span>
+                    <span>
+                      {skill.displayName} Lv {skill.rank}/{skill.maxRank}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <span className="party-menu-empty">No known skills</span>
+        )}
+      </section>
+    </aside>
   );
 }
 

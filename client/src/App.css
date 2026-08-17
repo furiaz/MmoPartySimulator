@@ -2088,6 +2088,237 @@
   min-height: 12px;
 }
 
+.guild-inn-rooms-view {
+  display: grid;
+  gap: 10px;
+  justify-self: center;
+  width: min(100%, 980px);
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.guild-inn-rooms-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.guild-inn-room-grid-panel,
+.guild-inn-room-details {
+  min-width: 0;
+  max-height: clamp(360px, 62vh, 680px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-color: #456169 rgba(5, 11, 14, 0.42);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.guild-inn-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.guild-inn-room-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: 12px 70px minmax(14px, auto) minmax(12px, auto);
+  gap: 2px;
+  min-width: 0;
+  min-height: 136px;
+  padding: 7px;
+  border: 1px solid #456169;
+  border-radius: 6px;
+  background: rgba(12, 28, 36, 0.72);
+  color: #eaf3f5;
+  cursor: pointer;
+}
+
+.guild-inn-room-card.active {
+  border-color: #4e8fb5;
+  box-shadow: 0 0 0 1px rgba(78, 143, 181, 0.52);
+}
+
+.guild-inn-room-card.field_team,
+.guild-inn-room-card.assigned_field_team {
+  border-color: #334a50;
+  background: rgba(5, 11, 14, 0.7);
+  color: #b9cdd1;
+}
+
+.guild-inn-room-card.assigned_field_team {
+  box-shadow: inset 0 0 0 1px rgba(243, 223, 147, 0.12);
+}
+
+.guild-inn-room-card.empty {
+  align-content: center;
+  border-color: #334a50;
+  background: rgba(5, 11, 14, 0.32);
+  color: #92a8ad;
+}
+
+.guild-inn-room-card.selected {
+  border-color: #f3df93;
+  box-shadow: 0 0 0 1px rgba(243, 223, 147, 0.35);
+}
+
+.guild-inn-room-card.locked-selection {
+  border-color: #f3df93;
+  box-shadow:
+    0 0 0 2px rgba(243, 223, 147, 0.58),
+    0 0 14px rgba(243, 223, 147, 0.16);
+}
+
+.guild-inn-room-number,
+.guild-inn-room-card strong,
+.guild-inn-room-card small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guild-inn-room-number {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-inn-room-card strong {
+  color: #f3df93;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.guild-inn-room-card small {
+  color: #b9cdd1;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.guild-inn-room-badge {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid #456169;
+  border-radius: 999px;
+  background: rgba(5, 11, 14, 0.86);
+  color: #f3df93;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.guild-inn-room-details {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.guild-inn-room-details h3,
+.guild-inn-room-details h4 {
+  margin: 0;
+}
+
+.guild-inn-room-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.guild-inn-room-detail-list div,
+.guild-inn-room-equipment-list div,
+.guild-inn-room-skill-group {
+  padding: 7px 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(12, 28, 36, 0.54);
+}
+
+.guild-inn-room-detail-list dt {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-inn-room-detail-list dd {
+  margin: 2px 0 0;
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.guild-inn-room-detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.guild-inn-room-detail-section h4 {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guild-inn-room-equipment-list,
+.guild-inn-room-skill-groups {
+  display: grid;
+  gap: 6px;
+}
+
+.guild-inn-room-equipment-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.guild-inn-room-equipment-list span,
+.guild-inn-room-skill-group span {
+  color: #b9cdd1;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.guild-inn-room-equipment-list strong,
+.guild-inn-room-skill-group strong {
+  color: #f3df93;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.guild-inn-room-skill-group {
+  display: grid;
+  gap: 5px;
+}
+
+.guild-inn-room-skill-group div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px;
+}
+
 .guild-assignment-actions,
 .guild-assignment-setup,
 .guild-assignment-summary {
@@ -2222,6 +2453,15 @@
 
   .guild-roster-board {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guild-inn-rooms-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guild-inn-room-grid-panel,
+  .guild-inn-room-details {
+    max-height: none;
   }
 }
 
