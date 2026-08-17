@@ -50,7 +50,7 @@ export type GuildRosterMoveFailureReason =
   | "invalid_target"
   | "locked_main_party_slot"
   | "main_party_requires_companion"
-  | "party_dispatched";
+  | "party_assigned";
 
 export type GuildRosterMoveResult =
   | {
@@ -88,7 +88,7 @@ export function createInitialGuildSecondaryPartiesState(): GuildSecondaryParties
         { length: GUILD_SECONDARY_PARTY_SLOT_COUNT },
         () => null,
       ),
-      dispatch: null,
+      assignment: null,
     })),
   };
 }
@@ -145,8 +145,12 @@ export function sanitizeGuildSecondaryPartiesState(
             assignedIds.add(companionId);
             return companionId;
           }),
-          dispatch: isUnlocked
-            ? sanitizeDispatchState(incomingParty?.dispatch)
+          assignment: isUnlocked
+            ? sanitizeAssignmentState(
+                incomingParty?.assignment ??
+                  (incomingParty as Partial<{ dispatch: GuildSecondaryParty["assignment"] }> | undefined)
+                    ?.dispatch,
+              )
             : null,
         };
       },
@@ -229,11 +233,11 @@ export function moveGuildRosterCompanion(
     };
   }
 
-  if (isRosterLocationDispatched(normalizedState, source) || isRosterLocationDispatched(normalizedState, target)) {
+  if (isRosterLocationAssigned(normalizedState, source) || isRosterLocationAssigned(normalizedState, target)) {
     return {
       ok: false,
       state: normalizedState,
-      reason: "party_dispatched",
+      reason: "party_assigned",
     };
   }
 
@@ -482,7 +486,7 @@ function isValidRosterTarget(
   );
 }
 
-function isRosterLocationDispatched(
+function isRosterLocationAssigned(
   state: GameState,
   location: RosterLocation | GuildRosterSlotRef,
 ): boolean {
@@ -493,7 +497,7 @@ function isRosterLocationDispatched(
   return Boolean(
     getGuildSecondaryPartiesState(state).parties.find(
       (party) => party.id === location.partyId,
-    )?.dispatch,
+    )?.assignment,
   );
 }
 
@@ -646,7 +650,7 @@ function cloneSecondaryParties(
   ).parties.map((party) => ({
     ...party,
     companionIds: [...party.companionIds],
-    dispatch: party.dispatch ? { ...party.dispatch } : null,
+    assignment: party.assignment ? { ...party.assignment } : null,
   }));
 }
 
@@ -840,18 +844,24 @@ function sanitizeCharacterLevel(companion: Companion): number {
   return Math.max(1, Math.floor(companion.characterLevel || 1));
 }
 
-function sanitizeDispatchState(
-  dispatch: GuildSecondaryParty["dispatch"],
-): GuildSecondaryParty["dispatch"] {
+function sanitizeAssignmentState(
+  assignment: GuildSecondaryParty["assignment"],
+): GuildSecondaryParty["assignment"] {
   if (
-    !dispatch ||
-    (dispatch.status !== "dispatched" && dispatch.status !== "completed")
+    !assignment ||
+    (
+      assignment.status !== "assigned" &&
+      assignment.status !== "capped" &&
+      assignment.status !== "pending_loot"
+    )
   ) {
     return null;
   }
 
   return {
-    ...dispatch,
-    status: dispatch.status,
+    ...assignment,
+    status: assignment.status,
+    pendingResult: assignment.pendingResult ?? null,
+    pendingElapsedMs: Math.max(0, Math.floor(assignment.pendingElapsedMs ?? 0)),
   };
 }

@@ -31,19 +31,19 @@ describe("guild secondary parties", () => {
           id: GUILD_SECONDARY_PARTY_ID,
           displayName: "Field Team 1",
           companionIds: [null],
-          dispatch: null,
+          assignment: null,
         },
         {
           id: "secondary-party-2",
           displayName: "Field Team 2",
           companionIds: [null],
-          dispatch: null,
+          assignment: null,
         },
         {
           id: "secondary-party-3",
           displayName: "Field Team 3",
           companionIds: [null],
-          dispatch: null,
+          assignment: null,
         },
       ],
     });

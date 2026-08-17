@@ -20,22 +20,22 @@ export const GUILD_RECRUIT_UPGRADE_MAX_LEVEL = 3;
 export const GUILD_NOTICE_BOARD_UPGRADE_MAX_LEVEL = 3;
 export const GUILD_SECONDARY_PARTY_COUNT_MAX_LEVEL = 3;
 export const GUILD_SECONDARY_PARTY_MEMBER_MAX_LEVEL = 5;
-export const GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL = 15;
-export const GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL = 11;
+export const GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL = 11;
+export const GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL = 22;
 
 export const GUILD_SECONDARY_PARTY_UPGRADE_IDS: GuildSecondaryPartyUpgradeId[] = [
   "secondary_party_count",
   "secondary_party_members",
   "secondary_party_experience_efficiency",
   "secondary_party_drop_efficiency",
-  "secondary_party_dispatch_duration",
+  "secondary_party_assignment_duration",
 ];
 
 export const GUILD_SECONDARY_PARTY_PER_PARTY_UPGRADE_IDS: GuildSecondaryPartyPerPartyUpgradeId[] = [
   "secondary_party_members",
   "secondary_party_experience_efficiency",
   "secondary_party_drop_efficiency",
-  "secondary_party_dispatch_duration",
+  "secondary_party_assignment_duration",
 ];
 
 export type GuildRecruitUpgradePurchaseFailureReason =
@@ -382,7 +382,7 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   secondary_party_experience_efficiency: {
     id: "secondary_party_experience_efficiency",
     displayName: "EXP Efficiency",
-    description: "Improves this Field Team's dispatch EXP gain.",
+    description: "Improves this Field Team's assignment EXP gain.",
     maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
@@ -393,7 +393,7 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
   secondary_party_drop_efficiency: {
     id: "secondary_party_drop_efficiency",
     displayName: "Drop Efficiency",
-    description: "Improves this Field Team's dispatch loot gain.",
+    description: "Improves this Field Team's assignment loot gain.",
     maxLevel: GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL
@@ -401,16 +401,16 @@ const GUILD_SECONDARY_PARTY_UPGRADE_DEFINITIONS: Record<
         : null,
     getEffectText: (level) => `${formatMultiplier(getGuildSecondaryPartyEfficiencyForLevel(level))}x`,
   },
-  secondary_party_dispatch_duration: {
-    id: "secondary_party_dispatch_duration",
-    displayName: "Dispatch Duration",
-    description: "Unlocks longer dispatches for this Field Team.",
+  secondary_party_assignment_duration: {
+    id: "secondary_party_assignment_duration",
+    displayName: "Assignment Duration",
+    description: "Extends how long this Field Team can farm before capping.",
     maxLevel: GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL,
     getCostForNextLevel: (nextLevel, partyNumber) =>
       nextLevel >= 2 && nextLevel <= GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL
         ? (1000 + (nextLevel - 2) * 2000) * partyNumber
         : null,
-    getEffectText: (level) => formatDurationMinutes(getGuildSecondaryPartyDispatchDurationMinutesForLevel(level)),
+    getEffectText: (level) => formatDurationMinutes(getGuildSecondaryPartyAssignmentDurationMinutesForLevel(level)),
   },
 };
 
@@ -978,15 +978,15 @@ export function getGuildSecondaryPartyDropEfficiency(
   );
 }
 
-export function getGuildSecondaryPartyDispatchDurationMs(
+export function getGuildSecondaryPartyAssignmentDurationMs(
   state: GameState,
   partyId: string,
 ): number {
-  const minutes = getGuildSecondaryPartyDispatchDurationMinutesForLevel(
+  const minutes = getGuildSecondaryPartyAssignmentDurationMinutesForLevel(
     getGuildSecondaryPartyPerPartyUpgradeLevels(
       state,
       partyId,
-    ).secondary_party_dispatch_duration,
+    ).secondary_party_assignment_duration,
   );
 
   return minutes * 60 * 1000;
@@ -1043,7 +1043,7 @@ function createInitialGuildSecondaryPartyPerPartyUpgradeLevels(): Record<
     secondary_party_members: 1,
     secondary_party_experience_efficiency: 1,
     secondary_party_drop_efficiency: 1,
-    secondary_party_dispatch_duration: 1,
+    secondary_party_assignment_duration: 1,
   };
 }
 
@@ -1130,9 +1130,12 @@ function sanitizeGuildSecondaryPartyPerPartyUpgradeLevels(
       1,
       GUILD_SECONDARY_PARTY_EFFICIENCY_MAX_LEVEL,
     ),
-    secondary_party_dispatch_duration: sanitizeUpgradeLevelWithMinimum(
-      levels?.secondary_party_dispatch_duration,
-      defaults.secondary_party_dispatch_duration,
+    secondary_party_assignment_duration: sanitizeUpgradeLevelWithMinimum(
+      levels?.secondary_party_assignment_duration ??
+        (
+          levels as Partial<Record<string, number>> | undefined
+        )?.secondary_party_dispatch_duration,
+      defaults.secondary_party_assignment_duration,
       1,
       GUILD_SECONDARY_PARTY_DURATION_MAX_LEVEL,
     ),
@@ -1275,11 +1278,11 @@ function getSecondaryPartyNumber(partyId: string): number {
 }
 
 function getGuildSecondaryPartyEfficiencyForLevel(level: number): number {
-  return Math.min(0.8, 0.1 + (Math.max(1, level) - 1) * 0.05);
+  return Math.min(1, 0.5 + (Math.max(1, level) - 1) * 0.05);
 }
 
-function getGuildSecondaryPartyDispatchDurationMinutesForLevel(level: number): number {
-  return Math.min(360, 60 + (Math.max(1, level) - 1) * 30);
+function getGuildSecondaryPartyAssignmentDurationMinutesForLevel(level: number): number {
+  return Math.min(48 * 60, 6 * 60 + (Math.max(1, level) - 1) * 2 * 60);
 }
 
 function formatMultiplier(value: number): string {

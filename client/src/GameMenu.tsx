@@ -34,19 +34,11 @@ import type {
   GuildNoticeBoardUpgradeId,
   GuildRecruitUpgradeId,
   GuildRosterSlotRef,
-  GuildSecondaryPartyDispatchResult,
+  GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
 } from "./game";
 
-export type GuildSecondaryPartyAccomplishedSummary = {
-  partyName: string;
-  mapName: string;
-  subzoneName: string;
-  durationMs: number;
-  experienceEfficiency: number;
-  dropEfficiency: number;
-  result: GuildSecondaryPartyDispatchResult;
-};
+export type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
 
 export function GameMenu({
   activeTab,
@@ -70,7 +62,7 @@ export function GameMenu({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
-  guildSecondaryPartyAccomplishedSummary,
+  guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   highestCharacterLevelEver,
   onAllocateStatPoint,
@@ -100,9 +92,9 @@ export function GameMenu({
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
-  onDispatchGuildSecondaryParty,
-  onClaimGuildSecondaryPartyDispatch,
-  onCancelGuildSecondaryPartyDispatch,
+  onAssignGuildSecondaryParty,
+  onRedeemGuildSecondaryPartyAssignment,
+  onReturnGuildSecondaryPartyAssignment,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -136,7 +128,7 @@ export function GameMenu({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
-  guildSecondaryPartyAccomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
+  guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
@@ -188,14 +180,13 @@ export function GameMenu({
     companionId: string,
     target: GuildRosterSlotRef,
   ) => void;
-  onDispatchGuildSecondaryParty: (
+  onAssignGuildSecondaryParty: (
     partyId: string,
     mapId: DebugMapId,
     subzoneId: string,
-    durationMs: number,
   ) => void;
-  onClaimGuildSecondaryPartyDispatch: (partyId: string) => void;
-  onCancelGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
+  onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -322,8 +313,8 @@ export function GameMenu({
                   guildUpgradeResultMessage={guildUpgradeResultMessage}
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
-                  guildSecondaryPartyAccomplishedSummary={
-                    guildSecondaryPartyAccomplishedSummary
+                  guildSecondaryPartyRedeemSummary={
+                    guildSecondaryPartyRedeemSummary
                   }
                   canUseGuildTavern={canUseGuildTavern}
                   gameState={gameState}
@@ -343,12 +334,12 @@ export function GameMenu({
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
                   onCancelGuildNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
                   onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
-                  onDispatchGuildSecondaryParty={onDispatchGuildSecondaryParty}
-                  onClaimGuildSecondaryPartyDispatch={
-                    onClaimGuildSecondaryPartyDispatch
+                  onAssignGuildSecondaryParty={onAssignGuildSecondaryParty}
+                  onRedeemGuildSecondaryPartyAssignment={
+                    onRedeemGuildSecondaryPartyAssignment
                   }
-                  onCancelGuildSecondaryPartyDispatch={
-                    onCancelGuildSecondaryPartyDispatch
+                  onReturnGuildSecondaryPartyAssignment={
+                    onReturnGuildSecondaryPartyAssignment
                   }
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
@@ -387,7 +378,7 @@ function AtlasPanel({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
-  guildSecondaryPartyAccomplishedSummary,
+  guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   gameState,
   quests,
@@ -402,9 +393,9 @@ function AtlasPanel({
   onTakeGuildNoticeBoardQuest,
   onCancelGuildNoticeBoardQuest,
   onMoveGuildRosterCompanion,
-  onDispatchGuildSecondaryParty,
-  onClaimGuildSecondaryPartyDispatch,
-  onCancelGuildSecondaryPartyDispatch,
+  onAssignGuildSecondaryParty,
+  onRedeemGuildSecondaryPartyAssignment,
+  onReturnGuildSecondaryPartyAssignment,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -416,7 +407,7 @@ function AtlasPanel({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
-  guildSecondaryPartyAccomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
+  guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
   quests: GameState["quests"];
@@ -439,14 +430,13 @@ function AtlasPanel({
     companionId: string,
     target: GuildRosterSlotRef,
   ) => void;
-  onDispatchGuildSecondaryParty: (
+  onAssignGuildSecondaryParty: (
     partyId: string,
     mapId: DebugMapId,
     subzoneId: string,
-    durationMs: number,
   ) => void;
-  onClaimGuildSecondaryPartyDispatch: (partyId: string) => void;
-  onCancelGuildSecondaryPartyDispatch: (partyId: string) => void;
+  onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
+  onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
@@ -517,9 +507,7 @@ function AtlasPanel({
           upgradeResultMessage={guildUpgradeResultMessage}
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
           secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
-          secondaryPartyAccomplishedSummary={
-            guildSecondaryPartyAccomplishedSummary
-          }
+          secondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
           onMoveGuildRosterCompanion={onMoveGuildRosterCompanion}
@@ -532,9 +520,11 @@ function AtlasPanel({
           onRecruit={onRecruitGuildCandidate}
           onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
-          onDispatchSecondaryParty={onDispatchGuildSecondaryParty}
-          onClaimSecondaryPartyDispatch={onClaimGuildSecondaryPartyDispatch}
-          onCancelSecondaryPartyDispatch={onCancelGuildSecondaryPartyDispatch}
+          onAssignSecondaryParty={onAssignGuildSecondaryParty}
+          onRedeemSecondaryPartyAssignment={
+            onRedeemGuildSecondaryPartyAssignment
+          }
+          onReturnSecondaryPartyAssignment={onReturnGuildSecondaryPartyAssignment}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />
       ) : (

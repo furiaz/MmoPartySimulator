@@ -12,7 +12,7 @@ import { getSubzoneAtPosition } from "./subzoneSystem";
 import type { GameState } from "./state";
 import type { DebugMapId, WorldDiscoveryState, ZoneSubzone } from "./types";
 
-export const DISPATCH_WILD_MAP_IDS: DebugMapId[] = [
+export const ASSIGNMENT_WILD_MAP_IDS: DebugMapId[] = [
   MAP_ONE_ID,
   MAP_TWO_ID,
   MAP_THREE_ID,
@@ -22,7 +22,7 @@ export const DISPATCH_WILD_MAP_IDS: DebugMapId[] = [
   MAP_SEVEN_ID,
 ];
 
-export type DispatchDestination = {
+export type AssignmentDestination = {
   mapId: DebugMapId;
   mapName: string;
   subzoneId: string;
@@ -50,7 +50,7 @@ export function sanitizeWorldDiscoveryState(
   const visitedSubzonesByMapId: WorldDiscoveryState["visitedSubzonesByMapId"] = {};
 
   for (const mapId of worldDiscovery?.visitedMapIds ?? []) {
-    if (isDispatchWildMapId(mapId)) {
+    if (isAssignmentWildMapId(mapId)) {
       visitedMapIds.add(mapId);
     }
   }
@@ -58,13 +58,13 @@ export function sanitizeWorldDiscoveryState(
   for (const [mapId, subzoneIds] of Object.entries(
     worldDiscovery?.visitedSubzonesByMapId ?? {},
   )) {
-    if (!isDispatchWildMapId(mapId)) {
+    if (!isAssignmentWildMapId(mapId)) {
       continue;
     }
 
     const validSubzoneIds = new Set(
       debugMapDefinitions[mapId].subzones
-        ?.filter(isDispatchSubzone)
+        ?.filter(isAssignmentSubzone)
         .map((subzone) => subzone.id) ?? [],
     );
     const sanitizedSubzoneIds = [...new Set(subzoneIds ?? [])].filter((subzoneId) =>
@@ -93,15 +93,15 @@ export function recordCurrentWorldDiscovery(state: GameState): GameState {
   };
 }
 
-export function getDispatchDestinations(state: GameState): DispatchDestination[] {
+export function getAssignmentDestinations(state: GameState): AssignmentDestination[] {
   const discovery = sanitizeWorldDiscoveryState(state.worldDiscovery, state);
 
-  return DISPATCH_WILD_MAP_IDS.flatMap((mapId) => {
+  return ASSIGNMENT_WILD_MAP_IDS.flatMap((mapId) => {
     const subzoneIds = new Set(discovery.visitedSubzonesByMapId[mapId] ?? []);
     const definition = debugMapDefinitions[mapId];
 
     return (definition.subzones ?? [])
-      .filter((subzone) => subzoneIds.has(subzone.id) && isDispatchSubzone(subzone))
+      .filter((subzone) => subzoneIds.has(subzone.id) && isAssignmentSubzone(subzone))
       .map((subzone) => ({
         mapId,
         mapName: definition.displayName,
@@ -112,17 +112,17 @@ export function getDispatchDestinations(state: GameState): DispatchDestination[]
   });
 }
 
-export function getDispatchDestination(
+export function getAssignmentDestination(
   mapId: DebugMapId,
   subzoneId: string,
-): DispatchDestination | null {
-  if (!isDispatchWildMapId(mapId)) {
+): AssignmentDestination | null {
+  if (!isAssignmentWildMapId(mapId)) {
     return null;
   }
 
   const definition = debugMapDefinitions[mapId];
   const subzone = definition.subzones?.find(
-    (candidate) => candidate.id === subzoneId && isDispatchSubzone(candidate),
+    (candidate) => candidate.id === subzoneId && isAssignmentSubzone(candidate),
   );
 
   if (!subzone) {
@@ -138,7 +138,7 @@ export function getDispatchDestination(
   };
 }
 
-export function isDispatchSubzone(subzone: ZoneSubzone): boolean {
+export function isAssignmentSubzone(subzone: ZoneSubzone): boolean {
   return subzone.enemyTypeIds.length > 0;
 }
 
@@ -146,7 +146,7 @@ function recordCurrentSubzoneVisited(
   worldDiscovery: WorldDiscoveryState,
   state?: Pick<GameState, "currentMapId" | "map" | "partyLeaderId" | "entities">,
 ): WorldDiscoveryState {
-  if (!state?.currentMapId || !isDispatchWildMapId(state.currentMapId) || !state.map) {
+  if (!state?.currentMapId || !isAssignmentWildMapId(state.currentMapId) || !state.map) {
     return worldDiscovery;
   }
 
@@ -155,7 +155,7 @@ function recordCurrentSubzoneVisited(
     ? getSubzoneAtPosition(state.map, leader.position)
     : null;
 
-  if (!subzone || !isDispatchSubzone(subzone)) {
+  if (!subzone || !isAssignmentSubzone(subzone)) {
     return worldDiscovery;
   }
 
@@ -176,6 +176,6 @@ function recordCurrentSubzoneVisited(
   };
 }
 
-function isDispatchWildMapId(mapId: string): mapId is DebugMapId {
-  return DISPATCH_WILD_MAP_IDS.includes(mapId as DebugMapId);
+function isAssignmentWildMapId(mapId: string): mapId is DebugMapId {
+  return ASSIGNMENT_WILD_MAP_IDS.includes(mapId as DebugMapId);
 }

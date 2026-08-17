@@ -415,6 +415,75 @@ export function recordEnemyDefeatedForGuildNoticeBoard(
   };
 }
 
+export function recordEnemyDefeatsForGuildNoticeBoard(
+  state: GameState,
+  defeats: Array<{ enemyTypeId: EnemyTypeId; quantity: number }>,
+): GameState {
+  const countByEnemyTypeId = new Map<EnemyTypeId, number>();
+
+  for (const defeat of defeats) {
+    const quantity = Math.max(0, Math.floor(defeat.quantity));
+
+    if (quantity <= 0) {
+      continue;
+    }
+
+    countByEnemyTypeId.set(
+      defeat.enemyTypeId,
+      (countByEnemyTypeId.get(defeat.enemyTypeId) ?? 0) + quantity,
+    );
+  }
+
+  if (countByEnemyTypeId.size === 0) {
+    return state;
+  }
+
+  const board = sanitizeGuildNoticeBoardState(state.guildNoticeBoard, undefined, state);
+  let changed = false;
+  const slots = board.slots.map((slot) => {
+    if (!slot || slot.status !== "taken") {
+      return slot;
+    }
+
+    let progressed = false;
+    const objectives = slot.objectives.map((objective) => {
+      const defeatCount = countByEnemyTypeId.get(objective.enemyTypeId) ?? 0;
+      const nextObjective = updateObjectiveForEnemyCount(objective, defeatCount);
+
+      progressed = progressed || nextObjective !== objective;
+      return nextObjective;
+    });
+
+    if (!progressed) {
+      return slot;
+    }
+
+    const status: GuildNoticeBoardQuestStatus = areObjectivesComplete(objectives)
+      ? "done"
+      : slot.status;
+
+    changed = true;
+    return {
+      ...slot,
+      status,
+      objectives,
+    };
+  });
+
+  if (!changed) {
+    return state;
+  }
+
+  return {
+    ...state,
+    guildNoticeBoard: {
+      ...board,
+      slots,
+      hasSeenCurrentRefresh: false,
+    },
+  };
+}
+
 export function shouldShowGuildNoticeBoardSign(
   state: GameState,
   nowMs = Date.now(),
@@ -615,6 +684,23 @@ function updateObjectiveForEnemy(
   return {
     ...objective,
     currentCount: Math.min(objective.requiredCount, objective.currentCount + 1),
+  };
+}
+
+function updateObjectiveForEnemyCount(
+  objective: GuildNoticeBoardQuestObjective,
+  defeatCount: number,
+): GuildNoticeBoardQuestObjective {
+  if (defeatCount <= 0 || objective.currentCount >= objective.requiredCount) {
+    return objective;
+  }
+
+  return {
+    ...objective,
+    currentCount: Math.min(
+      objective.requiredCount,
+      objective.currentCount + defeatCount,
+    ),
   };
 }
 

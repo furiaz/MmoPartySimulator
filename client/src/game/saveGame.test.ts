@@ -310,7 +310,7 @@ describe("save game serialization", () => {
           id: GUILD_SECONDARY_PARTY_ID,
           displayName: "Field Team 1",
           companionIds: [secondaryCompanion.id],
-          dispatch: null,
+          assignment: null,
         },
       ],
     };

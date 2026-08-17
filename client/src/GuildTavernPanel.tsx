@@ -12,9 +12,10 @@ import {
   getCurrencyBalance,
   getEnemyType,
   getGuildSecondaryPartyCount,
-  getGuildSecondaryPartyDispatchDestinations,
-  getGuildSecondaryPartyDispatchPreview,
-  getGuildSecondaryPartyDispatchDurationMs,
+  getGuildSecondaryPartyAssignmentDestinations,
+  getGuildSecondaryPartyAssignmentPreview,
+  getGuildSecondaryPartyDropEfficiency,
+  getGuildSecondaryPartyExperienceEfficiency,
   getGuildSecondaryPartyUpgradeStatuses,
   getGuildCompanionCapacity,
   getGuildSecondaryPartiesState,
@@ -30,9 +31,9 @@ import {
   type GuildRecruitCandidate,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
-  type GuildSecondaryPartyDispatchResult,
+  type GuildSecondaryPartyAssignmentResult,
   type GuildSecondaryParty,
-  type GuildSecondaryPartyDispatchState,
+  type GuildSecondaryPartyAssignmentState,
   type GuildSecondaryPartyUpgradeId,
   type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
@@ -58,14 +59,14 @@ type GuildView =
 const MAX_MAIN_PARTY_SLOTS = 5;
 const innActions = ["Rooms", "Kitchen"];
 
-export type GuildSecondaryPartyAccomplishedSummary = {
+export type GuildSecondaryPartyRedeemSummary = {
   partyName: string;
   mapName: string;
   subzoneName: string;
-  durationMs: number;
+  elapsedMs: number;
   experienceEfficiency: number;
   dropEfficiency: number;
-  result: GuildSecondaryPartyDispatchResult;
+  result: GuildSecondaryPartyAssignmentResult;
 };
 
 export function GuildTavernPanel({
@@ -85,11 +86,11 @@ export function GuildTavernPanel({
   onRecruit,
   onRerollNoticeBoard,
   onTakeNoticeBoardQuest,
-  onDispatchSecondaryParty,
-  onClaimSecondaryPartyDispatch,
-  onCancelSecondaryPartyDispatch,
+  onAssignSecondaryParty,
+  onRedeemSecondaryPartyAssignment,
+  onReturnSecondaryPartyAssignment,
   onClearSecondaryPartySummary,
-  secondaryPartyAccomplishedSummary,
+  secondaryPartyRedeemSummary,
 }: {
   canUse: boolean;
   currentTime: number;
@@ -97,7 +98,7 @@ export function GuildTavernPanel({
   upgradeResultMessage?: string | null;
   noticeBoardResultMessage?: string | null;
   secondaryPartyResultMessage?: string | null;
-  secondaryPartyAccomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
+  secondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummary | null;
   state: GameState;
   onCancelNoticeBoardQuest: (slotIndex?: number) => void;
   onMoveGuildRosterCompanion: (
@@ -114,14 +115,13 @@ export function GuildTavernPanel({
   onRecruit: (candidateId?: string) => void;
   onRerollNoticeBoard: () => void;
   onTakeNoticeBoardQuest: (slotIndex?: number) => void;
-  onDispatchSecondaryParty: (
+  onAssignSecondaryParty: (
     partyId: string,
     mapId: DebugMapId,
     subzoneId: string,
-    durationMs: number,
   ) => void;
-  onClaimSecondaryPartyDispatch: (partyId: string) => void;
-  onCancelSecondaryPartyDispatch: (partyId: string) => void;
+  onRedeemSecondaryPartyAssignment: (partyId: string) => void;
+  onReturnSecondaryPartyAssignment: (partyId: string) => void;
   onClearSecondaryPartySummary: () => void;
 }) {
   const [activeSection, setActiveSection] =
@@ -239,15 +239,15 @@ export function GuildTavernPanel({
         <GuildSecondaryPartiesView
           canUse={canUse}
           resultMessage={secondaryPartyResultMessage}
-          accomplishedSummary={secondaryPartyAccomplishedSummary}
+          redeemSummary={secondaryPartyRedeemSummary}
           currentTime={currentTime}
           selectedCompanionId={selectedRosterCompanionId}
           state={state}
           onBack={() => setGuildView("hall")}
-          onCancelDispatch={onCancelSecondaryPartyDispatch}
-          onClaimDispatch={onClaimSecondaryPartyDispatch}
+          onRedeemAssignment={onRedeemSecondaryPartyAssignment}
+          onReturnAssignment={onReturnSecondaryPartyAssignment}
           onClearSummary={onClearSecondaryPartySummary}
-          onDispatch={onDispatchSecondaryParty}
+          onAssign={onAssignSecondaryParty}
           onMoveCompanion={onMoveGuildRosterCompanion}
           onOpenUpgrades={() => setGuildView("secondaryPartyUpgrades")}
           onSelectCompanion={setSelectedRosterCompanionId}
@@ -1033,35 +1033,34 @@ function GuildUpgradeRow({
 
 function GuildSecondaryPartiesView({
   canUse,
-  accomplishedSummary,
+  redeemSummary,
   currentTime,
   resultMessage,
   selectedCompanionId,
   state,
   onBack,
-  onCancelDispatch,
-  onClaimDispatch,
+  onRedeemAssignment,
+  onReturnAssignment,
   onClearSummary,
-  onDispatch,
+  onAssign,
   onMoveCompanion,
   onOpenUpgrades,
   onSelectCompanion,
 }: {
   canUse: boolean;
-  accomplishedSummary?: GuildSecondaryPartyAccomplishedSummary | null;
+  redeemSummary?: GuildSecondaryPartyRedeemSummary | null;
   currentTime: number;
   resultMessage?: string | null;
   selectedCompanionId: string | null;
   state: GameState;
   onBack: () => void;
-  onCancelDispatch: (partyId: string) => void;
-  onClaimDispatch: (partyId: string) => void;
+  onRedeemAssignment: (partyId: string) => void;
+  onReturnAssignment: (partyId: string) => void;
   onClearSummary: () => void;
-  onDispatch: (
+  onAssign: (
     partyId: string,
     mapId: DebugMapId,
     subzoneId: string,
-    durationMs: number,
   ) => void;
   onMoveCompanion: (companionId: string, target: GuildRosterSlotRef) => void;
   onOpenUpgrades: () => void;
@@ -1070,15 +1069,14 @@ function GuildSecondaryPartiesView({
   const [draggedCompanionId, setDraggedCompanionId] = useState<string | null>(
     null,
   );
-  const [dispatchPartyId, setDispatchPartyId] = useState<string | null>(null);
+  const [assignmentPartyId, setAssignmentPartyId] = useState<string | null>(null);
   const [selectedDestinationKey, setSelectedDestinationKey] =
     useState<string>("");
-  const [selectedDurationMs, setSelectedDurationMs] = useState(60 * 60 * 1000);
   const activeCompanions = getActiveCompanions(state).sort(compareCompanionCards);
   const innReserveCompanions = getInnReserveCompanions(state);
   const secondaryParties = getGuildSecondaryPartiesState(state);
   const unlockedPartyCount = getGuildSecondaryPartyCount(state);
-  const dispatchDestinations = getGuildSecondaryPartyDispatchDestinations(state);
+  const assignmentDestinations = getGuildSecondaryPartyAssignmentDestinations(state);
   const partySizeLimit = getPartySizeLimit(state);
   const rosterCapacity = getGuildCompanionCapacity();
   const rosterCount = getTotalRosterCompanionCount(state);
@@ -1090,49 +1088,37 @@ function GuildSecondaryPartiesView({
     ].map((companion) => [companion.id, companion]),
   );
   const reserveSlotCount = innReserveCompanions.length + 1;
-  const dispatchParty = dispatchPartyId
-    ? secondaryParties.parties.find((party) => party.id === dispatchPartyId) ?? null
+  const assignmentParty = assignmentPartyId
+    ? secondaryParties.parties.find((party) => party.id === assignmentPartyId) ?? null
     : null;
   const selectedDestination = selectedDestinationKey
-    ? parseDispatchDestinationKey(selectedDestinationKey)
+    ? parseAssignmentDestinationKey(selectedDestinationKey)
     : null;
-  const dispatchPreview =
-    dispatchParty && selectedDestination
-      ? getGuildSecondaryPartyDispatchPreview(
+  const assignmentPreview =
+    assignmentParty && selectedDestination
+      ? getGuildSecondaryPartyAssignmentPreview(
           state,
-          dispatchParty.id,
+          assignmentParty.id,
           selectedDestination.mapId,
           selectedDestination.subzoneId,
         )
       : null;
-  const maxDispatchDurationMs = dispatchParty
-    ? getGuildSecondaryPartyDispatchDurationMs(state, dispatchParty.id)
-    : 60 * 60 * 1000;
-  const dispatchDurationOptions = createDispatchDurationOptions(
-    maxDispatchDurationMs,
-  );
 
   useEffect(() => {
     setDraggedCompanionId(null);
   }, [state]);
 
   useEffect(() => {
-    if (!selectedDestinationKey && dispatchDestinations.length > 0) {
-      const firstDestination = dispatchDestinations[0];
+    if (!selectedDestinationKey && assignmentDestinations.length > 0) {
+      const firstDestination = assignmentDestinations[0];
       setSelectedDestinationKey(
-        createDispatchDestinationKey(
+        createAssignmentDestinationKey(
           firstDestination.mapId,
           firstDestination.subzoneId,
         ),
       );
     }
-  }, [dispatchDestinations, selectedDestinationKey]);
-
-  useEffect(() => {
-    if (selectedDurationMs > maxDispatchDurationMs) {
-      setSelectedDurationMs(maxDispatchDurationMs);
-    }
-  }, [maxDispatchDurationMs, selectedDurationMs]);
+  }, [assignmentDestinations, selectedDestinationKey]);
 
   useEffect(() => {
     if (selectedCompanionId && !companionsById[selectedCompanionId]) {
@@ -1183,39 +1169,39 @@ function GuildSecondaryPartiesView({
         {resultMessage ? (
           <p className="guild-recruit-message">{resultMessage}</p>
         ) : null}
-        {accomplishedSummary ? (
-          <div className="guild-dispatch-summary">
+        {redeemSummary ? (
+          <div className="guild-assignment-summary">
             <div>
-              <span className="guild-recruit-kicker">Accomplished</span>
-              <h4>{accomplishedSummary.partyName}</h4>
+              <span className="guild-recruit-kicker">Redeemed</span>
+              <h4>{redeemSummary.partyName}</h4>
               <p>
-                {accomplishedSummary.mapName} - {accomplishedSummary.subzoneName}
+                {redeemSummary.mapName} - {redeemSummary.subzoneName}
                 {" | "}
-                {formatDispatchDuration(accomplishedSummary.durationMs)}
+                {formatAssignmentDuration(redeemSummary.elapsedMs)}
               </p>
             </div>
             <dl>
               <div>
                 <dt>EXP Eff.</dt>
-                <dd>{formatDispatchMultiplier(accomplishedSummary.experienceEfficiency)}</dd>
+                <dd>{formatAssignmentMultiplier(redeemSummary.experienceEfficiency)}</dd>
               </div>
               <div>
                 <dt>Drop Eff.</dt>
-                <dd>{formatDispatchMultiplier(accomplishedSummary.dropEfficiency)}</dd>
+                <dd>{formatAssignmentMultiplier(redeemSummary.dropEfficiency)}</dd>
               </div>
               <div>
                 <dt>Kills</dt>
-                <dd>{accomplishedSummary.result.enemyKills}</dd>
+                <dd>{redeemSummary.result.enemyKills}</dd>
               </div>
               <div>
                 <dt>XP</dt>
-                <dd>{accomplishedSummary.result.xpGranted}</dd>
+                <dd>{redeemSummary.result.xpGranted}</dd>
               </div>
             </dl>
             <p>
-              Loot: {formatDispatchLoot(accomplishedSummary.result.loot)}
+              Loot: {formatAssignmentLoot(redeemSummary.result.loot)}
               {" | "}
-              Resources: {formatDispatchLoot(accomplishedSummary.result.resources)}
+              Resources: {formatAssignmentLoot(redeemSummary.result.resources)}
             </p>
             <button onClick={onClearSummary} type="button">
               Continue
@@ -1279,19 +1265,28 @@ function GuildSecondaryPartiesView({
 
           {secondaryParties.parties.map((party, partyIndex) => {
             const isUnlocked = partyIndex < unlockedPartyCount;
-            const displayDispatch = getDisplayDispatch(party, currentTime);
+            const displayAssignment = getDisplayAssignment(party, currentTime);
             const partyCompanionCount = party.companionIds.filter(Boolean).length;
-            const isPartyLocked = Boolean(displayDispatch);
+            const isPartyLocked = Boolean(displayAssignment);
+            const redeemReady = displayAssignment
+              ? getAssignmentClaimableElapsedMs(displayAssignment, currentTime) >=
+                60_000
+              : false;
+            const efficiencyTooltip = [
+              `EXP: ${formatAssignmentPercent(getGuildSecondaryPartyExperienceEfficiency(state, party.id))}`,
+              `Drop: ${formatAssignmentPercent(getGuildSecondaryPartyDropEfficiency(state, party.id))}`,
+            ].join("\n");
 
             return (
               <RosterColumn
                 key={party.id}
                 subtitle={
                   isUnlocked
-                    ? getDispatchStatusLabel(displayDispatch, currentTime)
+                    ? getAssignmentStatusLabel(displayAssignment, currentTime)
                     : `Unlock Field Team ${partyIndex + 1}`
                 }
                 title={party.displayName}
+                titleTooltip={efficiencyTooltip}
               >
                 {Array.from({ length: MAX_MAIN_PARTY_SLOTS }, (_, index) => {
                   const isMemberSlotUnlocked = isUnlocked &&
@@ -1310,7 +1305,7 @@ function GuildSecondaryPartiesView({
                       locked={!isMemberSlotUnlocked || isPartyLocked}
                       lockedText={
                         isPartyLocked
-                          ? "Dispatched"
+                          ? "Assigned"
                           : isUnlocked
                             ? "Upgrade"
                             : "Locked"
@@ -1328,38 +1323,37 @@ function GuildSecondaryPartiesView({
                     />
                   );
                 })}
-                <div className="guild-dispatch-actions">
+                <div className="guild-assignment-actions">
                   {!isUnlocked ? (
                     <small>Buy Number of Field Teams to unlock.</small>
-                  ) : displayDispatch?.status === "completed" ? (
-                    <>
-                      <strong>Returned</strong>
-                      <button
-                        disabled={!canUse}
-                        onClick={() => onClaimDispatch(party.id)}
-                        type="button"
-                      >
-                        Accomplished
-                      </button>
-                      <button
-                        disabled={!canUse}
-                        onClick={() => onCancelDispatch(party.id)}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : displayDispatch ? (
+                  ) : displayAssignment ? (
                     <>
                       <strong>
-                        Returns in {formatDispatchCountdown(displayDispatch.endsAtMs, currentTime)}
+                        {getAssignmentActionLabel(displayAssignment, currentTime)}
                       </strong>
+                      <small>
+                        {displayAssignment.mapName} - {displayAssignment.subzoneName}
+                      </small>
                       <button
-                        disabled={!canUse}
-                        onClick={() => onCancelDispatch(party.id)}
+                        disabled={!canUse || !redeemReady}
+                        onClick={() => onRedeemAssignment(party.id)}
                         type="button"
                       >
-                        Cancel
+                        Redeem
+                      </button>
+                      <button
+                        disabled={!canUse}
+                        onClick={() => onReturnAssignment(party.id)}
+                        type="button"
+                      >
+                        Return
+                      </button>
+                      <button
+                        disabled={!canUse}
+                        onClick={() => setAssignmentPartyId(party.id)}
+                        type="button"
+                      >
+                        Assign
                       </button>
                     </>
                   ) : (
@@ -1368,15 +1362,15 @@ function GuildSecondaryPartiesView({
                         disabled={
                           !canUse ||
                           partyCompanionCount <= 0 ||
-                          dispatchDestinations.length <= 0
+                          assignmentDestinations.length <= 0
                         }
-                        onClick={() => setDispatchPartyId(party.id)}
+                        onClick={() => setAssignmentPartyId(party.id)}
                         type="button"
                       >
-                        Dispatch
+                        Assign
                       </button>
                       <small>
-                        {dispatchDestinations.length > 0
+                        {assignmentDestinations.length > 0
                           ? `${partyCompanionCount} assigned`
                           : "No visited wild subzones"}
                       </small>
@@ -1388,18 +1382,18 @@ function GuildSecondaryPartiesView({
           })}
         </div>
 
-        {dispatchParty ? (
-          <div className="guild-dispatch-setup">
+        {assignmentParty ? (
+          <div className="guild-assignment-setup">
             <div className="guild-roster-topline">
               <div>
-                <span className="guild-recruit-kicker">Dispatch Setup</span>
-                <h3>{dispatchParty.displayName}</h3>
+                <span className="guild-recruit-kicker">Assignment Setup</span>
+                <h3>{assignmentParty.displayName}</h3>
               </div>
-              <button onClick={() => setDispatchPartyId(null)} type="button">
+              <button onClick={() => setAssignmentPartyId(null)} type="button">
                 Close
               </button>
             </div>
-            {dispatchDestinations.length > 0 ? (
+            {assignmentDestinations.length > 0 ? (
               <>
                 <label>
                   Destination
@@ -1409,13 +1403,13 @@ function GuildSecondaryPartiesView({
                     }
                     value={selectedDestinationKey}
                   >
-                    {dispatchDestinations.map((destination) => (
+                    {assignmentDestinations.map((destination) => (
                       <option
-                        key={createDispatchDestinationKey(
+                        key={createAssignmentDestinationKey(
                           destination.mapId,
                           destination.subzoneId,
                         )}
-                        value={createDispatchDestinationKey(
+                        value={createAssignmentDestinationKey(
                           destination.mapId,
                           destination.subzoneId,
                         )}
@@ -1425,79 +1419,67 @@ function GuildSecondaryPartiesView({
                     ))}
                   </select>
                 </label>
-                <label>
-                  Duration
-                  <select
-                    onChange={(event) =>
-                      setSelectedDurationMs(Number(event.currentTarget.value))
-                    }
-                    value={selectedDurationMs}
-                  >
-                    {dispatchDurationOptions.map((durationMs) => (
-                      <option key={durationMs} value={durationMs}>
-                        {formatDispatchDuration(durationMs)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {dispatchPreview?.ok ? (
-                  <div className="guild-dispatch-preview">
+                {assignmentPreview?.ok ? (
+                  <div className="guild-assignment-preview">
                     <dl>
                       <div>
                         <dt>Rating</dt>
-                        <dd>{dispatchPreview.estimate.rating}</dd>
+                        <dd>{assignmentPreview.estimate.rating}</dd>
                       </div>
                       <div>
                         <dt>Kills/hr</dt>
-                        <dd>{dispatchPreview.estimate.killsPerHour}</dd>
+                        <dd>{assignmentPreview.estimate.killsPerHour}</dd>
+                      </div>
+                      <div>
+                        <dt>Max Time</dt>
+                        <dd>{formatAssignmentDuration(assignmentPreview.maxDurationMs)}</dd>
                       </div>
                       <div>
                         <dt>EXP Eff.</dt>
-                        <dd>{formatDispatchMultiplier(dispatchPreview.experienceEfficiency)}</dd>
+                        <dd>{formatAssignmentMultiplier(assignmentPreview.experienceEfficiency)}</dd>
                       </div>
                       <div>
                         <dt>Drop Eff.</dt>
-                        <dd>{formatDispatchMultiplier(dispatchPreview.dropEfficiency)}</dd>
+                        <dd>{formatAssignmentMultiplier(assignmentPreview.dropEfficiency)}</dd>
                       </div>
                     </dl>
                     <p>
                       Possible drops:{" "}
-                      {formatItemIdList(dispatchPreview.estimate.estimatedDropsPerHour.map((drop) => drop.itemId))}
+                      {formatItemIdList(assignmentPreview.estimate.estimatedDropsPerHour.map((drop) => drop.itemId))}
                     </p>
                     <p>
                       Resources:{" "}
-                      {formatResourceTypes(dispatchPreview.estimate.resources)}
+                      {formatResourceTypes(assignmentPreview.estimate.resources)}
                     </p>
-                    {dispatchPreview.estimate.warnings.length > 0 ? (
+                    {assignmentPreview.estimate.warnings.length > 0 ? (
                       <p className="guild-recruit-message">
-                        Warning: {dispatchPreview.estimate.warnings.join(", ")}
+                        Warning: {assignmentPreview.estimate.warnings.join(", ")}
                       </p>
                     ) : null}
                   </div>
-                ) : dispatchPreview ? (
-                  <p className="guild-recruit-message">{dispatchPreview.message}</p>
+                ) : assignmentPreview ? (
+                  <p className="guild-recruit-message">{assignmentPreview.message}</p>
                 ) : null}
                 <button
-                  disabled={!canUse || !dispatchPreview?.ok}
+                  disabled={!canUse || !assignmentPreview?.ok}
                   onClick={() => {
                     if (selectedDestination) {
-                      onDispatch(
-                        dispatchParty.id,
+                      onAssign(
+                        assignmentParty.id,
                         selectedDestination.mapId,
                         selectedDestination.subzoneId,
-                        selectedDurationMs,
                       );
-                      setDispatchPartyId(null);
+                      setAssignmentPartyId(null);
                     }
                   }}
                   type="button"
                 >
-                  Send Party
+                  Assign
                 </button>
               </>
             ) : (
               <p className="guild-recruit-message">
-                Visit a wild subzone with enemies to unlock dispatch destinations.
+                Visit a wild subzone with enemies to unlock assignment destinations.
               </p>
             )}
           </div>
@@ -1511,14 +1493,16 @@ function RosterColumn({
   children,
   subtitle,
   title,
+  titleTooltip,
 }: {
   children: ReactNode;
   subtitle?: string;
   title: string;
+  titleTooltip?: string;
 }) {
   return (
     <div className="guild-roster-column">
-      <h4>{title}</h4>
+      <h4 title={titleTooltip}>{title}</h4>
       <small aria-hidden={subtitle ? undefined : true}>{subtitle ?? ""}</small>
       <div>{children}</div>
     </div>
@@ -1663,50 +1647,79 @@ function CompanionRosterCard({
   );
 }
 
-function getDisplayDispatch(
+function getDisplayAssignment(
   party: GuildSecondaryParty,
   currentTime: number,
-): GuildSecondaryPartyDispatchState | null {
-  if (!party.dispatch) {
+): GuildSecondaryPartyAssignmentState | null {
+  if (!party.assignment) {
     return null;
   }
 
   if (
-    party.dispatch.status === "dispatched" &&
-    currentTime >= party.dispatch.endsAtMs
+    party.assignment.status === "assigned" &&
+    currentTime >= party.assignment.capsAtMs
   ) {
     return {
-      ...party.dispatch,
-      status: "completed",
+      ...party.assignment,
+      status: "capped",
     };
   }
 
-  return party.dispatch;
+  return party.assignment;
 }
 
-function getDispatchStatusLabel(
-  dispatch: GuildSecondaryPartyDispatchState | null,
+function getAssignmentStatusLabel(
+  assignment: GuildSecondaryPartyAssignmentState | null,
   currentTime: number,
 ): string {
-  if (!dispatch) {
+  if (!assignment) {
     return "Idle";
   }
 
-  if (dispatch.status === "completed") {
-    return "Returned";
+  if (assignment.status === "pending_loot") {
+    return "Pending loot";
   }
 
-  return `Away ${formatDispatchCountdown(dispatch.endsAtMs, currentTime)}`;
+  if (assignment.status === "capped") {
+    return "Capped";
+  }
+
+  return `Assigned ${formatAssignmentDuration(getAssignmentClaimableElapsedMs(assignment, currentTime))}`;
 }
 
-function createDispatchDestinationKey(
+function getAssignmentActionLabel(
+  assignment: GuildSecondaryPartyAssignmentState,
+  currentTime: number,
+): string {
+  if (assignment.status === "pending_loot") {
+    return "Pending loot";
+  }
+
+  if (assignment.status === "capped") {
+    return `Capped ${formatAssignmentDuration(assignment.maxDurationMs)}`;
+  }
+
+  return `${formatAssignmentDuration(getAssignmentClaimableElapsedMs(assignment, currentTime))} / ${formatAssignmentDuration(assignment.maxDurationMs)}`;
+}
+
+function getAssignmentClaimableElapsedMs(
+  assignment: GuildSecondaryPartyAssignmentState,
+  currentTime: number,
+): number {
+  return Math.max(
+    0,
+    Math.min(currentTime, assignment.capsAtMs) - assignment.lastSettledAtMs,
+  );
+}
+
+function createAssignmentDestinationKey(
   mapId: DebugMapId,
   subzoneId: string,
 ): string {
   return `${mapId}|${subzoneId}`;
 }
 
-function parseDispatchDestinationKey(
+function parseAssignmentDestinationKey(
   key: string,
 ): { mapId: DebugMapId; subzoneId: string } | null {
   const [mapId, subzoneId] = key.split("|");
@@ -1721,28 +1734,7 @@ function parseDispatchDestinationKey(
   };
 }
 
-function createDispatchDurationOptions(maxDurationMs: number): number[] {
-  const stepMs = 30 * 60 * 1000;
-  const firstDurationMs = 60 * 60 * 1000;
-  const safeMaxDurationMs = Math.max(firstDurationMs, maxDurationMs);
-  const options: number[] = [];
-
-  for (
-    let durationMs = firstDurationMs;
-    durationMs <= safeMaxDurationMs;
-    durationMs += stepMs
-  ) {
-    options.push(durationMs);
-  }
-
-  return options;
-}
-
-function formatDispatchCountdown(endAtMs: number, currentTime: number): string {
-  return formatDispatchDuration(Math.max(0, endAtMs - currentTime));
-}
-
-function formatDispatchDuration(durationMs: number): string {
+function formatAssignmentDuration(durationMs: number): string {
   const totalMinutes = Math.max(0, Math.ceil(durationMs / 60_000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -1758,12 +1750,16 @@ function formatDispatchDuration(durationMs: number): string {
   return `${minutes}m`;
 }
 
-function formatDispatchMultiplier(value: number): string {
+function formatAssignmentMultiplier(value: number): string {
   return `${value.toFixed(2)}x`;
 }
 
-function formatDispatchLoot(
-  loot: GuildSecondaryPartyDispatchResult["loot"],
+function formatAssignmentPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatAssignmentLoot(
+  loot: GuildSecondaryPartyAssignmentResult["loot"],
 ): string {
   if (loot.length <= 0) {
     return "None";

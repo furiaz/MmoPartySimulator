@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createCompanion } from "./entities";
 import {
   createInitialGuildUpgradesState,
+  getGuildSecondaryPartyAssignmentDurationMs,
   getGuildSecondaryPartyCount,
-  getGuildSecondaryPartyDispatchDurationMs,
   getGuildSecondaryPartyDropEfficiency,
   getGuildSecondaryPartyExperienceEfficiency,
   getGuildSecondaryPartyMemberSlotCount,
@@ -22,9 +22,9 @@ describe("guild field team upgrades", () => {
 
     expect(getGuildSecondaryPartyCount(state)).toBe(0);
     expect(getGuildSecondaryPartyMemberSlotCount(state, GUILD_SECONDARY_PARTY_ID)).toBe(1);
-    expect(getGuildSecondaryPartyExperienceEfficiency(state, GUILD_SECONDARY_PARTY_ID)).toBe(0.1);
-    expect(getGuildSecondaryPartyDropEfficiency(state, GUILD_SECONDARY_PARTY_ID)).toBe(0.1);
-    expect(getGuildSecondaryPartyDispatchDurationMs(state, GUILD_SECONDARY_PARTY_ID)).toBe(60 * 60 * 1000);
+    expect(getGuildSecondaryPartyExperienceEfficiency(state, GUILD_SECONDARY_PARTY_ID)).toBe(0.5);
+    expect(getGuildSecondaryPartyDropEfficiency(state, GUILD_SECONDARY_PARTY_ID)).toBe(0.5);
+    expect(getGuildSecondaryPartyAssignmentDurationMs(state, GUILD_SECONDARY_PARTY_ID)).toBe(6 * 60 * 60 * 1000);
   });
 
   it("purchases Field Team count upgrades with high scaling costs", () => {
@@ -161,7 +161,7 @@ describe("guild field team upgrades", () => {
 
     expect(getGuildSecondaryPartyCount(restored.state)).toBe(1);
     expect(getGuildSecondaryPartyMemberSlotCount(restored.state, GUILD_SECONDARY_PARTY_ID)).toBe(2);
-    expect(getGuildSecondaryPartyExperienceEfficiency(restored.state, GUILD_SECONDARY_PARTY_ID)).toBeCloseTo(0.15);
+    expect(getGuildSecondaryPartyExperienceEfficiency(restored.state, GUILD_SECONDARY_PARTY_ID)).toBeCloseTo(0.55);
   });
 });
 

@@ -2532,30 +2532,38 @@ export type GuildSecondaryParty = {
   id: string;
   displayName: string;
   companionIds: Array<string | null>;
-  dispatch?: GuildSecondaryPartyDispatchState | null;
+  assignment?: GuildSecondaryPartyAssignmentState | null;
 };
 
 export type GuildSecondaryPartiesState = {
   parties: GuildSecondaryParty[];
 };
 
-export type GuildSecondaryPartyDispatchStatus =
-  | "dispatched"
-  | "completed";
+export type GuildSecondaryPartyAssignmentStatus =
+  | "assigned"
+  | "capped"
+  | "pending_loot";
 
-export type GuildSecondaryPartyDispatchLoot = {
+export type GuildSecondaryPartyAssignmentLoot = {
   itemId: ItemId;
   quantity: number;
 };
 
-export type GuildSecondaryPartyDispatchResult = {
-  enemyKills: number;
-  xpGranted: number;
-  loot: GuildSecondaryPartyDispatchLoot[];
-  resources: GuildSecondaryPartyDispatchLoot[];
+export type GuildSecondaryPartyAssignmentEnemyKill = {
+  enemyTypeId: EnemyTypeId;
+  enemyLevel: number;
+  quantity: number;
 };
 
-export type GuildSecondaryPartyDispatchSnapshot = {
+export type GuildSecondaryPartyAssignmentResult = {
+  enemyKills: number;
+  enemyKillsByType: GuildSecondaryPartyAssignmentEnemyKill[];
+  xpGranted: number;
+  loot: GuildSecondaryPartyAssignmentLoot[];
+  resources: GuildSecondaryPartyAssignmentLoot[];
+};
+
+export type GuildSecondaryPartyAssignmentSnapshot = {
   rating: string;
   killsPerHour: number;
   experiencePerMinute: number;
@@ -2565,20 +2573,22 @@ export type GuildSecondaryPartyDispatchSnapshot = {
   warnings: string[];
 };
 
-export type GuildSecondaryPartyDispatchState = {
-  status: GuildSecondaryPartyDispatchStatus;
+export type GuildSecondaryPartyAssignmentState = {
+  status: GuildSecondaryPartyAssignmentStatus;
   mapId: DebugMapId;
   mapName: string;
   subzoneId: string;
   subzoneName: string;
-  startedAtMs: number;
-  endsAtMs: number;
-  durationMs: number;
+  assignedAtMs: number;
+  lastSettledAtMs: number;
+  capsAtMs: number;
+  maxDurationMs: number;
   rewardSeed: number;
   experienceEfficiency: number;
   dropEfficiency: number;
-  preview: GuildSecondaryPartyDispatchSnapshot;
-  result: GuildSecondaryPartyDispatchResult;
+  preview: GuildSecondaryPartyAssignmentSnapshot;
+  pendingResult: GuildSecondaryPartyAssignmentResult | null;
+  pendingElapsedMs: number;
 };
 
 export type GuildRosterSlotRef =
@@ -2639,7 +2649,7 @@ export type GuildSecondaryPartyUpgradeId =
   | "secondary_party_members"
   | "secondary_party_experience_efficiency"
   | "secondary_party_drop_efficiency"
-  | "secondary_party_dispatch_duration";
+  | "secondary_party_assignment_duration";
 
 export type GuildSecondaryPartyPerPartyUpgradeId = Exclude<
   GuildSecondaryPartyUpgradeId,

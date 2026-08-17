@@ -2088,9 +2088,9 @@
   min-height: 12px;
 }
 
-.guild-dispatch-actions,
-.guild-dispatch-setup,
-.guild-dispatch-summary {
+.guild-assignment-actions,
+.guild-assignment-setup,
+.guild-assignment-summary {
   display: grid;
   gap: 8px;
   min-width: 0;
@@ -2100,26 +2100,26 @@
   background: rgba(5, 11, 14, 0.42);
 }
 
-.guild-dispatch-actions button,
-.guild-dispatch-setup button,
-.guild-dispatch-summary button {
+.guild-assignment-actions button,
+.guild-assignment-setup button,
+.guild-assignment-summary button {
   min-height: 32px;
 }
 
-.guild-dispatch-actions strong {
+.guild-assignment-actions strong {
   color: #f3df93;
   font-size: 12px;
 }
 
-.guild-dispatch-actions small,
-.guild-dispatch-summary p {
+.guild-assignment-actions small,
+.guild-assignment-summary p {
   margin: 0;
   color: #b9cdd1;
   font-size: 11px;
   font-weight: 800;
 }
 
-.guild-dispatch-setup label {
+.guild-assignment-setup label {
   display: grid;
   gap: 4px;
   color: #92a8ad;
@@ -2128,7 +2128,7 @@
   text-transform: uppercase;
 }
 
-.guild-dispatch-setup select {
+.guild-assignment-setup select {
   min-width: 0;
   padding: 7px 8px;
   border: 1px solid #456169;
@@ -2138,45 +2138,45 @@
   font-weight: 800;
 }
 
-.guild-dispatch-preview {
+.guild-assignment-preview {
   display: grid;
   gap: 8px;
 }
 
-.guild-dispatch-preview dl,
-.guild-dispatch-summary dl {
+.guild-assignment-preview dl,
+.guild-assignment-summary dl {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
   gap: 6px;
   margin: 0;
 }
 
-.guild-dispatch-preview dl div,
-.guild-dispatch-summary dl div {
+.guild-assignment-preview dl div,
+.guild-assignment-summary dl div {
   padding: 7px 8px;
   border: 1px solid #334a50;
   border-radius: 6px;
   background: rgba(12, 28, 36, 0.54);
 }
 
-.guild-dispatch-preview dt,
-.guild-dispatch-summary dt {
+.guild-assignment-preview dt,
+.guild-assignment-summary dt {
   color: #92a8ad;
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.guild-dispatch-preview dd,
-.guild-dispatch-summary dd {
+.guild-assignment-preview dd,
+.guild-assignment-summary dd {
   margin: 2px 0 0;
   color: #f3df93;
   font-size: 12px;
   font-weight: 900;
 }
 
-.guild-dispatch-preview p,
-.guild-dispatch-summary h4 {
+.guild-assignment-preview p,
+.guild-assignment-summary h4 {
   margin: 0;
 }
 

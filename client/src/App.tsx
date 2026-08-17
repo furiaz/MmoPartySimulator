@@ -126,9 +126,9 @@ import {
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
-  cancelGuildSecondaryPartyDispatch,
-  claimGuildSecondaryPartyDispatch,
-  dispatchGuildSecondaryParty,
+  assignGuildSecondaryParty,
+  redeemGuildSecondaryPartyAssignment,
+  returnGuildSecondaryPartyAssignment,
   purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
   purchaseGuildSecondaryPartyUpgrade,
@@ -191,7 +191,7 @@ import {
   type GameState,
   type GuildRosterMoveFailureReason,
   type GuildRosterSlotRef,
-  type GuildSecondaryPartyDispatchResult,
+  type GuildSecondaryPartyRedeemSummary,
   type GuildSecondaryPartyUpgradeId,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
@@ -570,8 +570,8 @@ function getGuildRosterMoveFailureMessage(
   reason: GuildRosterMoveFailureReason,
 ): string {
   switch (reason) {
-    case "party_dispatched":
-      return "Dispatched parties are locked";
+    case "party_assigned":
+      return "Assigned Field Teams are locked";
     case "locked_main_party_slot":
       return "That Main Party slot is locked";
     case "main_party_requires_companion":
@@ -584,36 +584,28 @@ function getGuildRosterMoveFailureMessage(
   }
 }
 
-function getGuildSecondaryPartyDispatchFailureMessage(reason: string): string {
+function getGuildSecondaryPartyAssignmentFailureMessage(reason: string): string {
   switch (reason) {
     case "locked_party":
       return "Unlock this Field Team first.";
     case "empty_party":
       return "Assign at least one companion.";
-    case "already_dispatched":
-      return "This Field Team is already dispatched.";
+    case "already_assigned":
+      return "This Field Team is already assigned.";
     case "unknown_destination":
     case "unvisited_destination":
-      return "Visit that subzone before dispatching there.";
-    case "invalid_duration":
-      return "Dispatch duration is unavailable.";
+      return "Visit that subzone before assigning there.";
+    case "inventory_full":
+      return "Inventory is full. Make room before reassigning.";
     case "estimate_unavailable":
-      return "Dispatch estimate unavailable for this subzone.";
+      return "Assignment estimate unavailable for this subzone.";
     case "unknown_party":
     default:
-      return "Dispatch unavailable.";
+      return "Assignment unavailable.";
   }
 }
 
-type GuildSecondaryPartyAccomplishedSummary = {
-  partyName: string;
-  mapName: string;
-  subzoneName: string;
-  durationMs: number;
-  experienceEfficiency: number;
-  dropEfficiency: number;
-  result: GuildSecondaryPartyDispatchResult;
-};
+type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
 
 function getWorldTravelTeleportFailureMessage(
   reason: WorldTravelTeleportFailureReason,
@@ -2672,9 +2664,9 @@ function App() {
   const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
     useState<string | null>(null);
   const [
-    guildSecondaryPartyAccomplishedSummary,
-    setGuildSecondaryPartyAccomplishedSummary,
-  ] = useState<GuildSecondaryPartyAccomplishedSummary | null>(null);
+    guildSecondaryPartyRedeemSummary,
+    setGuildSecondaryPartyRedeemSummary,
+  ] = useState<GuildSecondaryPartyRedeemSummaryState | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -4425,7 +4417,7 @@ function App() {
       setGuildUpgradeResultMessage(null);
       setGuildNoticeBoardResultMessage(null);
       setGuildSecondaryPartyResultMessage(null);
-      setGuildSecondaryPartyAccomplishedSummary(null);
+      setGuildSecondaryPartyRedeemSummary(null);
     }
   }
 
@@ -4665,105 +4657,96 @@ function App() {
     setGameState(moved.state);
   }
 
-  function dispatchGuildSecondaryPartyFromMenu(
+  function assignGuildSecondaryPartyFromMenu(
     partyId: string,
     mapId: DebugMapId,
     subzoneId: string,
-    durationMs: number,
   ) {
     if (!canUseGuildTavern) {
       setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const dispatched = dispatchGuildSecondaryParty(
+    const assigned = assignGuildSecondaryParty(
       gameState,
       partyId,
       mapId,
       subzoneId,
-      durationMs,
       currentTime,
     );
 
-    if (dispatched.ok) {
-      queueSaveAfterStateChange("Guild field team dispatched");
-      setGuildSecondaryPartyResultMessage("Field Team dispatched");
-      setGuildSecondaryPartyAccomplishedSummary(null);
+    if (assigned.ok) {
+      queueSaveAfterStateChange("Guild field team assignment saved");
+      setGuildSecondaryPartyResultMessage("Field Team assigned");
+      setGuildSecondaryPartyRedeemSummary(assigned.settledSummary);
     } else {
       setGuildSecondaryPartyResultMessage(
-        getGuildSecondaryPartyDispatchFailureMessage(dispatched.reason),
+        getGuildSecondaryPartyAssignmentFailureMessage(assigned.reason),
       );
+      setGuildSecondaryPartyRedeemSummary(assigned.settledSummary);
     }
 
-    setGameState(dispatched.state);
+    setGameState(assigned.state);
   }
 
-  function claimGuildSecondaryPartyDispatchFromMenu(partyId: string) {
+  function redeemGuildSecondaryPartyAssignmentFromMenu(partyId: string) {
     if (!canUseGuildTavern) {
       setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const party = gameState.guildSecondaryParties?.parties.find(
-      (candidate) => candidate.id === partyId,
-    );
-    const dispatch = party?.dispatch ?? null;
-    const claimed = claimGuildSecondaryPartyDispatch(
+    const redeemed = redeemGuildSecondaryPartyAssignment(
       gameState,
       partyId,
       currentTime,
     );
 
-    if (claimed.ok) {
-      queueSaveAfterStateChange("Guild field team dispatch claimed");
-      setGuildSecondaryPartyResultMessage("Dispatch accomplished");
-      setGuildSecondaryPartyAccomplishedSummary(
-        dispatch
-          ? {
-              partyName: party?.displayName ?? "Field Team",
-              mapName: dispatch.mapName,
-              subzoneName: dispatch.subzoneName,
-              durationMs: dispatch.durationMs,
-              experienceEfficiency: dispatch.experienceEfficiency,
-              dropEfficiency: dispatch.dropEfficiency,
-              result: claimed.result,
-            }
-          : null,
-      );
+    if (redeemed.ok) {
+      queueSaveAfterStateChange("Guild field team assignment redeemed");
+      setGuildSecondaryPartyResultMessage("Assignment redeemed");
+      setGuildSecondaryPartyRedeemSummary(redeemed.summary);
     } else {
       setGuildSecondaryPartyResultMessage(
-        claimed.reason === "inventory_full"
+        redeemed.reason === "inventory_full"
           ? "Inventory is full. Make room before claiming."
-          : claimed.reason === "not_completed"
-            ? "Dispatch is not complete yet."
-            : "Dispatch unavailable.",
+          : redeemed.reason === "not_ready"
+            ? "Assignment needs at least 1 minute before redeeming."
+            : "Assignment unavailable.",
       );
+      setGuildSecondaryPartyRedeemSummary(redeemed.summary);
     }
 
-    setGameState(claimed.state);
+    setGameState(redeemed.state);
   }
 
-  function cancelGuildSecondaryPartyDispatchFromMenu(partyId: string) {
+  function returnGuildSecondaryPartyAssignmentFromMenu(partyId: string) {
     if (!canUseGuildTavern) {
       setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
       return;
     }
 
-    const canceled = cancelGuildSecondaryPartyDispatch(
+    const returned = returnGuildSecondaryPartyAssignment(
       gameState,
       partyId,
       currentTime,
     );
 
-    if (canceled.ok) {
-      queueSaveAfterStateChange("Guild field team dispatch canceled");
-      setGuildSecondaryPartyResultMessage("Dispatch canceled. Rewards lost.");
-      setGuildSecondaryPartyAccomplishedSummary(null);
+    if (returned.ok) {
+      queueSaveAfterStateChange("Guild field team returned");
+      setGuildSecondaryPartyResultMessage("Field Team returned");
+      setGuildSecondaryPartyRedeemSummary(returned.summary);
     } else {
-      setGuildSecondaryPartyResultMessage("No dispatch to cancel.");
+      setGuildSecondaryPartyResultMessage(
+        returned.reason === "inventory_full"
+          ? "Inventory is full. Make room before returning."
+          : returned.reason === "not_ready"
+            ? "Assignment needs at least 1 minute before returning rewards."
+            : "Assignment unavailable.",
+      );
+      setGuildSecondaryPartyRedeemSummary(returned.summary);
     }
 
-    setGameState(canceled.state);
+    setGameState(returned.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -5906,9 +5889,7 @@ function App() {
               guildUpgradeResultMessage={guildUpgradeResultMessage}
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
-              guildSecondaryPartyAccomplishedSummary={
-                guildSecondaryPartyAccomplishedSummary
-              }
+              guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
@@ -5942,15 +5923,15 @@ function App() {
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
               onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
               onMoveGuildRosterCompanion={moveGuildRosterCompanionFromMenu}
-              onDispatchGuildSecondaryParty={dispatchGuildSecondaryPartyFromMenu}
-              onClaimGuildSecondaryPartyDispatch={
-                claimGuildSecondaryPartyDispatchFromMenu
+              onAssignGuildSecondaryParty={assignGuildSecondaryPartyFromMenu}
+              onRedeemGuildSecondaryPartyAssignment={
+                redeemGuildSecondaryPartyAssignmentFromMenu
               }
-              onCancelGuildSecondaryPartyDispatch={
-                cancelGuildSecondaryPartyDispatchFromMenu
+              onReturnGuildSecondaryPartyAssignment={
+                returnGuildSecondaryPartyAssignmentFromMenu
               }
               onClearGuildSecondaryPartySummary={() =>
-                setGuildSecondaryPartyAccomplishedSummary(null)
+                setGuildSecondaryPartyRedeemSummary(null)
               }
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
