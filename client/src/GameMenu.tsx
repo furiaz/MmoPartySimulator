@@ -33,6 +33,7 @@ import type {
   CraftingRecipeId,
   GuildNoticeBoardUpgradeId,
   GuildRecruitUpgradeId,
+  InnKitchenRecipeId,
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
@@ -62,6 +63,7 @@ export function GameMenu({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
+  innKitchenResultMessage,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   highestCharacterLevelEver,
@@ -95,6 +97,7 @@ export function GameMenu({
   onAssignGuildSecondaryParty,
   onRedeemGuildSecondaryPartyAssignment,
   onReturnGuildSecondaryPartyAssignment,
+  onCookInnMeal,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -128,6 +131,7 @@ export function GameMenu({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
+  innKitchenResultMessage?: string | null;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
@@ -187,6 +191,7 @@ export function GameMenu({
   ) => void;
   onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
   onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
+  onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -313,6 +318,7 @@ export function GameMenu({
                   guildUpgradeResultMessage={guildUpgradeResultMessage}
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+                  innKitchenResultMessage={innKitchenResultMessage}
                   guildSecondaryPartyRedeemSummary={
                     guildSecondaryPartyRedeemSummary
                   }
@@ -341,6 +347,7 @@ export function GameMenu({
                   onReturnGuildSecondaryPartyAssignment={
                     onReturnGuildSecondaryPartyAssignment
                   }
+                  onCookInnMeal={onCookInnMeal}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
                   }
@@ -378,6 +385,7 @@ function AtlasPanel({
   guildUpgradeResultMessage,
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
+  innKitchenResultMessage,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   gameState,
@@ -396,6 +404,7 @@ function AtlasPanel({
   onAssignGuildSecondaryParty,
   onRedeemGuildSecondaryPartyAssignment,
   onReturnGuildSecondaryPartyAssignment,
+  onCookInnMeal,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -407,6 +416,7 @@ function AtlasPanel({
   guildUpgradeResultMessage?: string | null;
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
+  innKitchenResultMessage?: string | null;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
@@ -437,6 +447,7 @@ function AtlasPanel({
   ) => void;
   onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
   onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
+  onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
@@ -507,6 +518,7 @@ function AtlasPanel({
           upgradeResultMessage={guildUpgradeResultMessage}
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
           secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+          innKitchenResultMessage={innKitchenResultMessage}
           secondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
@@ -525,6 +537,7 @@ function AtlasPanel({
             onRedeemGuildSecondaryPartyAssignment
           }
           onReturnSecondaryPartyAssignment={onReturnGuildSecondaryPartyAssignment}
+          onCookInnMeal={onCookInnMeal}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />
       ) : (

@@ -126,6 +126,7 @@ import {
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
   openGuildNoticeBoard,
+  cookInnMealForCompanion,
   assignGuildSecondaryParty,
   redeemGuildSecondaryPartyAssignment,
   returnGuildSecondaryPartyAssignment,
@@ -195,6 +196,7 @@ import {
   type GuildSecondaryPartyUpgradeId,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
+  type InnKitchenRecipeId,
   type ItemDefinition,
   type ItemId,
   type MapVisualObject,
@@ -2663,6 +2665,8 @@ function App() {
     useState<string | null>(null);
   const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
     useState<string | null>(null);
+  const [innKitchenResultMessage, setInnKitchenResultMessage] =
+    useState<string | null>(null);
   const [
     guildSecondaryPartyRedeemSummary,
     setGuildSecondaryPartyRedeemSummary,
@@ -4417,6 +4421,7 @@ function App() {
       setGuildUpgradeResultMessage(null);
       setGuildNoticeBoardResultMessage(null);
       setGuildSecondaryPartyResultMessage(null);
+      setInnKitchenResultMessage(null);
       setGuildSecondaryPartyRedeemSummary(null);
     }
   }
@@ -4747,6 +4752,40 @@ function App() {
     }
 
     setGameState(returned.state);
+  }
+
+  function cookInnMealFromMenu(
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) {
+    if (!canUseGuildTavern) {
+      setInnKitchenResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const cooked = cookInnMealForCompanion(
+      gameState,
+      companionId,
+      recipeId,
+      currentTime,
+    );
+
+    if (cooked.ok) {
+      queueSaveAfterStateChange("Inn kitchen meal saved");
+      setInnKitchenResultMessage(
+        `${cooked.recipe.displayName} served to ${cooked.companionId}.`,
+      );
+    } else {
+      setInnKitchenResultMessage(
+        cooked.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : cooked.reason === "missing_companion"
+            ? "Companion unavailable."
+            : "Recipe unavailable.",
+      );
+    }
+
+    setGameState(cooked.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -5889,6 +5928,7 @@ function App() {
               guildUpgradeResultMessage={guildUpgradeResultMessage}
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+              innKitchenResultMessage={innKitchenResultMessage}
               guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
@@ -5930,6 +5970,7 @@ function App() {
               onReturnGuildSecondaryPartyAssignment={
                 returnGuildSecondaryPartyAssignmentFromMenu
               }
+              onCookInnMeal={cookInnMealFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }

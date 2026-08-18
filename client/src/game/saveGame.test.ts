@@ -21,6 +21,11 @@ import {
   createInitialGuildSecondaryPartiesState,
 } from "./guildSecondaryParties";
 import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import {
+  INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+  cookInnMealForCompanion,
+  createInitialInnKitchenState,
+} from "./innKitchen";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
@@ -37,6 +42,7 @@ import {
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
 import type { Companion, GameEntity, PartyMemberRole } from "./types";
+import { addCurrencyToWalletState } from "./wallet";
 
 const NOW_MS = 1_000_000;
 
@@ -348,6 +354,49 @@ describe("save game serialization", () => {
     });
   });
 
+  it("preserves active Inn Kitchen meals through save restore", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const funded = addCurrencyToWalletState(
+      createTestGameState({
+        entities: {
+          [companion.id]: companion,
+        },
+        partyLeaderId: companion.id,
+        currentMapId: HUB_MAP_ID,
+        map: createDebugMap(),
+        simulationTimeMs: NOW_MS,
+      }),
+      "crowns",
+      100,
+      "debug",
+    ).state;
+    const cooked = cookInnMealForCompanion(
+      funded,
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      NOW_MS,
+    );
+    expect(cooked.ok).toBe(true);
+
+    const save = createSavedGame(cooked.state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+    expect(restored.state.innKitchen?.activeMealBuffsByCompanionId).toMatchObject({
+      [companion.id]: {
+        recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        cookedAtMs: NOW_MS,
+      },
+    });
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -457,6 +506,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).guildUpgrades;
     delete (save.state as Partial<GameState>).guildNoticeBoard;
     delete (save.state as Partial<GameState>).guildSecondaryParties;
+    delete (save.state as Partial<GameState>).innKitchen;
     delete (save.state as Partial<GameState>).worldDiscovery;
 
     const restored = restoreGameStateFromSave(save);
@@ -488,6 +538,7 @@ describe("save game serialization", () => {
       createInitialGuildSecondaryPartiesState(),
     );
     expect(restored.state.guildUpgrades?.secondaryParties.secondary_party_count).toBe(0);
+    expect(restored.state.innKitchen).toEqual(createInitialInnKitchenState());
     expect(restored.state.worldDiscovery).toEqual({
       visitedMapIds: [],
       visitedSubzonesByMapId: {},
@@ -502,6 +553,41 @@ describe("save game serialization", () => {
       displayName: "Inn Keeper",
       npcRole: "tavern_keeper",
     });
+  });
+
+  it("sanitizes invalid Inn Kitchen meal save entries", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = createTestGameState({
+      entities: {
+        [companion.id]: companion,
+      },
+      partyLeaderId: companion.id,
+      currentMapId: HUB_MAP_ID,
+      map: createDebugMap(HUB_MAP_ID),
+      simulationTimeMs: NOW_MS,
+      innKitchen: {
+        activeMealBuffsByCompanionId: {
+          [companion.id]: {
+            recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            cookedAtMs: NOW_MS - 10_000,
+            expiresAtMs: NOW_MS - 1,
+          },
+          missing: {
+            recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            cookedAtMs: NOW_MS,
+            expiresAtMs: NOW_MS + 10_000,
+          },
+        },
+      },
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+
+    expect(save.state.innKitchen).toEqual(createInitialInnKitchenState());
   });
 });
 

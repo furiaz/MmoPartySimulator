@@ -19,6 +19,7 @@ import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
 import { createInitialGuildRecruitState } from "./guildRecruit";
 import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { createInitialInnKitchenState } from "./innKitchen";
 import { createInitialWorldDiscoveryState } from "./worldDiscovery";
 import {
   addItemToInventoryState,
@@ -74,6 +75,7 @@ export function createInitialGameState(): GameState {
     guildUpgrades: createInitialGuildUpgradesState(),
     guildNoticeBoard: createInitialGuildNoticeBoardState(),
     guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
+    innKitchen: createInitialInnKitchenState(),
     worldDiscovery: createInitialWorldDiscoveryState(),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},

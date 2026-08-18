@@ -879,6 +879,7 @@ export type CurrencyMutationSource =
   | "merchant"
   | "chest"
   | "guild_upgrade"
+  | "inn_kitchen"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2710,6 +2711,18 @@ export type GuildNoticeBoardClaimedReward = {
   questTitle: string;
   crowns: number;
   skillBookItemIds: SkillBookItemId[];
+};
+
+export type InnKitchenRecipeId = "house_bread";
+
+export type InnKitchenMealBuffState = {
+  recipeId: InnKitchenRecipeId;
+  cookedAtMs: number;
+  expiresAtMs: number;
+};
+
+export type InnKitchenState = {
+  activeMealBuffsByCompanionId: Record<string, InnKitchenMealBuffState>;
 };
 
 export type GuildNoticeBoardState = {

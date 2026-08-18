@@ -19,6 +19,8 @@ import {
   getGuildSecondaryPartyUpgradeStatuses,
   getGuildCompanionCapacity,
   getGuildSecondaryPartiesState,
+  INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+  getInnKitchenRecipes,
   getInnReserveCompanions,
   getItemDefinition,
   getPartySizeLimit,
@@ -37,6 +39,7 @@ import {
   type GuildSecondaryPartyUpgradeId,
   type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
+  type InnKitchenRecipeId,
   type DebugMapId,
   type GameState,
   type ItemId,
@@ -50,6 +53,11 @@ import {
   getInnRoomSkillGroups,
   type InnRoomCard,
 } from "./innRoomsPresentation";
+import {
+  formatInnKitchenDuration,
+  getInnKitchenCompanionRows,
+  getInnKitchenRecipeDisplay,
+} from "./innKitchenPresentation";
 import { getClassIdleFrameSrc, getEnemyWalkingAnimation } from "./visualAssets";
 
 type GuildTavernSection = "guild" | "inn";
@@ -59,6 +67,7 @@ type GuildView =
   | "noticeBoard"
   | "secondaryParties"
   | "rooms"
+  | "kitchen"
   | "recruitUpgrades"
   | "noticeBoardUpgrades"
   | "secondaryPartyUpgrades";
@@ -82,6 +91,7 @@ export function GuildTavernPanel({
   upgradeResultMessage,
   noticeBoardResultMessage,
   secondaryPartyResultMessage,
+  innKitchenResultMessage,
   state,
   onCancelNoticeBoardQuest,
   onMoveGuildRosterCompanion,
@@ -95,6 +105,7 @@ export function GuildTavernPanel({
   onAssignSecondaryParty,
   onRedeemSecondaryPartyAssignment,
   onReturnSecondaryPartyAssignment,
+  onCookInnMeal,
   onClearSecondaryPartySummary,
   secondaryPartyRedeemSummary,
 }: {
@@ -104,6 +115,7 @@ export function GuildTavernPanel({
   upgradeResultMessage?: string | null;
   noticeBoardResultMessage?: string | null;
   secondaryPartyResultMessage?: string | null;
+  innKitchenResultMessage?: string | null;
   secondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummary | null;
   state: GameState;
   onCancelNoticeBoardQuest: (slotIndex?: number) => void;
@@ -128,6 +140,7 @@ export function GuildTavernPanel({
   ) => void;
   onRedeemSecondaryPartyAssignment: (partyId: string) => void;
   onReturnSecondaryPartyAssignment: (partyId: string) => void;
+  onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
   onClearSecondaryPartySummary: () => void;
 }) {
   const [activeSection, setActiveSection] =
@@ -139,6 +152,12 @@ export function GuildTavernPanel({
     useState<string | null>(null);
   const [isInnRoomSelectionLocked, setInnRoomSelectionLocked] =
     useState(false);
+  const [selectedKitchenCompanionId, setSelectedKitchenCompanionId] =
+    useState<string | null>(null);
+  const [selectedKitchenRecipesByCompanionId, setSelectedKitchenRecipesByCompanionId] =
+    useState<Record<string, InnKitchenRecipeId>>({});
+  const [recipePickerCompanionId, setRecipePickerCompanionId] =
+    useState<string | null>(null);
   const activeCompanions = getActiveCompanions(state);
   const partySizeLimit = getPartySizeLimit(state);
   const rosterCapacity = getGuildCompanionCapacity();
@@ -166,6 +185,29 @@ export function GuildTavernPanel({
     ? getNoticeBoardButtonStatus(noticeBoardQuest)
     : "Requires Guild & Inn";
   const innRoomOverview = getInnRoomOverview(state);
+  const kitchenRows = getInnKitchenCompanionRows(state, currentTime);
+  const selectedKitchenRow =
+    kitchenRows.find((row) => row.companion.id === selectedKitchenCompanionId) ??
+    kitchenRows[0] ??
+    null;
+  const selectedKitchenRecipeId = selectedKitchenRow
+    ? selectedKitchenRecipesByCompanionId[selectedKitchenRow.companion.id] ??
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID
+    : INN_KITCHEN_HOUSE_BREAD_RECIPE_ID;
+
+  useEffect(() => {
+    if (!selectedKitchenCompanionId && kitchenRows.length > 0) {
+      setSelectedKitchenCompanionId(kitchenRows[0].companion.id);
+      return;
+    }
+
+    if (
+      selectedKitchenCompanionId &&
+      !kitchenRows.some((row) => row.companion.id === selectedKitchenCompanionId)
+    ) {
+      setSelectedKitchenCompanionId(kitchenRows[0]?.companion.id ?? null);
+    }
+  }, [kitchenRows, selectedKitchenCompanionId]);
 
   function showPreviousSection() {
     setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
@@ -283,6 +325,32 @@ export function GuildTavernPanel({
             }
           }}
         />
+      ) : activeSection === "inn" && guildView === "kitchen" ? (
+        <InnKitchenView
+          canUse={canUse}
+          currentTime={currentTime}
+          resultMessage={innKitchenResultMessage}
+          rows={kitchenRows}
+          selectedCompanionId={selectedKitchenRow?.companion.id ?? null}
+          selectedRecipesByCompanionId={selectedKitchenRecipesByCompanionId}
+          selectedRecipeId={selectedKitchenRecipeId}
+          recipePickerCompanionId={recipePickerCompanionId}
+          onBack={() => {
+            setRecipePickerCompanionId(null);
+            setGuildView("hall");
+          }}
+          onCook={onCookInnMeal}
+          onCloseRecipePicker={() => setRecipePickerCompanionId(null)}
+          onOpenRecipePicker={setRecipePickerCompanionId}
+          onSelectCompanion={setSelectedKitchenCompanionId}
+          onSelectRecipe={(companionId, recipeId) => {
+            setSelectedKitchenRecipesByCompanionId((recipesByCompanionId) => ({
+              ...recipesByCompanionId,
+              [companionId]: recipeId,
+            }));
+            setRecipePickerCompanionId(null);
+          }}
+        />
       ) : activeSection === "guild" && guildView === "recruitUpgrades" ? (
         <GuildRecruitUpgradesView
           canUse={canUse}
@@ -373,9 +441,13 @@ export function GuildTavernPanel({
                     </span>
                     <small>{canUse ? "Ready" : actionStatus}</small>
                   </button>
-                  <button disabled type="button">
+                  <button
+                    disabled={!canUse}
+                    onClick={() => setGuildView("kitchen")}
+                    type="button"
+                  >
                     <span>Kitchen</span>
-                    <small>{actionStatus}</small>
+                    <small>{canUse ? "Ready" : actionStatus}</small>
                   </button>
                 </>
               )}
@@ -634,6 +706,259 @@ function InnRoomDetailsPanel({
         )}
       </section>
     </aside>
+  );
+}
+
+function InnKitchenView({
+  canUse,
+  currentTime,
+  resultMessage,
+  rows,
+  selectedCompanionId,
+  selectedRecipesByCompanionId,
+  selectedRecipeId,
+  recipePickerCompanionId,
+  onBack,
+  onCloseRecipePicker,
+  onCook,
+  onOpenRecipePicker,
+  onSelectCompanion,
+  onSelectRecipe,
+}: {
+  canUse: boolean;
+  currentTime: number;
+  resultMessage?: string | null;
+  rows: ReturnType<typeof getInnKitchenCompanionRows>;
+  selectedCompanionId: string | null;
+  selectedRecipesByCompanionId: Record<string, InnKitchenRecipeId>;
+  selectedRecipeId: InnKitchenRecipeId;
+  recipePickerCompanionId: string | null;
+  onBack: () => void;
+  onCloseRecipePicker: () => void;
+  onCook: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onOpenRecipePicker: (companionId: string) => void;
+  onSelectCompanion: (companionId: string) => void;
+  onSelectRecipe: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+}) {
+  const selectedRow =
+    rows.find((row) => row.companion.id === selectedCompanionId) ?? null;
+  const selectedRecipeDisplay = getInnKitchenRecipeDisplay(selectedRecipeId);
+  const recipes = getInnKitchenRecipes();
+  const activeMealRecipe = selectedRow?.activeMeal
+    ? getInnKitchenRecipeDisplay(selectedRow.activeMeal.recipeId)
+    : null;
+  const remainingMealDuration = selectedRow?.activeMeal
+    ? formatInnKitchenDuration(selectedRow.activeMeal.expiresAtMs - currentTime)
+    : null;
+
+  return (
+    <div className="guild-inn-kitchen-view">
+      <div className="guild-roster-topline">
+        <div>
+          <span className="guild-recruit-kicker">Inn Kitchen</span>
+          <h3>Kitchen</h3>
+        </div>
+        <button onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+      {!canUse ? (
+        <p className="guild-recruit-message">Requires Guild & Inn</p>
+      ) : null}
+      {resultMessage ? (
+        <p className="guild-recruit-message">{resultMessage}</p>
+      ) : null}
+      <div className="guild-inn-kitchen-layout">
+        <div className="guild-inn-kitchen-list" aria-label="Kitchen companions">
+          {rows.length > 0 ? (
+            rows.map((row) => {
+              const rowRecipeId =
+                selectedRecipesByCompanionId[row.companion.id] ??
+                INN_KITCHEN_HOUSE_BREAD_RECIPE_ID;
+              const rowRecipe = getInnKitchenRecipeDisplay(rowRecipeId);
+              const classDefinition = CLASS_DEFINITIONS[row.companion.classId];
+              const idleFrameSrc = getClassIdleFrameSrc(row.companion.classId);
+
+              return (
+                <div
+                  className={`guild-inn-kitchen-row${
+                    selectedRow?.companion.id === row.companion.id
+                      ? " selected"
+                      : ""
+                  }`}
+                  key={row.companion.id}
+                >
+                  <button
+                    className="guild-inn-kitchen-companion"
+                    onClick={() => onSelectCompanion(row.companion.id)}
+                    type="button"
+                  >
+                    <span className="guild-roster-companion-sprite" aria-hidden="true">
+                      {idleFrameSrc ? <img alt="" src={idleFrameSrc} /> : null}
+                    </span>
+                    <span>
+                      Lv {row.companion.characterLevel}{" "}
+                      {classDefinition?.displayName ?? row.companion.classId}
+                    </span>
+                    <small>Role: {getRoleLabel(row.companion.role)}</small>
+                    <small>{row.locationLabel}</small>
+                    {row.badgeText ? (
+                      <strong aria-label={row.locationLabel}>{row.badgeText}</strong>
+                    ) : null}
+                  </button>
+                  <button
+                    className="guild-inn-kitchen-recipe-button"
+                    disabled={!canUse}
+                    onClick={() => {
+                      onSelectCompanion(row.companion.id);
+                      onOpenRecipePicker(row.companion.id);
+                    }}
+                    type="button"
+                  >
+                    <span>{rowRecipe.recipe.displayName}</span>
+                    <small>{rowRecipe.effectText}</small>
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <p className="guild-recruit-message">No companions recruited.</p>
+          )}
+        </div>
+        <aside className="guild-inn-kitchen-details">
+          {selectedRow ? (
+            <>
+              <span className="guild-recruit-kicker">Selected Meal</span>
+              <h3>{selectedRecipeDisplay.recipe.displayName}</h3>
+              <p>{selectedRecipeDisplay.recipe.description}</p>
+              <dl className="guild-inn-room-detail-list">
+                <div>
+                  <dt>Companion</dt>
+                  <dd>{selectedRow.companion.id}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{selectedRow.locationLabel}</dd>
+                </div>
+                <div>
+                  <dt>Effect</dt>
+                  <dd>{selectedRecipeDisplay.effectText}</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>{selectedRecipeDisplay.durationText}</dd>
+                </div>
+                <div>
+                  <dt>Cost</dt>
+                  <dd>{selectedRecipeDisplay.costText}</dd>
+                </div>
+                <div>
+                  <dt>Ingredients</dt>
+                  <dd>{selectedRecipeDisplay.ingredientText}</dd>
+                </div>
+              </dl>
+              {activeMealRecipe && remainingMealDuration ? (
+                <p className="guild-recruit-message">
+                  Active: {activeMealRecipe.recipe.displayName} -{" "}
+                  {activeMealRecipe.effectText} - {remainingMealDuration}
+                </p>
+              ) : (
+                <p className="guild-recruit-message">No active Inn meal.</p>
+              )}
+              <div className="guild-inn-kitchen-cook-row">
+                <span>Cost: {selectedRecipeDisplay.costText}</span>
+                <span>Ingredients: {selectedRecipeDisplay.ingredientText}</span>
+                <button
+                  disabled={!canUse}
+                  onClick={() =>
+                    onCook(selectedRow.companion.id, selectedRecipeId)
+                  }
+                  type="button"
+                >
+                  Cook now
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="guild-recruit-kicker">Selected Meal</span>
+              <h3>No companion</h3>
+              <p className="guild-recruit-message">
+                Recruit companions before preparing Inn meals.
+              </p>
+            </>
+          )}
+        </aside>
+      </div>
+      {recipePickerCompanionId ? (
+        <div
+          className="guild-inn-recipe-picker-layer"
+          onClick={onCloseRecipePicker}
+          role="presentation"
+        >
+          <div
+            className="guild-inn-recipe-picker"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="guild-roster-topline">
+              <div>
+                <span className="guild-recruit-kicker">Recipe Selection</span>
+                <h3>Choose Recipe</h3>
+              </div>
+              <button onClick={onCloseRecipePicker} type="button">
+                Close
+              </button>
+            </div>
+            <div className="guild-inn-recipe-picker-layout">
+              <div className="guild-inn-recipe-list">
+                {recipes.map((recipe) => {
+                  const display = getInnKitchenRecipeDisplay(recipe.id);
+
+                  return (
+                    <button
+                      key={recipe.id}
+                      onClick={() => onSelectRecipe(recipePickerCompanionId, recipe.id)}
+                      type="button"
+                    >
+                      <span>{recipe.displayName}</span>
+                      <small>{display.effectText}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="guild-inn-recipe-detail">
+                {recipes.map((recipe) => {
+                  const display = getInnKitchenRecipeDisplay(recipe.id);
+
+                  return (
+                    <section key={recipe.id}>
+                      <h4>{recipe.displayName}</h4>
+                      <p>{recipe.description}</p>
+                      <dl className="guild-inn-room-detail-list">
+                        <div>
+                          <dt>Effect</dt>
+                          <dd>{display.effectText}</dd>
+                        </div>
+                        <div>
+                          <dt>Cost</dt>
+                          <dd>{display.costText}</dd>
+                        </div>
+                        <div>
+                          <dt>Ingredients</dt>
+                          <dd>{display.ingredientText}</dd>
+                        </div>
+                      </dl>
+                    </section>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
