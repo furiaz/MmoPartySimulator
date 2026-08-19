@@ -1533,6 +1533,10 @@
   font-weight: 800;
 }
 
+.guild-requires-service {
+  color: #d9827d !important;
+}
+
 .guild-recruit-details > button {
   justify-self: start;
   min-width: 132px;

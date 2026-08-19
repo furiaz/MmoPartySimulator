@@ -24,6 +24,7 @@ import type {
   GuildUpgradesState,
   HubDepartureFoodWarningState,
   InnKitchenState,
+  InnUpgradesState,
   KeyItemsById,
   LeaderIntent,
   NewsBroadcastEvent,
@@ -169,6 +170,7 @@ export type GameState = {
   guildUpgrades?: GuildUpgradesState;
   guildNoticeBoard?: GuildNoticeBoardState;
   guildSecondaryParties?: GuildSecondaryPartiesState;
+  innUpgrades?: InnUpgradesState;
   innKitchen?: InnKitchenState;
   worldDiscovery?: WorldDiscoveryState;
   inventory: PartyInventory;

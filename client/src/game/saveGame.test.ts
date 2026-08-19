@@ -28,6 +28,7 @@ import {
   setInnKitchenAutoCookEnabled,
   setInnKitchenSelectedRecipe,
 } from "./innKitchen";
+import { createInitialInnUpgradesState } from "./innRoomUpgrades";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
@@ -548,6 +549,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).guildUpgrades;
     delete (save.state as Partial<GameState>).guildNoticeBoard;
     delete (save.state as Partial<GameState>).guildSecondaryParties;
+    delete (save.state as Partial<GameState>).innUpgrades;
     delete (save.state as Partial<GameState>).innKitchen;
     delete (save.state as Partial<GameState>).worldDiscovery;
 
@@ -580,6 +582,7 @@ describe("save game serialization", () => {
       createInitialGuildSecondaryPartiesState(),
     );
     expect(restored.state.guildUpgrades?.secondaryParties.secondary_party_count).toBe(0);
+    expect(restored.state.innUpgrades).toEqual(createInitialInnUpgradesState());
     expect(restored.state.innKitchen).toEqual(createInitialInnKitchenState());
     expect(restored.state.worldDiscovery).toEqual({
       visitedMapIds: [],

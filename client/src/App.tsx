@@ -133,6 +133,7 @@ import {
   processInnKitchenAutoCook,
   setInnKitchenAutoCookEnabled,
   setInnKitchenSelectedRecipe,
+  purchaseInnRoomUpgrade,
   assignGuildSecondaryParty,
   redeemGuildSecondaryPartyAssignment,
   returnGuildSecondaryPartyAssignment,
@@ -200,6 +201,7 @@ import {
   type GuildRosterSlotRef,
   type GuildSecondaryPartyRedeemSummary,
   type GuildSecondaryPartyUpgradeId,
+  type InnRoomUpgradeId,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
   type InnKitchenRecipeId,
@@ -4546,6 +4548,30 @@ function App() {
     setGameState(purchase.state);
   }
 
+  function purchaseInnRoomUpgradeCommand(upgradeId: InnRoomUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseInnRoomUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Inn room upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
   function openGuildNoticeBoardMenu() {
     if (!canUseGuildTavern) {
       setGuildNoticeBoardResultMessage("Requires Guild & Inn");
@@ -6044,6 +6070,7 @@ function App() {
               onPurchaseGuildSecondaryPartyUpgrade={
                 purchaseGuildSecondaryPartyUpgradeCommand
               }
+              onPurchaseInnRoomUpgrade={purchaseInnRoomUpgradeCommand}
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
               onRerollGuildNoticeBoard={rerollGuildNoticeBoardFromMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}

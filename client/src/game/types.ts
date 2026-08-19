@@ -879,6 +879,7 @@ export type CurrencyMutationSource =
   | "merchant"
   | "chest"
   | "guild_upgrade"
+  | "inn_upgrade"
   | "inn_kitchen"
   | "world_wipe_recovery"
   | "unknown";
@@ -2669,6 +2670,16 @@ export type GuildUpgradesState = {
   recruit: GuildRecruitUpgradeLevels;
   noticeBoard: GuildNoticeBoardUpgradeLevels;
   secondaryParties: GuildSecondaryPartyUpgradeLevels;
+};
+
+export type InnRoomUpgradeId = "inn_room_count";
+
+export type InnRoomUpgradeLevels = {
+  inn_room_count: number;
+};
+
+export type InnUpgradesState = {
+  rooms: InnRoomUpgradeLevels;
 };
 
 export type WorldDiscoveryState = {

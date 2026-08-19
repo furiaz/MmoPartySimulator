@@ -26,6 +26,7 @@ import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { sanitizeInnKitchenState } from "./innKitchen";
+import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
 import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
@@ -440,9 +441,11 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     restingCompanionsById,
   });
   const guildUpgrades = sanitizeGuildUpgradesState(state.guildUpgrades);
+  const innUpgrades = sanitizeInnUpgradesState(state.innUpgrades);
   const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit, undefined, {
     ...state,
     guildUpgrades,
+    innUpgrades,
   });
   const guildNoticeBoard = sanitizeGuildNoticeBoardState(
     state.guildNoticeBoard,
@@ -460,6 +463,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
       entities,
       restingCompanionsById,
       guildUpgrades,
+      innUpgrades,
       currentMapId,
       map,
     },
@@ -488,6 +492,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     guildUpgrades,
     guildNoticeBoard,
     guildSecondaryParties,
+    innUpgrades,
     innKitchen,
     worldDiscovery,
     inventory: sanitizePartyInventory(state.inventory),

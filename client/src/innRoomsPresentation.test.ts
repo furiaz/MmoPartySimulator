@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createCompanion,
   createInitialGuildUpgradesState,
+  createInitialInnUpgradesState,
   getGuildCompanionCapacity,
   MAP_ONE_ID,
   SKILL_DEFINITIONS,
@@ -50,7 +51,7 @@ describe("inn rooms presentation", () => {
     const overview = getInnRoomOverview(state);
 
     expect(overview.occupiedRooms).toBe(1);
-    expect(overview.capacity).toBe(getGuildCompanionCapacity());
+    expect(overview.capacity).toBe(getGuildCompanionCapacity(state));
     expect(overview.isOverCapacity).toBe(false);
     expect(overview.cards.filter((card) => card.kind === "empty")).toHaveLength(
       Math.max(0, overview.capacity - 1),
@@ -69,6 +70,22 @@ describe("inn rooms presentation", () => {
     expect(overview.isOverCapacity).toBe(overview.occupiedRooms > overview.capacity);
     expect(overview.cards.filter((card) => card.kind === "companion")).toHaveLength(6);
     expect(overview.cards.filter((card) => card.kind === "empty")).toHaveLength(0);
+  });
+
+  it("adds empty rooms up to upgraded room capacity", () => {
+    const innUpgrades = createInitialInnUpgradesState();
+    innUpgrades.rooms.inn_room_count = 3;
+    const state = createRoomsState({
+      reserveIds: [],
+      fieldTeamIds: [],
+      assignedFieldTeamIds: [],
+      innUpgrades,
+    });
+    const overview = getInnRoomOverview(state);
+
+    expect(overview.capacity).toBe(6);
+    expect(overview.occupiedRooms).toBe(1);
+    expect(overview.cards.filter((card) => card.kind === "empty")).toHaveLength(5);
   });
 
   it("groups known skills by class and marks active skills as enabled", () => {
@@ -110,10 +127,12 @@ function createRoomsState({
   reserveIds = ["reserve"],
   fieldTeamIds = ["field"],
   assignedFieldTeamIds = ["assigned"],
+  innUpgrades = createInitialInnUpgradesState(),
 }: {
   reserveIds?: string[];
   fieldTeamIds?: string[];
   assignedFieldTeamIds?: string[];
+  innUpgrades?: ReturnType<typeof createInitialInnUpgradesState>;
 } = {}) {
   const leader = createRoomsCompanion("leader", 0);
   const reserveCompanions = Object.fromEntries(
@@ -142,6 +161,7 @@ function createRoomsState({
     },
     partyLeaderId: leader.id,
     guildUpgrades,
+    innUpgrades,
     guildSecondaryParties: {
       parties: [
         {

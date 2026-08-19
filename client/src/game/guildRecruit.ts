@@ -2,6 +2,7 @@ import { createCompanion } from "./entities";
 import { isClassAllowedForEquipment } from "./equipmentRules";
 import {
   GUILD_INN_COMPANION_CAPACITY,
+  getGuildCompanionCapacity,
   getTotalRosterCompanionCount,
 } from "./guildSecondaryParties";
 import {
@@ -191,7 +192,7 @@ export function recruitGuildCandidate(
 export function getGuildRecruitDestination(
   state: GameState,
 ): GuildRecruitDestination {
-  if (getTotalRosterCompanionCount(state) >= GUILD_INN_COMPANION_CAPACITY) {
+  if (getTotalRosterCompanionCount(state) >= getGuildCompanionCapacity(state)) {
     return "blocked_full";
   }
 
@@ -202,8 +203,8 @@ export function getGuildRecruitDestination(
   return "tavern_reserve";
 }
 
-export function getGuildRecruitReserveCapacity(): number {
-  return GUILD_RECRUIT_RESERVE_CAPACITY;
+export function getGuildRecruitReserveCapacity(state?: GameState): number {
+  return getGuildCompanionCapacity(state);
 }
 
 export function sanitizeGuildRecruitState(

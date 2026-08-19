@@ -1,5 +1,6 @@
 import { getPartySizeLimit } from "./leveling";
 import { isPartyLeaderNearGuildTavern } from "./guildTavern";
+import { getInnRoomCapacity, INN_ROOM_BASE_CAPACITY } from "./innRoomUpgrades";
 import {
   getGuildSecondaryPartyCount,
   getGuildSecondaryPartyMemberSlotCount,
@@ -21,7 +22,7 @@ import type {
   Position,
 } from "./types";
 
-export const GUILD_INN_COMPANION_CAPACITY = 4;
+export const GUILD_INN_COMPANION_CAPACITY = INN_ROOM_BASE_CAPACITY;
 export const GUILD_SECONDARY_PARTY_ID = "secondary-party-1";
 export const GUILD_SECONDARY_PARTY_SLOT_COUNT = 1;
 export const GUILD_SECONDARY_PARTY_IDS = [
@@ -195,8 +196,8 @@ export function getTotalRosterCompanionLevel(state: GameState): number {
   );
 }
 
-export function getGuildCompanionCapacity(): number {
-  return GUILD_INN_COMPANION_CAPACITY;
+export function getGuildCompanionCapacity(state?: GameState): number {
+  return getInnRoomCapacity(state);
 }
 
 export function moveGuildRosterCompanion(

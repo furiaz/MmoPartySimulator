@@ -37,6 +37,7 @@ import type {
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
+  InnRoomUpgradeId,
 } from "./game";
 
 export type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
@@ -89,6 +90,7 @@ export function GameMenu({
   onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
   onPurchaseGuildSecondaryPartyUpgrade,
+  onPurchaseInnRoomUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
@@ -179,6 +181,7 @@ export function GameMenu({
     upgradeId: GuildSecondaryPartyUpgradeId,
     partyId?: string | null,
   ) => void;
+  onPurchaseInnRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -344,6 +347,7 @@ export function GameMenu({
                   onPurchaseGuildSecondaryPartyUpgrade={
                     onPurchaseGuildSecondaryPartyUpgrade
                   }
+                  onPurchaseInnRoomUpgrade={onPurchaseInnRoomUpgrade}
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
                   onRerollGuildNoticeBoard={onRerollGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
@@ -408,6 +412,7 @@ function AtlasPanel({
   onPurchaseGuildNoticeBoardUpgrade,
   onPurchaseGuildRecruitUpgrade,
   onPurchaseGuildSecondaryPartyUpgrade,
+  onPurchaseInnRoomUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
@@ -447,6 +452,7 @@ function AtlasPanel({
     upgradeId: GuildSecondaryPartyUpgradeId,
     partyId?: string | null,
   ) => void;
+  onPurchaseInnRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -550,6 +556,7 @@ function AtlasPanel({
           onPurchaseSecondaryPartyUpgrade={
             onPurchaseGuildSecondaryPartyUpgrade
           }
+          onPurchaseRoomUpgrade={onPurchaseInnRoomUpgrade}
           onRecruit={onRecruitGuildCandidate}
           onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}

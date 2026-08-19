@@ -8,6 +8,7 @@ import {
   getGuildNoticeBoardUpgradeStatuses,
   getGuildRecruitUpgradeStatuses,
   getGuildNoticeBoardState,
+  getInnRoomUpgradeStatuses,
   getActiveCompanions,
   getCurrencyBalance,
   getEnemyType,
@@ -40,6 +41,7 @@ import {
   type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
   type InnKitchenRecipeId,
+  type InnRoomUpgradeId,
   type DebugMapId,
   type GameState,
   type ItemId,
@@ -71,9 +73,11 @@ type GuildView =
   | "kitchen"
   | "recruitUpgrades"
   | "noticeBoardUpgrades"
-  | "secondaryPartyUpgrades";
+  | "secondaryPartyUpgrades"
+  | "roomUpgrades";
 
 const MAX_MAIN_PARTY_SLOTS = 5;
+const GUILD_INN_REQUIREMENT_MESSAGE = "Requires Guild & Inn";
 
 export type GuildSecondaryPartyRedeemSummary = {
   partyName: string;
@@ -99,6 +103,7 @@ export function GuildTavernPanel({
   onOpenNoticeBoard,
   onPurchaseNoticeBoardUpgrade,
   onPurchaseRecruitUpgrade,
+  onPurchaseRoomUpgrade,
   onPurchaseSecondaryPartyUpgrade,
   onRecruit,
   onRerollNoticeBoard,
@@ -130,6 +135,7 @@ export function GuildTavernPanel({
   onOpenNoticeBoard: () => void;
   onPurchaseNoticeBoardUpgrade: (upgradeId: GuildNoticeBoardUpgradeId) => void;
   onPurchaseRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
+  onPurchaseRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
   onPurchaseSecondaryPartyUpgrade: (
     upgradeId: GuildSecondaryPartyUpgradeId,
     partyId?: string | null,
@@ -168,17 +174,17 @@ export function GuildTavernPanel({
     useState<string | null>(null);
   const activeCompanions = getActiveCompanions(state);
   const partySizeLimit = getPartySizeLimit(state);
-  const rosterCapacity = getGuildCompanionCapacity();
+  const rosterCapacity = getGuildCompanionCapacity(state);
   const rosterCount = getTotalRosterCompanionCount(state);
   const totalRosterLevel = getTotalRosterCompanionLevel(state);
-  const actionStatus = canUse ? "Coming soon" : "Requires Guild & Inn";
+  const actionStatus = canUse ? "Coming soon" : GUILD_INN_REQUIREMENT_MESSAGE;
   const guildRecruit = getGuildRecruitState(state, currentTime);
   const readyRecruitCount = guildRecruit.candidates.filter(Boolean).length;
   const recruitButtonStatus = canUse
     ? readyRecruitCount > 0
       ? "Ready"
       : "Waiting"
-    : "Requires Guild & Inn";
+    : GUILD_INN_REQUIREMENT_MESSAGE;
   const recruitButtonCountdown = formatRecruitButtonCountdown(
     guildRecruit.nextRefreshAtMs,
     currentTime,
@@ -191,7 +197,7 @@ export function GuildTavernPanel({
   );
   const noticeBoardButtonStatus = canUse
     ? getNoticeBoardButtonStatus(noticeBoardQuest)
-    : "Requires Guild & Inn";
+    : GUILD_INN_REQUIREMENT_MESSAGE;
   const innRoomOverview = getInnRoomOverview(state);
   const kitchenRows = getInnKitchenCompanionRows(state, currentTime);
   const kitchenBulkCookGroups = getInnKitchenBulkCookGroups(state);
@@ -315,7 +321,9 @@ export function GuildTavernPanel({
         />
       ) : activeSection === "inn" && guildView === "rooms" ? (
         <InnRoomsView
+          canUse={canUse}
           isSelectionLocked={isInnRoomSelectionLocked}
+          resultMessage={upgradeResultMessage}
           selectedCompanionId={selectedInnRoomCompanionId}
           state={state}
           onBack={() => {
@@ -326,6 +334,10 @@ export function GuildTavernPanel({
           onLockCompanion={(companionId) => {
             setSelectedInnRoomCompanionId(companionId);
             setInnRoomSelectionLocked(true);
+          }}
+          onOpenUpgrades={() => {
+            setInnRoomSelectionLocked(false);
+            setGuildView("roomUpgrades");
           }}
           onPreviewCompanion={(companionId) => {
             if (!isInnRoomSelectionLocked) {
@@ -382,6 +394,14 @@ export function GuildTavernPanel({
           onBack={() => setGuildView("secondaryParties")}
           onPurchase={onPurchaseSecondaryPartyUpgrade}
         />
+      ) : activeSection === "inn" && guildView === "roomUpgrades" ? (
+        <InnRoomUpgradesView
+          canUse={canUse}
+          resultMessage={upgradeResultMessage}
+          state={state}
+          onBack={() => setGuildView("rooms")}
+          onPurchase={onPurchaseRoomUpgrade}
+        />
       ) : (
         <div className="guild-tavern-section">
           <div className="guild-tavern-service-portrait" aria-hidden="true">
@@ -409,7 +429,9 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {recruitButtonCountdown}
                     </span>
-                    <small>{recruitButtonStatus}</small>
+                    <small className={getRequirementStatusClassName(recruitButtonStatus)}>
+                      {recruitButtonStatus}
+                    </small>
                   </button>
                   <button
                     onClick={() => {
@@ -424,14 +446,18 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {noticeBoardButtonCountdown}
                     </span>
-                    <small>{noticeBoardButtonStatus}</small>
+                    <small className={getRequirementStatusClassName(noticeBoardButtonStatus)}>
+                      {noticeBoardButtonStatus}
+                    </small>
                   </button>
                   <button
                     onClick={() => setGuildView("secondaryParties")}
                     type="button"
                   >
                     <span>Field Teams</span>
-                    <small>{canUse ? "Ready" : actionStatus}</small>
+                    <small className={getRequirementStatusClassName(actionStatus)}>
+                      {canUse ? "Ready" : actionStatus}
+                    </small>
                   </button>
                 </>
               ) : (
@@ -444,14 +470,18 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {innRoomOverview.occupiedRooms}/{innRoomOverview.capacity}
                     </span>
-                    <small>{canUse ? "Ready" : actionStatus}</small>
+                    <small className={getRequirementStatusClassName(actionStatus)}>
+                      {canUse ? "Ready" : actionStatus}
+                    </small>
                   </button>
                   <button
                     onClick={() => setGuildView("kitchen")}
                     type="button"
                   >
                     <span>Kitchen</span>
-                    <small>{canUse ? "Ready" : actionStatus}</small>
+                    <small className={getRequirementStatusClassName(actionStatus)}>
+                      {canUse ? "Ready" : actionStatus}
+                    </small>
                   </button>
                 </>
               )}
@@ -463,21 +493,49 @@ export function GuildTavernPanel({
   );
 }
 
+function GuildInnRequirementMessage() {
+  return (
+    <p className="guild-recruit-message guild-requires-service">
+      {GUILD_INN_REQUIREMENT_MESSAGE}
+    </p>
+  );
+}
+
+function getGuildMessageClassName(message: string | null | undefined): string {
+  return message === GUILD_INN_REQUIREMENT_MESSAGE
+    ? "guild-recruit-message guild-requires-service"
+    : "guild-recruit-message";
+}
+
+function getRequirementStatusClassName(
+  message: string | null | undefined,
+): string | undefined {
+  return message === GUILD_INN_REQUIREMENT_MESSAGE
+    ? "guild-requires-service"
+    : undefined;
+}
+
 function InnRoomsView({
+  canUse,
   isSelectionLocked,
+  resultMessage,
   selectedCompanionId,
   state,
   onBack,
   onClearSelectionLock,
   onLockCompanion,
+  onOpenUpgrades,
   onPreviewCompanion,
 }: {
+  canUse: boolean;
   isSelectionLocked: boolean;
+  resultMessage?: string | null;
   selectedCompanionId: string | null;
   state: GameState;
   onBack: () => void;
   onClearSelectionLock: () => void;
   onLockCompanion: (companionId: string) => void;
+  onOpenUpgrades: () => void;
   onPreviewCompanion: (companionId: string | null) => void;
 }) {
   const overview = getInnRoomOverview(state);
@@ -509,6 +567,14 @@ function InnRoomsView({
         onClearSelectionLock();
       }}
     >
+      <div className="guild-submenu-actions">
+        <button className="guild-recruit-back-button" onClick={onBack} type="button">
+          &lt; Back
+        </button>
+        <button onClick={onOpenUpgrades} type="button">
+          Upgrade
+        </button>
+      </div>
       <div className="guild-roster-topline">
         <div>
           <span className="guild-recruit-kicker">Inn Rooms</span>
@@ -516,10 +582,13 @@ function InnRoomsView({
             Rooms {overview.occupiedRooms}/{overview.capacity}
           </h3>
         </div>
-        <button onClick={onBack} type="button">
-          Back
-        </button>
       </div>
+      {!canUse ? (
+        <GuildInnRequirementMessage />
+      ) : null}
+      {resultMessage ? (
+        <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
+      ) : null}
       {overview.isOverCapacity ? (
         <p className="guild-recruit-message">
           Inn is over room capacity. All companions are still shown.
@@ -771,10 +840,10 @@ function InnKitchenView({
         </button>
       </div>
       {!canUse ? (
-        <p className="guild-recruit-message">Requires Guild & Inn</p>
+        <GuildInnRequirementMessage />
       ) : null}
       {resultMessage ? (
-        <p className="guild-recruit-message">{resultMessage}</p>
+        <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
       ) : null}
       {bulkCookGroups.length > 0 ? (
         <div className="guild-inn-kitchen-bulk-actions" aria-label="Bulk cooking">
@@ -1038,7 +1107,7 @@ function GuildRecruitView({
     : null;
   const recruitDisabled = !canUse || !candidate || destination === "blocked_full";
   const blockedText = !canUse
-    ? "Requires Guild & Inn"
+    ? GUILD_INN_REQUIREMENT_MESSAGE
     : !candidate
       ? `Next recruit in ${formatRecruitCountdown(
           guildRecruit.nextRefreshAtMs,
@@ -1129,9 +1198,13 @@ function GuildRecruitView({
               </p>
             </>
           )}
-          {blockedText ? <p className="guild-recruit-message">{blockedText}</p> : null}
+          {blockedText ? (
+            <p className={getGuildMessageClassName(blockedText)}>{blockedText}</p>
+          ) : null}
           {recruitResultMessage ? (
-            <p className="guild-recruit-message">{recruitResultMessage}</p>
+            <p className={getGuildMessageClassName(recruitResultMessage)}>
+              {recruitResultMessage}
+            </p>
           ) : null}
           <button
             disabled={recruitDisabled}
@@ -1196,7 +1269,7 @@ function GuildNoticeBoardView({
       ? getNoticeBoardQuestStatusLabel(quest)
       : "Take Quest";
   const statusText = !canUse
-    ? "Requires Guild & Inn"
+    ? GUILD_INN_REQUIREMENT_MESSAGE
     : quest
       ? getNoticeBoardQuestStatusLabel(quest)
       : `Next posting in ${formatRecruitCountdown(
@@ -1331,7 +1404,9 @@ function GuildNoticeBoardView({
             </div>
 
             {noticeBoardResultMessage ? (
-              <p className="guild-recruit-message">{noticeBoardResultMessage}</p>
+              <p className={getGuildMessageClassName(noticeBoardResultMessage)}>
+                {noticeBoardResultMessage}
+              </p>
             ) : null}
 
             <div className="guild-notice-board-actions">
@@ -1396,10 +1471,10 @@ function GuildRecruitUpgradesView({
         </div>
 
         {!canUse ? (
-          <p className="guild-recruit-message">Requires Guild & Inn</p>
+          <GuildInnRequirementMessage />
         ) : null}
         {resultMessage ? (
-          <p className="guild-recruit-message">{resultMessage}</p>
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
         ) : null}
 
         <div className="guild-upgrade-list">
@@ -1484,10 +1559,10 @@ function GuildNoticeBoardUpgradesView({
         </div>
 
         {!canUse ? (
-          <p className="guild-recruit-message">Requires Guild & Inn</p>
+          <GuildInnRequirementMessage />
         ) : null}
         {resultMessage ? (
-          <p className="guild-recruit-message">{resultMessage}</p>
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
         ) : null}
 
         <div className="guild-upgrade-list">
@@ -1577,10 +1652,10 @@ function GuildSecondaryPartyUpgradesView({
         </div>
 
         {!canUse ? (
-          <p className="guild-recruit-message">Requires Guild & Inn</p>
+          <GuildInnRequirementMessage />
         ) : null}
         {resultMessage ? (
-          <p className="guild-recruit-message">{resultMessage}</p>
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
         ) : null}
 
         <div className="guild-upgrade-list">
@@ -1623,6 +1698,61 @@ function GuildSecondaryPartyUpgradesView({
               </section>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InnRoomUpgradesView({
+  canUse,
+  resultMessage,
+  state,
+  onBack,
+  onPurchase,
+}: {
+  canUse: boolean;
+  resultMessage?: string | null;
+  state: GameState;
+  onBack: () => void;
+  onPurchase: (upgradeId: InnRoomUpgradeId) => void;
+}) {
+  const crowns = getCurrencyBalance(state.wallet, "crowns");
+  const upgradeStatuses = getInnRoomUpgradeStatuses(state);
+
+  return (
+    <div className="guild-upgrades-view">
+      <button className="guild-recruit-back-button" onClick={onBack} type="button">
+        &lt; Back
+      </button>
+
+      <div className="guild-upgrades-card">
+        <div className="guild-roster-topline">
+          <div>
+            <span className="guild-recruit-kicker">Inn Investment</span>
+            <h3>Room Upgrades</h3>
+          </div>
+          <strong className="guild-upgrade-crowns">
+            Crowns: {crowns.toLocaleString()}
+          </strong>
+        </div>
+
+        {!canUse ? (
+          <GuildInnRequirementMessage />
+        ) : null}
+        {resultMessage ? (
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
+        ) : null}
+
+        <div className="guild-upgrade-list">
+          {upgradeStatuses.map((upgrade) => (
+            <GuildUpgradeRow
+              canUse={canUse}
+              key={upgrade.id}
+              upgrade={upgrade}
+              onPurchase={() => onPurchase(upgrade.id)}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -1734,7 +1864,7 @@ function GuildSecondaryPartiesView({
   const unlockedPartyCount = getGuildSecondaryPartyCount(state);
   const assignmentDestinations = getGuildSecondaryPartyAssignmentDestinations(state);
   const partySizeLimit = getPartySizeLimit(state);
-  const rosterCapacity = getGuildCompanionCapacity();
+  const rosterCapacity = getGuildCompanionCapacity(state);
   const rosterCount = getTotalRosterCompanionCount(state);
   const totalRosterLevel = getTotalRosterCompanionLevel(state);
   const companionsById = Object.fromEntries(
@@ -1814,7 +1944,7 @@ function GuildSecondaryPartiesView({
         </div>
 
         {!canUse ? (
-          <p className="guild-recruit-message">Requires Guild & Inn</p>
+          <GuildInnRequirementMessage />
         ) : null}
         {selectedCompanionId ? (
           <p className="guild-recruit-message">
@@ -1823,7 +1953,7 @@ function GuildSecondaryPartiesView({
           </p>
         ) : null}
         {resultMessage ? (
-          <p className="guild-recruit-message">{resultMessage}</p>
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
         ) : null}
         {redeemSummary ? (
           <div className="guild-assignment-summary">

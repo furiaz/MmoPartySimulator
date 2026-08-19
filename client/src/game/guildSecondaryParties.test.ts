@@ -18,6 +18,7 @@ import {
   createInitialGuildUpgradesState,
   getGuildSecondaryPartyCount,
 } from "./guildRecruitUpgrades";
+import { createInitialInnUpgradesState } from "./innRoomUpgrades";
 import { isPositionAvailable } from "./movementPlanning";
 import { createTestGameState } from "./testState";
 import type { GameState } from "./state";
@@ -535,8 +536,22 @@ describe("guild secondary parties", () => {
     });
 
     expect(getGuildCompanionCapacity()).toBe(GUILD_INN_COMPANION_CAPACITY);
+    expect(getGuildCompanionCapacity(state)).toBe(GUILD_INN_COMPANION_CAPACITY);
     expect(getTotalRosterCompanionCount(state)).toBe(4);
     expect(getTotalRosterCompanionLevel(state)).toBe(20);
+  });
+
+  it("uses upgraded Inn room capacity for recruit blocking", () => {
+    const state = createRosterState({
+      activeIds: ["leader", "ally"],
+      restingIds: ["reserve", "secondary"],
+      secondaryIds: ["secondary"],
+      innRoomLevel: 2,
+    });
+
+    expect(getGuildCompanionCapacity(state)).toBe(5);
+    expect(getTotalRosterCompanionCount(state)).toBe(4);
+    expect(getGuildRecruitDestination(state)).toBe("tavern_reserve");
   });
 
   it("blocks new recruits at total capacity but tolerates old over-cap states", () => {
@@ -569,6 +584,7 @@ function createRosterState({
   npcs = [],
   positionsById = {},
   unlockedSecondaryParties = 1,
+  innRoomLevel = 1,
 }: {
   activeIds: string[];
   restingIds?: string[];
@@ -578,6 +594,7 @@ function createRosterState({
   npcs?: GameState["entities"][string][];
   positionsById?: Record<string, { x: number; y: number }>;
   unlockedSecondaryParties?: number;
+  innRoomLevel?: number;
 }): GameState {
   const activeCompanions = activeIds.map((id, index) =>
     createRosterCompanion(
@@ -599,6 +616,8 @@ function createRosterState({
   const guildUpgrades = createInitialGuildUpgradesState();
   guildUpgrades.secondaryParties.secondary_party_count =
     unlockedSecondaryParties;
+  const innUpgrades = createInitialInnUpgradesState();
+  innUpgrades.rooms.inn_room_count = innRoomLevel;
 
   return createTestGameState({
     entities: Object.fromEntries(
@@ -610,6 +629,7 @@ function createRosterState({
     partyLeaderId: activeIds[0] ?? "",
     highestCharacterLevelEver,
     guildUpgrades,
+    innUpgrades,
     guildSecondaryParties: {
       parties: [
         {

@@ -82,6 +82,9 @@ export type {
   InnKitchenMealBuffState,
   InnKitchenRecipeId,
   InnKitchenState,
+  InnRoomUpgradeId,
+  InnRoomUpgradeLevels,
+  InnUpgradesState,
   WorldDiscoveryState,
   ActiveTeleport,
   LeaderIntent,
@@ -1098,6 +1101,20 @@ export {
   type InnKitchenCookResult,
   type InnKitchenRecipeDefinition,
 } from "./innKitchen";
+export {
+  INN_ROOM_BASE_CAPACITY,
+  INN_ROOM_COUNT_MAX_LEVEL,
+  INN_ROOM_UPGRADE_IDS,
+  createInitialInnUpgradesState,
+  getInnRoomCapacity,
+  getInnRoomUpgradeStatuses,
+  getInnUpgradesState,
+  purchaseInnRoomUpgrade,
+  sanitizeInnUpgradesState,
+  type InnRoomUpgradePurchaseFailureReason,
+  type InnRoomUpgradePurchaseResult,
+  type InnRoomUpgradeStatus,
+} from "./innRoomUpgrades";
 export {
   ASSIGNMENT_WILD_MAP_IDS,
   createInitialWorldDiscoveryState,

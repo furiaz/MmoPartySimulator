@@ -96,7 +96,7 @@ const EQUIPMENT_SLOT_ORDER: EquipmentSlot[] = [
 ];
 
 export function getInnRoomOverview(state: GameState): InnRoomOverview {
-  const capacity = getGuildCompanionCapacity();
+  const capacity = getGuildCompanionCapacity(state);
   const activeCards = getActiveCompanions(state)
     .sort(compareCompanionsByPartyOrder)
     .map((companion): InnRoomCard => ({
