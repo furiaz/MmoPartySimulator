@@ -4,16 +4,24 @@ import {
   INN_KITCHEN_HOUSE_BREAD_COST_CROWNS,
   INN_KITCHEN_HOUSE_BREAD_DURATION_MS,
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+  bulkCookInnMealsForCompanions,
   cookInnMealForCompanion,
   createInitialInnKitchenState,
   getActiveInnKitchenMealBuff,
+  getInnKitchenPreference,
   getInnKitchenRecipes,
+  processInnKitchenAutoCook,
   sanitizeInnKitchenState,
+  setInnKitchenAutoCookEnabled,
+  setInnKitchenSelectedRecipe,
 } from "./innKitchen";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { createTestGameState } from "./testState";
 import { getCompanionDerivedStatsWithPartyBuffs } from "./stats";
 import type { GameState } from "./state";
 import type { Companion } from "./types";
+import { HUB_MAP_ID, MAP_ONE_ID } from "./debugMap";
 import { addCurrencyToWalletState, getCurrencyBalance } from "./wallet";
 
 const NOW_MS = 10_000;
@@ -24,6 +32,7 @@ describe("Inn Kitchen", () => {
 
     expect(createInitialInnKitchenState()).toEqual({
       activeMealBuffsByCompanionId: {},
+      preferencesByCompanionId: {},
     });
     expect(getInnKitchenRecipes()).toEqual([
       expect.objectContaining({
@@ -34,6 +43,21 @@ describe("Inn Kitchen", () => {
       }),
     ]);
     expect(state.innKitchen).toEqual(createInitialInnKitchenState());
+  });
+
+  it("saves selected recipe and auto-cook preferences per companion", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const selected = setInnKitchenSelectedRecipe(
+      createKitchenState([companion]),
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+    );
+    const toggled = setInnKitchenAutoCookEnabled(selected, companion.id, true);
+
+    expect(getInnKitchenPreference(toggled, companion.id)).toEqual({
+      selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      autoCookEnabled: true,
+    });
   });
 
   it("cooks House Bread for only the selected companion and charges Crowns", () => {
@@ -117,13 +141,14 @@ describe("Inn Kitchen", () => {
             expiresAtMs: NOW_MS + 1,
           },
         },
+        preferencesByCompanionId: {},
       },
     };
 
     expect(getActiveInnKitchenMealBuff(state, companion.id, NOW_MS + 2)).toBeNull();
-    expect(sanitizeInnKitchenState(state.innKitchen, state, NOW_MS + 2)).toEqual({
-      activeMealBuffsByCompanionId: {},
-    });
+    expect(sanitizeInnKitchenState(state.innKitchen, state, NOW_MS + 2)).toEqual(
+      createInitialInnKitchenState(),
+    );
   });
 
   it("increases only the selected companion's state-aware max HP", () => {
@@ -190,12 +215,180 @@ describe("Inn Kitchen", () => {
       (result.state.entities[companion.id] as Companion).consumableBuffs,
     ).toEqual(companion.consumableBuffs);
   });
+
+  it("auto-cooks expired meals for eligible hub companions", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const cooked = cookInnMealForCompanion(
+      withCrowns(createKitchenState([companion], HUB_MAP_ID), 100),
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      NOW_MS,
+    );
+    expect(cooked.ok).toBe(true);
+    const state = setInnKitchenAutoCookEnabled(cooked.state, companion.id, true);
+    const renewAtMs = NOW_MS + INN_KITCHEN_HOUSE_BREAD_DURATION_MS + 1;
+
+    const result = processInnKitchenAutoCook(state, renewAtMs);
+
+    expect(result.renewedCompanionIds).toEqual([companion.id]);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(40);
+    expect(
+      getActiveInnKitchenMealBuff(result.state, companion.id, renewAtMs),
+    ).toMatchObject({
+      recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      cookedAtMs: renewAtMs,
+    });
+  });
+
+  it("does not auto-cook companions that have not eaten yet", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const state = setInnKitchenAutoCookEnabled(
+      withCrowns(createKitchenState([companion], HUB_MAP_ID), 100),
+      companion.id,
+      true,
+    );
+
+    const result = processInnKitchenAutoCook(state, NOW_MS + 1);
+
+    expect(result.renewedCompanionIds).toEqual([]);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(100);
+    expect(getActiveInnKitchenMealBuff(result.state, companion.id, NOW_MS + 1)).toBeNull();
+  });
+
+  it("does not auto-cook active party companions outside hubs", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const cooked = cookInnMealForCompanion(
+      withCrowns(createKitchenState([companion], MAP_ONE_ID), 100),
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      NOW_MS,
+    );
+    expect(cooked.ok).toBe(true);
+    const state = setInnKitchenAutoCookEnabled(cooked.state, companion.id, true);
+    const renewAtMs = NOW_MS + INN_KITCHEN_HOUSE_BREAD_DURATION_MS + 1;
+
+    const result = processInnKitchenAutoCook(state, renewAtMs);
+
+    expect(result.renewedCompanionIds).toEqual([]);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(70);
+    expect(getActiveInnKitchenMealBuff(result.state, companion.id, renewAtMs)).toBeNull();
+  });
+
+  it("does not auto-cook assigned Field Team companions", () => {
+    const companion = createKitchenCompanion("field", 0);
+    const guildUpgrades = createInitialGuildUpgradesState();
+    guildUpgrades.secondaryParties.secondary_party_count = 1;
+    const guildSecondaryParties = createInitialGuildSecondaryPartiesState();
+    guildSecondaryParties.parties[0].companionIds[0] = companion.id;
+    guildSecondaryParties.parties[0].assignment = createAssignment();
+    const cooked = cookInnMealForCompanion(
+      withCrowns(
+        createTestGameState({
+          entities: {},
+          restingCompanionsById: {
+            [companion.id]: companion,
+          },
+          partyLeaderId: "",
+          currentMapId: HUB_MAP_ID,
+          simulationTimeMs: NOW_MS,
+          guildUpgrades,
+          guildSecondaryParties,
+        }),
+        100,
+      ),
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      NOW_MS,
+    );
+    expect(cooked.ok).toBe(true);
+    const state = setInnKitchenAutoCookEnabled(cooked.state, companion.id, true);
+    const renewAtMs = NOW_MS + INN_KITCHEN_HOUSE_BREAD_DURATION_MS + 1;
+
+    const result = processInnKitchenAutoCook(state, renewAtMs);
+
+    expect(result.renewedCompanionIds).toEqual([]);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(70);
+  });
+
+  it("turns auto-cook off when renewal cannot be paid", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const state = {
+      ...setInnKitchenAutoCookEnabled(
+        withCrowns(createKitchenState([companion], HUB_MAP_ID), 29),
+        companion.id,
+        true,
+      ),
+      innKitchen: {
+        activeMealBuffsByCompanionId: {
+          [companion.id]: {
+            recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            cookedAtMs: NOW_MS - INN_KITCHEN_HOUSE_BREAD_DURATION_MS - 1,
+            expiresAtMs: NOW_MS - 1,
+          },
+        },
+        preferencesByCompanionId: {
+          [companion.id]: {
+            selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            autoCookEnabled: true,
+          },
+        },
+      },
+    };
+
+    const result = processInnKitchenAutoCook(state, NOW_MS + 1);
+
+    expect(result.disabledCompanionIds).toEqual([companion.id]);
+    expect(getInnKitchenPreference(result.state, companion.id).autoCookEnabled).toBe(
+      false,
+    );
+    expect(getActiveInnKitchenMealBuff(result.state, companion.id, NOW_MS + 1)).toBeNull();
+  });
+
+  it("bulk cooks each selected companion all-or-nothing", () => {
+    const first = createKitchenCompanion("first", 0);
+    const second = createKitchenCompanion("second", 1);
+    const state = withCrowns(createKitchenState([first, second]), 60);
+
+    const result = bulkCookInnMealsForCompanions(
+      state,
+      [first.id, second.id],
+      NOW_MS,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(0);
+    expect(getActiveInnKitchenMealBuff(result.state, first.id, NOW_MS)).not.toBeNull();
+    expect(getActiveInnKitchenMealBuff(result.state, second.id, NOW_MS)).not.toBeNull();
+  });
+
+  it("bulk cooking reports missing Crowns without mutating meals", () => {
+    const first = createKitchenCompanion("first", 0);
+    const second = createKitchenCompanion("second", 1);
+    const state = withCrowns(createKitchenState([first, second]), 59);
+
+    const result = bulkCookInnMealsForCompanions(
+      state,
+      [first.id, second.id],
+      NOW_MS,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "insufficient_crowns",
+      missingCrowns: 1,
+    });
+    expect(result.state.innKitchen).toEqual(state.innKitchen);
+  });
 });
 
-function createKitchenState(companions: Companion[]): GameState {
+function createKitchenState(
+  companions: Companion[],
+  currentMapId = HUB_MAP_ID,
+): GameState {
   return createTestGameState({
     entities: Object.fromEntries(companions.map((companion) => [companion.id, companion])),
     partyLeaderId: companions[0]?.id ?? "",
+    currentMapId,
     simulationTimeMs: NOW_MS,
   });
 }
@@ -212,4 +405,32 @@ function createKitchenCompanion(id: string, partyOrder: number): Companion {
 
 function withCrowns(state: GameState, crowns: number): GameState {
   return addCurrencyToWalletState(state, "crowns", crowns, "debug").state;
+}
+
+function createAssignment() {
+  return {
+    status: "assigned" as const,
+    mapId: MAP_ONE_ID,
+    mapName: "Wilds",
+    subzoneId: "test-subzone",
+    subzoneName: "Test Subzone",
+    assignedAtMs: NOW_MS,
+    lastSettledAtMs: NOW_MS,
+    capsAtMs: NOW_MS + 1_000,
+    maxDurationMs: 1_000,
+    rewardSeed: 1,
+    experienceEfficiency: 0.5,
+    dropEfficiency: 0.5,
+    preview: {
+      rating: "Adequate",
+      killsPerHour: 1,
+      experiencePerMinute: 1,
+      survivabilityPercent: 100,
+      expectedDropItemIds: [],
+      expectedResourceItemIds: [],
+      warnings: [],
+    },
+    pendingResult: null,
+    pendingElapsedMs: 0,
+  };
 }

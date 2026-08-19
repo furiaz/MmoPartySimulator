@@ -25,6 +25,8 @@ import {
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
   cookInnMealForCompanion,
   createInitialInnKitchenState,
+  setInnKitchenAutoCookEnabled,
+  setInnKitchenSelectedRecipe,
 } from "./innKitchen";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
@@ -397,6 +399,46 @@ describe("save game serialization", () => {
     });
   });
 
+  it("preserves Inn Kitchen selected recipe and auto-cook preferences", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = setInnKitchenAutoCookEnabled(
+      setInnKitchenSelectedRecipe(
+        createTestGameState({
+          entities: {
+            [companion.id]: companion,
+          },
+          partyLeaderId: companion.id,
+          currentMapId: HUB_MAP_ID,
+          map: createDebugMap(),
+          simulationTimeMs: NOW_MS,
+        }),
+        companion.id,
+        INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      ),
+      companion.id,
+      true,
+    );
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.innKitchen?.preferencesByCompanionId).toEqual({
+      [companion.id]: {
+        selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        autoCookEnabled: true,
+      },
+    });
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -582,6 +624,7 @@ describe("save game serialization", () => {
             expiresAtMs: NOW_MS + 10_000,
           },
         },
+        preferencesByCompanionId: {},
       },
     });
 

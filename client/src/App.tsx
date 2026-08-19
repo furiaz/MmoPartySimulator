@@ -125,8 +125,14 @@ import {
   isBankChestNpc,
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
+  isCompanionHubEligibleForInnKitchen,
   openGuildNoticeBoard,
+  bulkCookInnMealsForCompanions,
   cookInnMealForCompanion,
+  getInnKitchenPreference,
+  processInnKitchenAutoCook,
+  setInnKitchenAutoCookEnabled,
+  setInnKitchenSelectedRecipe,
   assignGuildSecondaryParty,
   redeemGuildSecondaryPartyAssignment,
   returnGuildSecondaryPartyAssignment,
@@ -4763,6 +4769,11 @@ function App() {
       return;
     }
 
+    if (!isCompanionHubEligibleForInnKitchen(gameState, companionId)) {
+      setInnKitchenResultMessage("Companion is not at a hub.");
+      return;
+    }
+
     const cooked = cookInnMealForCompanion(
       gameState,
       companionId,
@@ -4782,6 +4793,81 @@ function App() {
           : cooked.reason === "missing_companion"
             ? "Companion unavailable."
             : "Recipe unavailable.",
+      );
+    }
+
+    setGameState(cooked.state);
+  }
+
+  function selectInnKitchenRecipeFromMenu(
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) {
+    queueSaveAfterStateChange("Inn kitchen preference saved");
+    setInnKitchenResultMessage("Recipe preference saved");
+    setGameState((state) =>
+      setInnKitchenSelectedRecipe(state, companionId, recipeId),
+    );
+  }
+
+  function toggleInnKitchenAutoCookFromMenu(
+    companionId: string,
+    enabled: boolean,
+  ) {
+    const toggledState = setInnKitchenAutoCookEnabled(
+      gameState,
+      companionId,
+      enabled,
+    );
+    const processed = enabled
+      ? processInnKitchenAutoCook(toggledState, currentTime)
+      : { state: toggledState, disabledCompanionIds: [] as string[] };
+    const nextState = processed.state;
+    const nextPreference = getInnKitchenPreference(nextState, companionId);
+
+    if (nextPreference.autoCookEnabled !== enabled) {
+      setInnKitchenResultMessage(
+        processed.disabledCompanionIds.includes(companionId)
+          ? "Not enough Crowns. Auto-cook disabled."
+          : "Companion unavailable.",
+      );
+      setGameState(nextState);
+      return;
+    }
+
+    queueSaveAfterStateChange("Inn kitchen auto-cook saved");
+    setInnKitchenResultMessage(enabled ? "Auto-cook enabled" : "Auto-cook disabled");
+    setGameState(nextState);
+  }
+
+  function bulkCookInnMealsFromMenu(companionIds: string[], label: string) {
+    if (!canUseGuildTavern) {
+      setInnKitchenResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const cooked = bulkCookInnMealsForCompanions(
+      gameState,
+      companionIds,
+      currentTime,
+    );
+
+    if (cooked.ok) {
+      queueSaveAfterStateChange("Inn kitchen meals saved");
+      setInnKitchenResultMessage(
+        `${label}: served ${cooked.companionIds.length} meal${
+          cooked.companionIds.length === 1 ? "" : "s"
+        }.`,
+      );
+    } else {
+      setInnKitchenResultMessage(
+        cooked.reason === "insufficient_crowns"
+          ? `Missing ${cooked.missingCrowns ?? 0} Crowns.`
+          : cooked.reason === "missing_companion"
+            ? "Companion unavailable."
+            : cooked.reason === "empty_target_list"
+              ? "No companions selected."
+              : "Recipe unavailable.",
       );
     }
 
@@ -5971,6 +6057,9 @@ function App() {
                 returnGuildSecondaryPartyAssignmentFromMenu
               }
               onCookInnMeal={cookInnMealFromMenu}
+              onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
+              onToggleInnKitchenAutoCook={toggleInnKitchenAutoCookFromMenu}
+              onBulkCookInnMeals={bulkCookInnMealsFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }

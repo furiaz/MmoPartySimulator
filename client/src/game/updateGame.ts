@@ -29,6 +29,7 @@ import { updateFollowSystem } from "./followSystem";
 import { updateGatherSystem } from "./gatherSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
 import { updateNewsBroadcasts } from "./newsBroadcast";
+import { processInnKitchenAutoCook } from "./innKitchen";
 import {
   syncPartyDerivedMaxHealth,
   updatePassiveHealthRegen,
@@ -108,6 +109,7 @@ export function updateGame(
   nextState = debugApplyCompanionInfiniteHealth(nextState);
   nextState = updateConsumableBehaviorSystem(nextState, timing.nowMs);
   nextState = updateConsumableSystem(nextState, timing.nowMs);
+  nextState = processInnKitchenAutoCook(nextState, timing.nowMs).state;
   nextState = syncPartyDerivedMaxHealth(nextState);
   nextState = debugApplyCompanionInfiniteHealth(nextState);
 

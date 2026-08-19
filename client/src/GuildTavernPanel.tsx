@@ -55,6 +55,7 @@ import {
 } from "./innRoomsPresentation";
 import {
   formatInnKitchenDuration,
+  getInnKitchenBulkCookGroups,
   getInnKitchenCompanionRows,
   getInnKitchenRecipeDisplay,
 } from "./innKitchenPresentation";
@@ -106,6 +107,9 @@ export function GuildTavernPanel({
   onRedeemSecondaryPartyAssignment,
   onReturnSecondaryPartyAssignment,
   onCookInnMeal,
+  onSelectInnKitchenRecipe,
+  onToggleInnKitchenAutoCook,
+  onBulkCookInnMeals,
   onClearSecondaryPartySummary,
   secondaryPartyRedeemSummary,
 }: {
@@ -141,6 +145,12 @@ export function GuildTavernPanel({
   onRedeemSecondaryPartyAssignment: (partyId: string) => void;
   onReturnSecondaryPartyAssignment: (partyId: string) => void;
   onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onSelectInnKitchenRecipe: (
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) => void;
+  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearSecondaryPartySummary: () => void;
 }) {
   const [activeSection, setActiveSection] =
@@ -154,8 +164,6 @@ export function GuildTavernPanel({
     useState(false);
   const [selectedKitchenCompanionId, setSelectedKitchenCompanionId] =
     useState<string | null>(null);
-  const [selectedKitchenRecipesByCompanionId, setSelectedKitchenRecipesByCompanionId] =
-    useState<Record<string, InnKitchenRecipeId>>({});
   const [recipePickerCompanionId, setRecipePickerCompanionId] =
     useState<string | null>(null);
   const activeCompanions = getActiveCompanions(state);
@@ -186,13 +194,13 @@ export function GuildTavernPanel({
     : "Requires Guild & Inn";
   const innRoomOverview = getInnRoomOverview(state);
   const kitchenRows = getInnKitchenCompanionRows(state, currentTime);
+  const kitchenBulkCookGroups = getInnKitchenBulkCookGroups(state);
   const selectedKitchenRow =
     kitchenRows.find((row) => row.companion.id === selectedKitchenCompanionId) ??
     kitchenRows[0] ??
     null;
   const selectedKitchenRecipeId = selectedKitchenRow
-    ? selectedKitchenRecipesByCompanionId[selectedKitchenRow.companion.id] ??
-      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID
+    ? selectedKitchenRow.selectedRecipeId
     : INN_KITCHEN_HOUSE_BREAD_RECIPE_ID;
 
   useEffect(() => {
@@ -331,8 +339,8 @@ export function GuildTavernPanel({
           currentTime={currentTime}
           resultMessage={innKitchenResultMessage}
           rows={kitchenRows}
+          bulkCookGroups={kitchenBulkCookGroups}
           selectedCompanionId={selectedKitchenRow?.companion.id ?? null}
-          selectedRecipesByCompanionId={selectedKitchenRecipesByCompanionId}
           selectedRecipeId={selectedKitchenRecipeId}
           recipePickerCompanionId={recipePickerCompanionId}
           onBack={() => {
@@ -340,14 +348,13 @@ export function GuildTavernPanel({
             setGuildView("hall");
           }}
           onCook={onCookInnMeal}
+          onBulkCook={onBulkCookInnMeals}
           onCloseRecipePicker={() => setRecipePickerCompanionId(null)}
           onOpenRecipePicker={setRecipePickerCompanionId}
           onSelectCompanion={setSelectedKitchenCompanionId}
+          onToggleAutoCook={onToggleInnKitchenAutoCook}
           onSelectRecipe={(companionId, recipeId) => {
-            setSelectedKitchenRecipesByCompanionId((recipesByCompanionId) => ({
-              ...recipesByCompanionId,
-              [companionId]: recipeId,
-            }));
+            onSelectInnKitchenRecipe(companionId, recipeId);
             setRecipePickerCompanionId(null);
           }}
         />
@@ -395,7 +402,6 @@ export function GuildTavernPanel({
               {activeSection === "guild" ? (
                 <>
                   <button
-                    disabled={!canUse}
                     onClick={() => setGuildView("recruit")}
                     type="button"
                   >
@@ -406,9 +412,10 @@ export function GuildTavernPanel({
                     <small>{recruitButtonStatus}</small>
                   </button>
                   <button
-                    disabled={!canUse}
                     onClick={() => {
-                      onOpenNoticeBoard();
+                      if (canUse) {
+                        onOpenNoticeBoard();
+                      }
                       setGuildView("noticeBoard");
                     }}
                     type="button"
@@ -420,7 +427,6 @@ export function GuildTavernPanel({
                     <small>{noticeBoardButtonStatus}</small>
                   </button>
                   <button
-                    disabled={!canUse}
                     onClick={() => setGuildView("secondaryParties")}
                     type="button"
                   >
@@ -431,7 +437,6 @@ export function GuildTavernPanel({
               ) : (
                 <>
                   <button
-                    disabled={!canUse}
                     onClick={() => setGuildView("rooms")}
                     type="button"
                   >
@@ -442,7 +447,6 @@ export function GuildTavernPanel({
                     <small>{canUse ? "Ready" : actionStatus}</small>
                   </button>
                   <button
-                    disabled={!canUse}
                     onClick={() => setGuildView("kitchen")}
                     type="button"
                   >
@@ -714,31 +718,35 @@ function InnKitchenView({
   currentTime,
   resultMessage,
   rows,
+  bulkCookGroups,
   selectedCompanionId,
-  selectedRecipesByCompanionId,
   selectedRecipeId,
   recipePickerCompanionId,
   onBack,
   onCloseRecipePicker,
   onCook,
+  onBulkCook,
   onOpenRecipePicker,
   onSelectCompanion,
   onSelectRecipe,
+  onToggleAutoCook,
 }: {
   canUse: boolean;
   currentTime: number;
   resultMessage?: string | null;
   rows: ReturnType<typeof getInnKitchenCompanionRows>;
+  bulkCookGroups: ReturnType<typeof getInnKitchenBulkCookGroups>;
   selectedCompanionId: string | null;
-  selectedRecipesByCompanionId: Record<string, InnKitchenRecipeId>;
   selectedRecipeId: InnKitchenRecipeId;
   recipePickerCompanionId: string | null;
   onBack: () => void;
   onCloseRecipePicker: () => void;
   onCook: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onBulkCook: (companionIds: string[], label: string) => void;
   onOpenRecipePicker: (companionId: string) => void;
   onSelectCompanion: (companionId: string) => void;
   onSelectRecipe: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onToggleAutoCook: (companionId: string, enabled: boolean) => void;
 }) {
   const selectedRow =
     rows.find((row) => row.companion.id === selectedCompanionId) ?? null;
@@ -768,16 +776,36 @@ function InnKitchenView({
       {resultMessage ? (
         <p className="guild-recruit-message">{resultMessage}</p>
       ) : null}
+      {bulkCookGroups.length > 0 ? (
+        <div className="guild-inn-kitchen-bulk-actions" aria-label="Bulk cooking">
+          {bulkCookGroups.map((group) => (
+            <button
+              disabled={!canUse || group.isAssigned}
+              key={group.id}
+              onClick={() => onBulkCook(group.companionIds, group.label)}
+              title={group.isAssigned ? "Dispatched" : undefined}
+              type="button"
+            >
+              {group.isAssigned ? group.label.replace("Cook ", "") + " Dispatched" : group.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="guild-inn-kitchen-layout">
         <div className="guild-inn-kitchen-list" aria-label="Kitchen companions">
           {rows.length > 0 ? (
             rows.map((row) => {
-              const rowRecipeId =
-                selectedRecipesByCompanionId[row.companion.id] ??
-                INN_KITCHEN_HOUSE_BREAD_RECIPE_ID;
-              const rowRecipe = getInnKitchenRecipeDisplay(rowRecipeId);
+              const rowRecipe = getInnKitchenRecipeDisplay(row.selectedRecipeId);
               const classDefinition = CLASS_DEFINITIONS[row.companion.classId];
               const idleFrameSrc = getClassIdleFrameSrc(row.companion.classId);
+              const activeMealText = row.activeMeal
+                ? formatInnKitchenDuration(row.activeMeal.expiresAtMs - currentTime)
+                : "No meal";
+              const autoCookStatusText = row.isHubEligible
+                ? activeMealText
+                : row.locationLabel.startsWith("Dispatched")
+                  ? "Dispatched"
+                  : "Away from hub";
 
               return (
                 <div
@@ -808,7 +836,6 @@ function InnKitchenView({
                   </button>
                   <button
                     className="guild-inn-kitchen-recipe-button"
-                    disabled={!canUse}
                     onClick={() => {
                       onSelectCompanion(row.companion.id);
                       onOpenRecipePicker(row.companion.id);
@@ -818,6 +845,20 @@ function InnKitchenView({
                     <span>{rowRecipe.recipe.displayName}</span>
                     <small>{rowRecipe.effectText}</small>
                   </button>
+                  <label className="guild-inn-kitchen-auto-toggle">
+                    <input
+                      checked={row.autoCookEnabled}
+                      onChange={(event) =>
+                        onToggleAutoCook(
+                          row.companion.id,
+                          event.currentTarget.checked,
+                        )
+                      }
+                      type="checkbox"
+                    />
+                    <span>Auto-cook</span>
+                    <small>{autoCookStatusText}</small>
+                  </label>
                 </div>
               );
             })
@@ -869,7 +910,7 @@ function InnKitchenView({
                 <span>Cost: {selectedRecipeDisplay.costText}</span>
                 <span>Ingredients: {selectedRecipeDisplay.ingredientText}</span>
                 <button
-                  disabled={!canUse}
+                  disabled={!canUse || !selectedRow.isHubEligible}
                   onClick={() =>
                     onCook(selectedRow.companion.id, selectedRecipeId)
                   }
@@ -1013,7 +1054,7 @@ function GuildRecruitView({
         <button className="guild-recruit-back-button" onClick={onBack} type="button">
           &lt; Back
         </button>
-        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+        <button onClick={onOpenUpgrades} type="button">
           Upgrade
         </button>
       </div>
@@ -1176,7 +1217,7 @@ function GuildNoticeBoardView({
         <button className="guild-recruit-back-button" onClick={onBack} type="button">
           &lt; Back
         </button>
-        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+        <button onClick={onOpenUpgrades} type="button">
           Upgrade
         </button>
       </div>
@@ -1747,7 +1788,7 @@ function GuildSecondaryPartiesView({
         <button className="guild-recruit-back-button" onClick={onBack} type="button">
           &lt; Back
         </button>
-        <button disabled={!canUse} onClick={onOpenUpgrades} type="button">
+        <button onClick={onOpenUpgrades} type="button">
           Upgrade
         </button>
       </div>

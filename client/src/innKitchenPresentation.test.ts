@@ -3,11 +3,13 @@ import {
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
   createInitialGuildSecondaryPartiesState,
   createInitialGuildUpgradesState,
+  setInnKitchenAutoCookEnabled,
 } from "./game";
 import { createCompanion } from "./game/entities";
 import { createTestGameState } from "./game/testState";
 import {
   formatInnKitchenDuration,
+  getInnKitchenBulkCookGroups,
   getInnKitchenCompanionRows,
   getInnKitchenRecipeDisplay,
 } from "./innKitchenPresentation";
@@ -62,6 +64,96 @@ describe("Inn Kitchen presentation", () => {
       effectText: "Max HP +5%",
     });
     expect(formatInnKitchenDuration(90 * 60_000)).toBe("1h 30m");
+  });
+
+  it("includes selected recipe and auto-cook row state", () => {
+    const companion = createKitchenCompanion("main", 0);
+    const state = setInnKitchenAutoCookEnabled(
+      createTestGameState({
+        entities: {
+          [companion.id]: companion,
+        },
+        partyLeaderId: companion.id,
+        currentMapId: "hub",
+      }),
+      companion.id,
+      true,
+    );
+
+    expect(getInnKitchenCompanionRows(state, 0)[0]).toMatchObject({
+      selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      autoCookEnabled: true,
+      isHubEligible: true,
+    });
+  });
+
+  it("creates bulk cook groups for Main and unlocked occupied Field Teams", () => {
+    const main = createKitchenCompanion("main", 0);
+    const fieldOne = createKitchenCompanion("field-one", 1);
+    const fieldTwo = createKitchenCompanion("field-two", 2);
+    const guildUpgrades = createInitialGuildUpgradesState();
+    guildUpgrades.secondaryParties.secondary_party_count = 2;
+    const guildSecondaryParties = createInitialGuildSecondaryPartiesState();
+    guildSecondaryParties.parties[0].companionIds[0] = fieldOne.id;
+    guildSecondaryParties.parties[1].companionIds[0] = fieldTwo.id;
+    guildSecondaryParties.parties[1].assignment = {
+      status: "assigned",
+      mapId: "map-1",
+      mapName: "Wilds",
+      subzoneId: "test-subzone",
+      subzoneName: "Test Subzone",
+      assignedAtMs: 0,
+      lastSettledAtMs: 0,
+      capsAtMs: 1,
+      maxDurationMs: 1,
+      rewardSeed: 1,
+      experienceEfficiency: 0.5,
+      dropEfficiency: 0.5,
+      preview: {
+        rating: "Adequate",
+        killsPerHour: 1,
+        experiencePerMinute: 1,
+        survivabilityPercent: 100,
+        expectedDropItemIds: [],
+        expectedResourceItemIds: [],
+        warnings: [],
+      },
+      pendingResult: null,
+      pendingElapsedMs: 0,
+    };
+    const state = createTestGameState({
+      entities: {
+        [main.id]: main,
+      },
+      restingCompanionsById: {
+        [fieldOne.id]: fieldOne,
+        [fieldTwo.id]: fieldTwo,
+      },
+      partyLeaderId: main.id,
+      guildUpgrades,
+      guildSecondaryParties,
+    });
+
+    expect(getInnKitchenBulkCookGroups(state)).toEqual([
+      {
+        id: "main",
+        label: "Cook Main",
+        companionIds: [main.id],
+        isAssigned: false,
+      },
+      {
+        id: "secondary-party-1",
+        label: "Cook FT1",
+        companionIds: [fieldOne.id],
+        isAssigned: false,
+      },
+      {
+        id: "secondary-party-2",
+        label: "Cook FT2",
+        companionIds: [fieldTwo.id],
+        isAssigned: true,
+      },
+    ]);
   });
 });
 

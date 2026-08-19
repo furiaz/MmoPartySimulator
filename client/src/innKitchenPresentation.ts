@@ -1,9 +1,12 @@
 import {
   getActiveCompanions,
   getActiveInnKitchenMealBuff,
+  getGuildSecondaryPartyCount,
   getGuildSecondaryPartiesState,
+  getInnKitchenPreference,
   getInnKitchenRecipeDefinition,
   getRestingCompanions,
+  isCompanionHubEligibleForInnKitchen,
   type Companion,
   type GameState,
   type InnKitchenMealBuffState,
@@ -16,6 +19,16 @@ export type InnKitchenCompanionRow = {
   locationLabel: string;
   badgeText: string | null;
   activeMeal: InnKitchenMealBuffState | null;
+  selectedRecipeId: InnKitchenRecipeId;
+  autoCookEnabled: boolean;
+  isHubEligible: boolean;
+};
+
+export type InnKitchenBulkCookGroup = {
+  id: string;
+  label: string;
+  companionIds: string[];
+  isAssigned: boolean;
 };
 
 export type InnKitchenRecipeDisplay = {
@@ -48,7 +61,7 @@ export function getInnKitchenCompanionRows(
     (party, partyIndex) => {
       const teamNumber = partyIndex + 1;
       const locationLabel = party.assignment
-        ? `Assigned - ${party.displayName}`
+        ? `Dispatched - ${party.displayName}`
         : party.displayName;
 
       return party.companionIds
@@ -69,6 +82,36 @@ export function getInnKitchenCompanionRows(
     );
 
   return [...activeRows, ...fieldTeamRows, ...remainingRows];
+}
+
+export function getInnKitchenBulkCookGroups(
+  state: GameState,
+): InnKitchenBulkCookGroup[] {
+  const activeCompanionIds = getActiveCompanions(state)
+    .sort(compareCompanionsByPartyOrder)
+    .map((companion) => companion.id);
+  const unlockedPartyCount = getGuildSecondaryPartyCount(state);
+  const fieldTeamGroups = getGuildSecondaryPartiesState(state).parties
+    .slice(0, unlockedPartyCount)
+    .map((party, index) => ({
+      id: party.id,
+      label: `Cook FT${index + 1}`,
+      companionIds: party.companionIds.filter(
+        (companionId): companionId is string => Boolean(companionId),
+      ),
+      isAssigned: Boolean(party.assignment),
+    }))
+    .filter((group) => group.companionIds.length > 0);
+
+  return [
+    {
+      id: "main",
+      label: "Cook Main",
+      companionIds: activeCompanionIds,
+      isAssigned: false,
+    },
+    ...fieldTeamGroups,
+  ].filter((group) => group.companionIds.length > 0);
 }
 
 export function getInnKitchenRecipeDisplay(
@@ -113,6 +156,9 @@ function createRow(
     locationLabel,
     badgeText,
     activeMeal: getActiveInnKitchenMealBuff(state, companion.id, nowMs),
+    selectedRecipeId: getInnKitchenPreference(state, companion.id).selectedRecipeId,
+    autoCookEnabled: getInnKitchenPreference(state, companion.id).autoCookEnabled,
+    isHubEligible: isCompanionHubEligibleForInnKitchen(state, companion.id),
   };
 }
 

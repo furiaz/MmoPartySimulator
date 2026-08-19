@@ -2721,8 +2721,14 @@ export type InnKitchenMealBuffState = {
   expiresAtMs: number;
 };
 
+export type InnKitchenCompanionPreferenceState = {
+  selectedRecipeId: InnKitchenRecipeId;
+  autoCookEnabled: boolean;
+};
+
 export type InnKitchenState = {
   activeMealBuffsByCompanionId: Record<string, InnKitchenMealBuffState>;
+  preferencesByCompanionId: Record<string, InnKitchenCompanionPreferenceState>;
 };
 
 export type GuildNoticeBoardState = {

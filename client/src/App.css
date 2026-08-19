@@ -2357,9 +2357,21 @@
   gap: 8px;
 }
 
+.guild-inn-kitchen-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.guild-inn-kitchen-bulk-actions button {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
 .guild-inn-kitchen-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.25fr) minmax(160px, 0.75fr);
+  grid-template-columns: minmax(240px, 1.25fr) minmax(150px, 0.65fr) minmax(96px, 0.35fr);
   gap: 8px;
   min-width: 0;
   padding: 7px;
@@ -2374,7 +2386,8 @@
 }
 
 .guild-inn-kitchen-companion,
-.guild-inn-kitchen-recipe-button {
+.guild-inn-kitchen-recipe-button,
+.guild-inn-kitchen-auto-toggle {
   display: grid;
   min-width: 0;
   align-items: center;
@@ -2449,6 +2462,31 @@
   justify-items: center;
   min-height: 72px;
   text-align: center;
+}
+
+.guild-inn-kitchen-auto-toggle {
+  justify-items: center;
+  min-height: 72px;
+  padding: 6px;
+  text-align: center;
+}
+
+.guild-inn-kitchen-auto-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #f3df93;
+}
+
+.guild-inn-kitchen-auto-toggle span {
+  color: #f3df93;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.guild-inn-kitchen-auto-toggle small {
+  color: #b9cdd1;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .guild-inn-kitchen-details {

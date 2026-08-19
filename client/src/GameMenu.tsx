@@ -98,6 +98,9 @@ export function GameMenu({
   onRedeemGuildSecondaryPartyAssignment,
   onReturnGuildSecondaryPartyAssignment,
   onCookInnMeal,
+  onSelectInnKitchenRecipe,
+  onToggleInnKitchenAutoCook,
+  onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -192,6 +195,12 @@ export function GameMenu({
   onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
   onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
   onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onSelectInnKitchenRecipe: (
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) => void;
+  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -348,6 +357,9 @@ export function GameMenu({
                     onReturnGuildSecondaryPartyAssignment
                   }
                   onCookInnMeal={onCookInnMeal}
+                  onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
+                  onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
+                  onBulkCookInnMeals={onBulkCookInnMeals}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
                   }
@@ -405,6 +417,9 @@ function AtlasPanel({
   onRedeemGuildSecondaryPartyAssignment,
   onReturnGuildSecondaryPartyAssignment,
   onCookInnMeal,
+  onSelectInnKitchenRecipe,
+  onToggleInnKitchenAutoCook,
+  onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -448,6 +463,12 @@ function AtlasPanel({
   onRedeemGuildSecondaryPartyAssignment: (partyId: string) => void;
   onReturnGuildSecondaryPartyAssignment: (partyId: string) => void;
   onCookInnMeal: (companionId: string, recipeId: InnKitchenRecipeId) => void;
+  onSelectInnKitchenRecipe: (
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) => void;
+  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
@@ -538,6 +559,9 @@ function AtlasPanel({
           }
           onReturnSecondaryPartyAssignment={onReturnGuildSecondaryPartyAssignment}
           onCookInnMeal={onCookInnMeal}
+          onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
+          onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
+          onBulkCookInnMeals={onBulkCookInnMeals}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />
       ) : (
