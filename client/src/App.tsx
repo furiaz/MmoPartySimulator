@@ -4867,59 +4867,47 @@ function App() {
     );
   }
 
-  function toggleInnKitchenAutoCookFromMenu(
-    companionId: string,
-    enabled: boolean,
-  ) {
-    const toggledState = setInnKitchenAutoCookEnabled(
+  function cycleInnKitchenAutoCookFromMenu(companionId: string) {
+    const preference = getInnKitchenPreference(gameState, companionId);
+    const nextThreshold =
+      !preference.autoCookEnabled
+        ? 25
+        : preference.autoCookRenewThresholdPercent < 25
+          ? 25
+          : preference.autoCookRenewThresholdPercent < 50
+            ? 50
+            : preference.autoCookRenewThresholdPercent < 75
+              ? 75
+              : preference.autoCookRenewThresholdPercent < 90
+                ? 90
+                : 0;
+    const nextEnabled = nextThreshold > 0;
+    const thresholdState = setInnKitchenAutoCookRenewThresholdPercent(
       gameState,
       companionId,
-      enabled,
+      nextThreshold,
     );
-    const processed = enabled
+    const toggledState = setInnKitchenAutoCookEnabled(
+      thresholdState,
+      companionId,
+      nextEnabled,
+    );
+    const processed = nextEnabled
       ? processInnKitchenAutoCook(toggledState, currentTime)
       : {
           state: toggledState,
-          disabledCompanionIds: [] as string[],
           failedCompanionIds: [] as string[],
         };
-    const nextState = processed.state;
-    const nextPreference = getInnKitchenPreference(nextState, companionId);
-
-    if (nextPreference.autoCookEnabled !== enabled) {
-      setInnKitchenResultMessage(
-        processed.disabledCompanionIds.includes(companionId)
-          ? "Not enough Crowns. Auto-cook disabled."
-          : "Companion unavailable.",
-      );
-      setGameState(nextState);
-      return;
-    }
 
     queueSaveAfterStateChange("Inn kitchen auto-cook saved");
     setInnKitchenResultMessage(
-      enabled
+      nextEnabled
         ? processed.failedCompanionIds.includes(companionId)
-          ? "Auto-cook enabled. Waiting for resources."
-          : "Auto-cook enabled"
-        : "Auto-cook disabled",
+          ? `Auto-cook On ${nextThreshold}%. Waiting for resources.`
+          : `Auto-cook On ${nextThreshold}%`
+        : "Auto-cook Off",
     );
-    setGameState(nextState);
-  }
-
-  function setInnKitchenAutoCookThresholdFromMenu(
-    companionId: string,
-    thresholdPercent: number,
-  ) {
-    queueSaveAfterStateChange("Inn kitchen auto-cook threshold saved");
-    setInnKitchenResultMessage(`Auto-cook renews at ${thresholdPercent}%.`);
-    setGameState((state) =>
-      setInnKitchenAutoCookRenewThresholdPercent(
-        state,
-        companionId,
-        thresholdPercent,
-      ),
-    );
+    setGameState(processed.state);
   }
 
   function bulkCookInnMealsFromMenu(companionIds: string[], label: string) {
@@ -6146,10 +6134,7 @@ function App() {
               }
               onCookInnMeal={cookInnMealFromMenu}
               onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
-              onToggleInnKitchenAutoCook={toggleInnKitchenAutoCookFromMenu}
-              onSetInnKitchenAutoCookThreshold={
-                setInnKitchenAutoCookThresholdFromMenu
-              }
+              onCycleInnKitchenAutoCook={cycleInnKitchenAutoCookFromMenu}
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)

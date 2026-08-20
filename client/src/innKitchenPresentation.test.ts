@@ -159,18 +159,21 @@ describe("Inn Kitchen presentation", () => {
         label: "Cook Main",
         companionIds: [main.id],
         isAssigned: false,
+        costTitle: "Cost: 30 Crowns + 1.0 Hearth's Fire",
       },
       {
         id: "secondary-party-1",
         label: "Cook FT1",
         companionIds: [fieldOne.id],
         isAssigned: false,
+        costTitle: "Cost: 30 Crowns + 1.0 Hearth's Fire",
       },
       {
         id: "secondary-party-2",
         label: "Cook FT2",
         companionIds: [fieldTwo.id],
         isAssigned: true,
+        costTitle: "Dispatched",
       },
     ]);
   });

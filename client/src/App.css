@@ -2412,9 +2412,10 @@
 
 .guild-inn-kitchen-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.25fr) minmax(150px, 0.65fr) minmax(96px, 0.35fr);
+  grid-template-columns: minmax(218px, 1.25fr) minmax(132px, 0.65fr) 86px;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
   padding: 7px;
   border: 1px solid #334a50;
   border-radius: 6px;
@@ -2441,25 +2442,26 @@
 }
 
 .guild-inn-kitchen-companion {
-  grid-template-columns: 96px minmax(0, 1fr) 22px;
+  grid-template-columns: 66px minmax(0, 1fr) 22px;
   grid-template-rows: repeat(3, auto);
-  column-gap: 8px;
+  column-gap: 7px;
   min-height: 86px;
-  padding: 6px 8px;
+  padding: 6px 7px;
   align-content: center;
   text-align: left;
 }
 
 .guild-inn-kitchen-companion .guild-roster-companion-sprite {
   grid-row: 1 / 4;
-  width: 92px;
+  justify-self: center;
+  width: 62px;
   height: 74px;
 }
 
 .guild-inn-kitchen-companion .guild-roster-companion-sprite img {
-  width: 104px;
-  height: 104px;
-  transform: translateY(-14px);
+  width: 94px;
+  height: 94px;
+  transform: translate(-16px, -10px);
 }
 
 .guild-inn-kitchen-companion span:not(.guild-roster-companion-sprite),
@@ -2506,33 +2508,35 @@
 }
 
 .guild-inn-kitchen-auto-toggle {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   justify-items: center;
-  min-height: 96px;
-  padding: 6px;
+  min-height: 72px;
+  padding: 5px 4px;
   text-align: center;
 }
 
-.guild-inn-kitchen-auto-toggle input {
-  width: 16px;
-  height: 16px;
-  accent-color: #f3df93;
-}
-
-.guild-inn-kitchen-auto-toggle input[type="range"] {
-  width: 100%;
-  height: 16px;
-}
-
-.guild-inn-kitchen-auto-toggle span {
+.guild-inn-kitchen-auto-toggle span,
+.guild-inn-kitchen-auto-toggle strong {
+  max-width: 100%;
   color: #f3df93;
   font-size: 11px;
   font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.guild-inn-kitchen-auto-toggle strong {
+  color: #eaf3f5;
+  font-size: 12px;
 }
 
 .guild-inn-kitchen-auto-toggle small {
+  max-width: 100%;
   color: #b9cdd1;
   font-size: 10px;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .guild-inn-kitchen-details {

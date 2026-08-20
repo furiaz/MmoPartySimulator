@@ -610,9 +610,14 @@ export function sanitizeInnKitchenState(
   innKitchen: unknown,
   state: GameState,
   nowMs = state.simulationTimeMs ?? Date.now(),
+  options: { settleHearthFire?: boolean } = {},
 ): InnKitchenState {
   if (!isRecord(innKitchen)) {
-    return settleSanitizedInnKitchenState(createInitialInnKitchenState(), state, nowMs);
+    const initialState = createInitialInnKitchenState();
+
+    return options.settleHearthFire === false
+      ? initialState
+      : settleSanitizedInnKitchenState(initialState, state, nowMs);
   }
 
   const rawBuffs = innKitchen.activeMealBuffsByCompanionId;
@@ -718,13 +723,17 @@ export function sanitizeInnKitchenState(
     }
   }
 
-  return settleSanitizedInnKitchenState({
+  const sanitizedState = {
     activeMealBuffsByCompanionId,
     preferencesByCompanionId,
     hearthFire: sanitizeInnKitchenHearthFireState(rawHearthFire, state, nowMs),
     pantry: sanitizeInnKitchenPantryState(rawPantry),
     autoCookFailuresByCompanionId,
-  }, state, nowMs);
+  };
+
+  return options.settleHearthFire === false
+    ? sanitizedState
+    : settleSanitizedInnKitchenState(sanitizedState, state, nowMs);
 }
 
 export function isCompanionHubEligibleForInnKitchen(
@@ -887,12 +896,16 @@ function settleSanitizedInnKitchenState(
     capacity,
     innKitchen.hearthFire.current + regeneratedAmount,
   );
+  const lastUpdatedAtMs =
+    nowMs >= innKitchen.hearthFire.lastUpdatedAtMs
+      ? nowMs
+      : innKitchen.hearthFire.lastUpdatedAtMs;
 
   return {
     ...innKitchen,
     hearthFire: {
       current: roundHearthFireAmount(current),
-      lastUpdatedAtMs: nowMs,
+      lastUpdatedAtMs,
     },
   };
 }

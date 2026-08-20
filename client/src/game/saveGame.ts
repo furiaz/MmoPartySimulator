@@ -472,7 +472,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     ...state,
     entities,
     restingCompanionsById,
-  });
+  }, undefined, { settleHearthFire: false });
   const worldDiscovery = sanitizeWorldDiscoveryState(
     state.worldDiscovery,
     {

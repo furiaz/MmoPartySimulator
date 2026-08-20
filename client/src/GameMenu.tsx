@@ -103,8 +103,7 @@ export function GameMenu({
   onReturnGuildSecondaryPartyAssignment,
   onCookInnMeal,
   onSelectInnKitchenRecipe,
-  onToggleInnKitchenAutoCook,
-  onSetInnKitchenAutoCookThreshold,
+  onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
@@ -206,11 +205,7 @@ export function GameMenu({
     companionId: string,
     recipeId: InnKitchenRecipeId,
   ) => void;
-  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
-  onSetInnKitchenAutoCookThreshold: (
-    companionId: string,
-    thresholdPercent: number,
-  ) => void;
+  onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
@@ -371,10 +366,7 @@ export function GameMenu({
                   }
                   onCookInnMeal={onCookInnMeal}
                   onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
-                  onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
-                  onSetInnKitchenAutoCookThreshold={
-                    onSetInnKitchenAutoCookThreshold
-                  }
+                  onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
                   onBulkCookInnMeals={onBulkCookInnMeals}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
@@ -436,8 +428,7 @@ function AtlasPanel({
   onReturnGuildSecondaryPartyAssignment,
   onCookInnMeal,
   onSelectInnKitchenRecipe,
-  onToggleInnKitchenAutoCook,
-  onSetInnKitchenAutoCookThreshold,
+  onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
@@ -488,11 +479,7 @@ function AtlasPanel({
     companionId: string,
     recipeId: InnKitchenRecipeId,
   ) => void;
-  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
-  onSetInnKitchenAutoCookThreshold: (
-    companionId: string,
-    thresholdPercent: number,
-  ) => void;
+  onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
@@ -587,8 +574,7 @@ function AtlasPanel({
           onReturnSecondaryPartyAssignment={onReturnGuildSecondaryPartyAssignment}
           onCookInnMeal={onCookInnMeal}
           onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
-          onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
-          onSetInnKitchenAutoCookThreshold={onSetInnKitchenAutoCookThreshold}
+          onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
           onBulkCookInnMeals={onBulkCookInnMeals}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />

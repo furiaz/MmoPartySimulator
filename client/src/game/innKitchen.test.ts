@@ -534,6 +534,32 @@ describe("Inn Kitchen", () => {
       cookedAtMs: renewAtMs,
     });
   });
+
+  it("does not move Hearth's Fire timestamps backwards during preference updates", () => {
+    const companion = createKitchenCompanion("first", 0);
+    const state: GameState = {
+      ...createKitchenState([companion]),
+      simulationTimeMs: 0,
+      innKitchen: {
+        ...createInitialInnKitchenState(),
+        hearthFire: {
+          current: 4,
+          lastUpdatedAtMs: NOW_MS,
+        },
+      },
+    };
+
+    const updated = setInnKitchenSelectedRecipe(
+      state,
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+    );
+
+    expect(updated.innKitchen?.hearthFire).toEqual({
+      current: 4,
+      lastUpdatedAtMs: NOW_MS,
+    });
+  });
 });
 
 function createKitchenState(

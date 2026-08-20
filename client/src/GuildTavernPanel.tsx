@@ -121,8 +121,7 @@ export function GuildTavernPanel({
   onReturnSecondaryPartyAssignment,
   onCookInnMeal,
   onSelectInnKitchenRecipe,
-  onToggleInnKitchenAutoCook,
-  onSetInnKitchenAutoCookThreshold,
+  onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
   onClearSecondaryPartySummary,
   secondaryPartyRedeemSummary,
@@ -165,11 +164,7 @@ export function GuildTavernPanel({
     companionId: string,
     recipeId: InnKitchenRecipeId,
   ) => void;
-  onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
-  onSetInnKitchenAutoCookThreshold: (
-    companionId: string,
-    thresholdPercent: number,
-  ) => void;
+  onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearSecondaryPartySummary: () => void;
 }) {
@@ -379,8 +374,7 @@ export function GuildTavernPanel({
           onCloseRecipePicker={() => setRecipePickerCompanionId(null)}
           onOpenRecipePicker={setRecipePickerCompanionId}
           onSelectCompanion={setSelectedKitchenCompanionId}
-          onToggleAutoCook={onToggleInnKitchenAutoCook}
-          onSetAutoCookThreshold={onSetInnKitchenAutoCookThreshold}
+          onCycleAutoCook={onCycleInnKitchenAutoCook}
           onSelectRecipe={(companionId, recipeId) => {
             onSelectInnKitchenRecipe(companionId, recipeId);
             setRecipePickerCompanionId(null);
@@ -841,8 +835,7 @@ function InnKitchenView({
   onOpenUpgrades,
   onSelectCompanion,
   onSelectRecipe,
-  onToggleAutoCook,
-  onSetAutoCookThreshold,
+  onCycleAutoCook,
 }: {
   canUse: boolean;
   currentTime: number;
@@ -863,11 +856,7 @@ function InnKitchenView({
   onOpenUpgrades: () => void;
   onSelectCompanion: (companionId: string) => void;
   onSelectRecipe: (companionId: string, recipeId: InnKitchenRecipeId) => void;
-  onToggleAutoCook: (companionId: string, enabled: boolean) => void;
-  onSetAutoCookThreshold: (
-    companionId: string,
-    thresholdPercent: number,
-  ) => void;
+  onCycleAutoCook: (companionId: string) => void;
 }) {
   const selectedRow =
     rows.find((row) => row.companion.id === selectedCompanionId) ?? null;
@@ -923,7 +912,7 @@ function InnKitchenView({
               disabled={!canUse || group.isAssigned}
               key={group.id}
               onClick={() => onBulkCook(group.companionIds, group.label)}
-              title={group.isAssigned ? "Dispatched" : undefined}
+              title={group.costTitle}
               type="button"
             >
               {group.isAssigned ? group.label.replace("Cook ", "") + " Dispatched" : group.label}
@@ -985,33 +974,19 @@ function InnKitchenView({
                     <span>{rowRecipe.recipe.displayName}</span>
                     <small>{rowRecipe.effectText}</small>
                   </button>
-                  <label className="guild-inn-kitchen-auto-toggle">
-                    <input
-                      checked={row.autoCookEnabled}
-                      onChange={(event) =>
-                        onToggleAutoCook(
-                          row.companion.id,
-                          event.currentTarget.checked,
-                        )
-                      }
-                      type="checkbox"
-                    />
+                  <button
+                    aria-pressed={row.autoCookEnabled}
+                    className="guild-inn-kitchen-auto-toggle"
+                    onClick={() => onCycleAutoCook(row.companion.id)}
+                    title="Cycle Auto-cook: Off, On 25%, On 50%, On 75%, On 90%"
+                    type="button"
+                  >
                     <span>Auto-cook</span>
-                    <span>{row.autoCookRenewThresholdPercent}%</span>
-                    <input
-                      aria-label="Auto-cook renew threshold"
-                      max={100}
-                      min={0}
-                      onChange={(event) =>
-                        onSetAutoCookThreshold(
-                          row.companion.id,
-                          Number(event.currentTarget.value),
-                        )
-                      }
-                      step={5}
-                      type="range"
-                      value={row.autoCookRenewThresholdPercent}
-                    />
+                    <strong>
+                      {row.autoCookEnabled
+                        ? `On ${row.autoCookRenewThresholdPercent}%`
+                        : "Off"}
+                    </strong>
                     <small>{autoCookStatusText}</small>
                     {row.autoCookFailure ? (
                       <small className="guild-requires-service">
@@ -1022,7 +997,7 @@ function InnKitchenView({
                         )}
                       </small>
                     ) : null}
-                  </label>
+                  </button>
                 </div>
               );
             })

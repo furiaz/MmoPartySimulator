@@ -37,6 +37,7 @@ export type InnKitchenBulkCookGroup = {
   label: string;
   companionIds: string[];
   isAssigned: boolean;
+  costTitle: string;
 };
 
 export type InnKitchenRecipeDisplay = {
@@ -123,6 +124,7 @@ export function getInnKitchenBulkCookGroups(
         (companionId): companionId is string => Boolean(companionId),
       ),
       isAssigned: Boolean(party.assignment),
+      costTitle: "",
     }))
     .filter((group) => group.companionIds.length > 0);
 
@@ -132,9 +134,17 @@ export function getInnKitchenBulkCookGroups(
       label: "Cook Main",
       companionIds: activeCompanionIds,
       isAssigned: false,
+      costTitle: "",
     },
     ...fieldTeamGroups,
-  ].filter((group) => group.companionIds.length > 0);
+  ]
+    .filter((group) => group.companionIds.length > 0)
+    .map((group) => ({
+      ...group,
+      costTitle: group.isAssigned
+        ? "Dispatched"
+        : getBulkCookCostTitle(state, group.companionIds),
+    }));
 }
 
 export function getInnKitchenRecipeDisplay(
@@ -252,6 +262,38 @@ function compareCompanionsByPartyOrder(a: Companion, b: Companion): number {
 
 function formatHearthFireAmount(amount: number): string {
   return amount.toFixed(1);
+}
+
+function getBulkCookCostTitle(
+  state: GameState,
+  companionIds: string[],
+): string {
+  const costs = companionIds.map((companionId) =>
+    getInnKitchenRecipeEffectiveCost(
+      state,
+      getInnKitchenPreference(state, companionId).selectedRecipeId,
+    ),
+  );
+  const crownCost = costs.reduce((total, cost) => total + cost.crownCost, 0);
+  const hearthFireCost = costs.reduce(
+    (total, cost) => total + cost.hearthFireCost,
+    0,
+  );
+  const ingredientCosts = costs.flatMap((cost) => cost.ingredientCosts);
+  const costParts = [
+    `${crownCost} Crowns`,
+    `${formatHearthFireAmount(hearthFireCost)} Hearth's Fire`,
+  ];
+
+  if (ingredientCosts.length > 0) {
+    costParts.push(
+      ingredientCosts
+        .map((ingredient) => `${ingredient.quantity} ${ingredient.ingredientId}`)
+        .join(", "),
+    );
+  }
+
+  return `Cost: ${costParts.join(" + ")}`;
 }
 
 function formatIngredientName(ingredientId: string): string {

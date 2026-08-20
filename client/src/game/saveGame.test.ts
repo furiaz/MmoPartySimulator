@@ -400,6 +400,48 @@ describe("save game serialization", () => {
     });
   });
 
+  it("preserves partial Hearth's Fire through save restore without instant refill", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = createTestGameState({
+      entities: {
+        [companion.id]: companion,
+      },
+      partyLeaderId: companion.id,
+      currentMapId: HUB_MAP_ID,
+      map: createDebugMap(),
+      simulationTimeMs: NOW_MS + 10 * 60 * 60 * 1000,
+      innKitchen: {
+        activeMealBuffsByCompanionId: {},
+        preferencesByCompanionId: {},
+        hearthFire: {
+          current: 4,
+          lastUpdatedAtMs: NOW_MS,
+        },
+        pantry: {
+          unlockedIngredientIds: [],
+          ingredientQuantitiesById: {},
+        },
+        autoCookFailuresByCompanionId: {},
+      },
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+    expect(restored.state.innKitchen?.hearthFire).toEqual({
+      current: 4,
+      lastUpdatedAtMs: NOW_MS,
+    });
+  });
+
   it("preserves Inn Kitchen selected recipe and auto-cook preferences", () => {
     const companion = createCompanion(
       "meal-companion",
