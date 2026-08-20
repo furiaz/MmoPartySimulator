@@ -11,6 +11,8 @@ import {
   formatInnKitchenDuration,
   getInnKitchenBulkCookGroups,
   getInnKitchenCompanionRows,
+  getInnKitchenHearthFireDisplay,
+  getInnKitchenPantryDisplay,
   getInnKitchenRecipeDisplay,
 } from "./innKitchenPresentation";
 
@@ -59,6 +61,7 @@ describe("Inn Kitchen presentation", () => {
   it("formats House Bread display data", () => {
     expect(getInnKitchenRecipeDisplay(INN_KITCHEN_HOUSE_BREAD_RECIPE_ID)).toMatchObject({
       costText: "30 Crowns",
+      hearthFireCostText: "1.0 Hearth's Fire",
       ingredientText: "None",
       durationText: "3h",
       effectText: "Max HP +5%",
@@ -83,7 +86,23 @@ describe("Inn Kitchen presentation", () => {
     expect(getInnKitchenCompanionRows(state, 0)[0]).toMatchObject({
       selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
       autoCookEnabled: true,
+      autoCookRenewThresholdPercent: 0,
+      autoCookFailure: null,
       isHubEligible: true,
+    });
+  });
+
+  it("formats Hearth's Fire and empty Pantry display data", () => {
+    const state = createTestGameState();
+
+    expect(getInnKitchenHearthFireDisplay(state, 0)).toMatchObject({
+      current: 10,
+      capacity: 10,
+      generationPerHour: 2,
+    });
+    expect(getInnKitchenPantryDisplay(state)).toEqual({
+      ingredientGroups: [],
+      emptyText: "No Pantry ingredients registered yet.",
     });
   });
 

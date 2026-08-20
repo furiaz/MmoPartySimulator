@@ -3,14 +3,20 @@ import {
   getActiveInnKitchenMealBuff,
   getGuildSecondaryPartyCount,
   getGuildSecondaryPartiesState,
+  getInnKitchenAutoCookFailure,
+  getInnKitchenHearthFireDisplayState,
   getInnKitchenPreference,
+  getInnKitchenRecipeEffectiveCost,
   getInnKitchenRecipeDefinition,
   getRestingCompanions,
   isCompanionHubEligibleForInnKitchen,
   type Companion,
   type GameState,
+  type InnKitchenAutoCookFailureState,
+  type InnKitchenHearthFireDisplayState,
   type InnKitchenMealBuffState,
   type InnKitchenRecipeDefinition,
+  type InnKitchenRecipeEffectiveCost,
   type InnKitchenRecipeId,
 } from "./game";
 
@@ -21,6 +27,8 @@ export type InnKitchenCompanionRow = {
   activeMeal: InnKitchenMealBuffState | null;
   selectedRecipeId: InnKitchenRecipeId;
   autoCookEnabled: boolean;
+  autoCookRenewThresholdPercent: number;
+  autoCookFailure: InnKitchenAutoCookFailureState | null;
   isHubEligible: boolean;
 };
 
@@ -33,10 +41,25 @@ export type InnKitchenBulkCookGroup = {
 
 export type InnKitchenRecipeDisplay = {
   recipe: InnKitchenRecipeDefinition;
+  cost: InnKitchenRecipeEffectiveCost;
   costText: string;
+  hearthFireCostText: string;
   ingredientText: string;
   durationText: string;
   effectText: string;
+};
+
+export type InnKitchenPantryDisplay = {
+  ingredientGroups: Array<{
+    groupName: string;
+    ingredients: Array<{
+      ingredientId: string;
+      displayName: string;
+      quantity: number;
+      isUnlocked: boolean;
+    }>;
+  }>;
+  emptyText: string;
 };
 
 export function getInnKitchenCompanionRows(
@@ -116,15 +139,73 @@ export function getInnKitchenBulkCookGroups(
 
 export function getInnKitchenRecipeDisplay(
   recipeId: InnKitchenRecipeId,
+  state?: GameState,
 ): InnKitchenRecipeDisplay {
   const recipe = getInnKitchenRecipeDefinition(recipeId);
+  const cost = state
+    ? getInnKitchenRecipeEffectiveCost(state, recipeId)
+    : {
+        crownCost: recipe.crownCost,
+        hearthFireCost: recipe.hearthFireCost,
+        ingredientCosts: recipe.ingredientCosts,
+      };
 
   return {
     recipe,
-    costText: `${recipe.crownCost} Crowns`,
-    ingredientText: recipe.ingredientText,
+    cost,
+    costText: `${cost.crownCost} Crowns`,
+    hearthFireCostText: `${formatHearthFireAmount(
+      cost.hearthFireCost,
+    )} Hearth's Fire`,
+    ingredientText:
+      cost.ingredientCosts.length > 0
+        ? cost.ingredientCosts
+            .map((ingredient) => `${ingredient.quantity} ${ingredient.ingredientId}`)
+            .join(", ")
+        : "None",
     durationText: formatInnKitchenDuration(recipe.durationMs),
     effectText: `Max HP +${recipe.maxHealthPercent}%`,
+  };
+}
+
+export function getInnKitchenHearthFireDisplay(
+  state: GameState,
+  nowMs: number,
+): InnKitchenHearthFireDisplayState {
+  return getInnKitchenHearthFireDisplayState(state, nowMs);
+}
+
+export function getInnKitchenPantryDisplay(
+  state: GameState,
+): InnKitchenPantryDisplay {
+  const pantry = state.innKitchen?.pantry;
+  const ingredientIds = Array.from(
+    new Set([
+      ...(pantry?.unlockedIngredientIds ?? []),
+      ...Object.keys(pantry?.ingredientQuantitiesById ?? {}),
+    ]),
+  );
+
+  if (ingredientIds.length <= 0) {
+    return {
+      ingredientGroups: [],
+      emptyText: "No Pantry ingredients registered yet.",
+    };
+  }
+
+  return {
+    ingredientGroups: [
+      {
+        groupName: "Ingredients",
+        ingredients: ingredientIds.sort().map((ingredientId) => ({
+          ingredientId,
+          displayName: formatIngredientName(ingredientId),
+          quantity: pantry?.ingredientQuantitiesById[ingredientId] ?? 0,
+          isUnlocked: pantry?.unlockedIngredientIds.includes(ingredientId) ?? false,
+        })),
+      },
+    ],
+    emptyText: "No Pantry ingredients registered yet.",
   };
 }
 
@@ -158,10 +239,25 @@ function createRow(
     activeMeal: getActiveInnKitchenMealBuff(state, companion.id, nowMs),
     selectedRecipeId: getInnKitchenPreference(state, companion.id).selectedRecipeId,
     autoCookEnabled: getInnKitchenPreference(state, companion.id).autoCookEnabled,
+    autoCookRenewThresholdPercent: getInnKitchenPreference(state, companion.id)
+      .autoCookRenewThresholdPercent,
+    autoCookFailure: getInnKitchenAutoCookFailure(state, companion.id),
     isHubEligible: isCompanionHubEligibleForInnKitchen(state, companion.id),
   };
 }
 
 function compareCompanionsByPartyOrder(a: Companion, b: Companion): number {
   return a.partyOrder - b.partyOrder || a.id.localeCompare(b.id);
+}
+
+function formatHearthFireAmount(amount: number): string {
+  return amount.toFixed(1);
+}
+
+function formatIngredientName(ingredientId: string): string {
+  return ingredientId
+    .split(/[_-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

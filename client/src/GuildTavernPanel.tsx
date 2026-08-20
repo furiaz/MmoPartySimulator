@@ -21,6 +21,7 @@ import {
   getGuildCompanionCapacity,
   getGuildSecondaryPartiesState,
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+  getInnKitchenUpgradeStatuses,
   getInnKitchenRecipes,
   getInnReserveCompanions,
   getItemDefinition,
@@ -41,6 +42,7 @@ import {
   type GuildRosterSlotRef,
   type GuildNoticeBoardQuest,
   type InnKitchenRecipeId,
+  type InnKitchenUpgradeId,
   type InnRoomUpgradeId,
   type DebugMapId,
   type GameState,
@@ -59,6 +61,8 @@ import {
   formatInnKitchenDuration,
   getInnKitchenBulkCookGroups,
   getInnKitchenCompanionRows,
+  getInnKitchenHearthFireDisplay,
+  getInnKitchenPantryDisplay,
   getInnKitchenRecipeDisplay,
 } from "./innKitchenPresentation";
 import { getClassIdleFrameSrc, getEnemyWalkingAnimation } from "./visualAssets";
@@ -74,7 +78,10 @@ type GuildView =
   | "recruitUpgrades"
   | "noticeBoardUpgrades"
   | "secondaryPartyUpgrades"
-  | "roomUpgrades";
+  | "roomUpgrades"
+  | "kitchenRecipeBook"
+  | "kitchenPantry"
+  | "kitchenUpgrades";
 
 const MAX_MAIN_PARTY_SLOTS = 5;
 const GUILD_INN_REQUIREMENT_MESSAGE = "Requires Guild & Inn";
@@ -104,6 +111,7 @@ export function GuildTavernPanel({
   onPurchaseNoticeBoardUpgrade,
   onPurchaseRecruitUpgrade,
   onPurchaseRoomUpgrade,
+  onPurchaseKitchenUpgrade,
   onPurchaseSecondaryPartyUpgrade,
   onRecruit,
   onRerollNoticeBoard,
@@ -114,6 +122,7 @@ export function GuildTavernPanel({
   onCookInnMeal,
   onSelectInnKitchenRecipe,
   onToggleInnKitchenAutoCook,
+  onSetInnKitchenAutoCookThreshold,
   onBulkCookInnMeals,
   onClearSecondaryPartySummary,
   secondaryPartyRedeemSummary,
@@ -136,6 +145,7 @@ export function GuildTavernPanel({
   onPurchaseNoticeBoardUpgrade: (upgradeId: GuildNoticeBoardUpgradeId) => void;
   onPurchaseRecruitUpgrade: (upgradeId: GuildRecruitUpgradeId) => void;
   onPurchaseRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
+  onPurchaseKitchenUpgrade: (upgradeId: InnKitchenUpgradeId) => void;
   onPurchaseSecondaryPartyUpgrade: (
     upgradeId: GuildSecondaryPartyUpgradeId,
     partyId?: string | null,
@@ -156,6 +166,10 @@ export function GuildTavernPanel({
     recipeId: InnKitchenRecipeId,
   ) => void;
   onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onSetInnKitchenAutoCookThreshold: (
+    companionId: string,
+    thresholdPercent: number,
+  ) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearSecondaryPartySummary: () => void;
 }) {
@@ -350,6 +364,7 @@ export function GuildTavernPanel({
           canUse={canUse}
           currentTime={currentTime}
           resultMessage={innKitchenResultMessage}
+          state={state}
           rows={kitchenRows}
           bulkCookGroups={kitchenBulkCookGroups}
           selectedCompanionId={selectedKitchenRow?.companion.id ?? null}
@@ -365,10 +380,34 @@ export function GuildTavernPanel({
           onOpenRecipePicker={setRecipePickerCompanionId}
           onSelectCompanion={setSelectedKitchenCompanionId}
           onToggleAutoCook={onToggleInnKitchenAutoCook}
+          onSetAutoCookThreshold={onSetInnKitchenAutoCookThreshold}
           onSelectRecipe={(companionId, recipeId) => {
             onSelectInnKitchenRecipe(companionId, recipeId);
             setRecipePickerCompanionId(null);
           }}
+          onOpenRecipeBook={() => setGuildView("kitchenRecipeBook")}
+          onOpenPantry={() => setGuildView("kitchenPantry")}
+          onOpenUpgrades={() => setGuildView("kitchenUpgrades")}
+        />
+      ) : activeSection === "inn" && guildView === "kitchenRecipeBook" ? (
+        <InnKitchenRecipeBookView
+          currentTime={currentTime}
+          state={state}
+          onBack={() => setGuildView("kitchen")}
+        />
+      ) : activeSection === "inn" && guildView === "kitchenPantry" ? (
+        <InnKitchenPantryView
+          state={state}
+          onBack={() => setGuildView("kitchen")}
+        />
+      ) : activeSection === "inn" && guildView === "kitchenUpgrades" ? (
+        <InnKitchenUpgradesView
+          canUse={canUse}
+          currentTime={currentTime}
+          resultMessage={upgradeResultMessage}
+          state={state}
+          onBack={() => setGuildView("kitchen")}
+          onPurchase={onPurchaseKitchenUpgrade}
         />
       ) : activeSection === "guild" && guildView === "recruitUpgrades" ? (
         <GuildRecruitUpgradesView
@@ -786,6 +825,7 @@ function InnKitchenView({
   canUse,
   currentTime,
   resultMessage,
+  state,
   rows,
   bulkCookGroups,
   selectedCompanionId,
@@ -796,13 +836,18 @@ function InnKitchenView({
   onCook,
   onBulkCook,
   onOpenRecipePicker,
+  onOpenRecipeBook,
+  onOpenPantry,
+  onOpenUpgrades,
   onSelectCompanion,
   onSelectRecipe,
   onToggleAutoCook,
+  onSetAutoCookThreshold,
 }: {
   canUse: boolean;
   currentTime: number;
   resultMessage?: string | null;
+  state: GameState;
   rows: ReturnType<typeof getInnKitchenCompanionRows>;
   bulkCookGroups: ReturnType<typeof getInnKitchenBulkCookGroups>;
   selectedCompanionId: string | null;
@@ -813,16 +858,24 @@ function InnKitchenView({
   onCook: (companionId: string, recipeId: InnKitchenRecipeId) => void;
   onBulkCook: (companionIds: string[], label: string) => void;
   onOpenRecipePicker: (companionId: string) => void;
+  onOpenRecipeBook: () => void;
+  onOpenPantry: () => void;
+  onOpenUpgrades: () => void;
   onSelectCompanion: (companionId: string) => void;
   onSelectRecipe: (companionId: string, recipeId: InnKitchenRecipeId) => void;
   onToggleAutoCook: (companionId: string, enabled: boolean) => void;
+  onSetAutoCookThreshold: (
+    companionId: string,
+    thresholdPercent: number,
+  ) => void;
 }) {
   const selectedRow =
     rows.find((row) => row.companion.id === selectedCompanionId) ?? null;
-  const selectedRecipeDisplay = getInnKitchenRecipeDisplay(selectedRecipeId);
+  const selectedRecipeDisplay = getInnKitchenRecipeDisplay(selectedRecipeId, state);
   const recipes = getInnKitchenRecipes();
+  const hearthFire = getInnKitchenHearthFireDisplay(state, currentTime);
   const activeMealRecipe = selectedRow?.activeMeal
-    ? getInnKitchenRecipeDisplay(selectedRow.activeMeal.recipeId)
+    ? getInnKitchenRecipeDisplay(selectedRow.activeMeal.recipeId, state)
     : null;
   const remainingMealDuration = selectedRow?.activeMeal
     ? formatInnKitchenDuration(selectedRow.activeMeal.expiresAtMs - currentTime)
@@ -845,6 +898,24 @@ function InnKitchenView({
       {resultMessage ? (
         <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
       ) : null}
+      <div className="guild-inn-kitchen-status-bar">
+        <div title={hearthFire.tooltip}>
+          <strong>Hearth&apos;s Fire</strong>
+          <span>
+            {hearthFire.current.toFixed(1)} / {hearthFire.capacity.toFixed(1)}
+          </span>
+          <small>{hearthFire.generationPerHour.toFixed(1)} Fire/hour</small>
+        </div>
+        <button onClick={onOpenRecipeBook} type="button">
+          Recipe Book
+        </button>
+        <button onClick={onOpenPantry} type="button">
+          Pantry
+        </button>
+        <button onClick={onOpenUpgrades} type="button">
+          Upgrade
+        </button>
+      </div>
       {bulkCookGroups.length > 0 ? (
         <div className="guild-inn-kitchen-bulk-actions" aria-label="Bulk cooking">
           {bulkCookGroups.map((group) => (
@@ -864,7 +935,7 @@ function InnKitchenView({
         <div className="guild-inn-kitchen-list" aria-label="Kitchen companions">
           {rows.length > 0 ? (
             rows.map((row) => {
-              const rowRecipe = getInnKitchenRecipeDisplay(row.selectedRecipeId);
+              const rowRecipe = getInnKitchenRecipeDisplay(row.selectedRecipeId, state);
               const classDefinition = CLASS_DEFINITIONS[row.companion.classId];
               const idleFrameSrc = getClassIdleFrameSrc(row.companion.classId);
               const activeMealText = row.activeMeal
@@ -926,7 +997,31 @@ function InnKitchenView({
                       type="checkbox"
                     />
                     <span>Auto-cook</span>
+                    <span>{row.autoCookRenewThresholdPercent}%</span>
+                    <input
+                      aria-label="Auto-cook renew threshold"
+                      max={100}
+                      min={0}
+                      onChange={(event) =>
+                        onSetAutoCookThreshold(
+                          row.companion.id,
+                          Number(event.currentTarget.value),
+                        )
+                      }
+                      step={5}
+                      type="range"
+                      value={row.autoCookRenewThresholdPercent}
+                    />
                     <small>{autoCookStatusText}</small>
+                    {row.autoCookFailure ? (
+                      <small className="guild-requires-service">
+                        Missing{" "}
+                        {formatKitchenMissingResources(
+                          row.autoCookFailure.missingCrowns,
+                          row.autoCookFailure.missingHearthFire,
+                        )}
+                      </small>
+                    ) : null}
                   </label>
                 </div>
               );
@@ -963,6 +1058,10 @@ function InnKitchenView({
                   <dd>{selectedRecipeDisplay.costText}</dd>
                 </div>
                 <div>
+                  <dt>Hearth&apos;s Fire</dt>
+                  <dd>{selectedRecipeDisplay.hearthFireCostText}</dd>
+                </div>
+                <div>
                   <dt>Ingredients</dt>
                   <dd>{selectedRecipeDisplay.ingredientText}</dd>
                 </div>
@@ -977,6 +1076,7 @@ function InnKitchenView({
               )}
               <div className="guild-inn-kitchen-cook-row">
                 <span>Cost: {selectedRecipeDisplay.costText}</span>
+                <span>Fire: {selectedRecipeDisplay.hearthFireCostText}</span>
                 <span>Ingredients: {selectedRecipeDisplay.ingredientText}</span>
                 <button
                   disabled={!canUse || !selectedRow.isHubEligible}
@@ -1024,7 +1124,7 @@ function InnKitchenView({
             <div className="guild-inn-recipe-picker-layout">
               <div className="guild-inn-recipe-list">
                 {recipes.map((recipe) => {
-                  const display = getInnKitchenRecipeDisplay(recipe.id);
+                  const display = getInnKitchenRecipeDisplay(recipe.id, state);
 
                   return (
                     <button
@@ -1040,7 +1140,7 @@ function InnKitchenView({
               </div>
               <div className="guild-inn-recipe-detail">
                 {recipes.map((recipe) => {
-                  const display = getInnKitchenRecipeDisplay(recipe.id);
+                  const display = getInnKitchenRecipeDisplay(recipe.id, state);
 
                   return (
                     <section key={recipe.id}>
@@ -1056,10 +1156,18 @@ function InnKitchenView({
                           <dd>{display.costText}</dd>
                         </div>
                         <div>
+                          <dt>Hearth&apos;s Fire</dt>
+                          <dd>{display.hearthFireCostText}</dd>
+                        </div>
+                        <div>
                           <dt>Ingredients</dt>
                           <dd>{display.ingredientText}</dd>
                         </div>
                       </dl>
+                      <div className="guild-inn-recipe-salt-placeholder">
+                        <strong>Salt Booster</strong>
+                        <span>Coming soon</span>
+                      </div>
                     </section>
                   );
                 })}
@@ -1070,6 +1178,196 @@ function InnKitchenView({
       ) : null}
     </div>
   );
+}
+
+function InnKitchenRecipeBookView({
+  currentTime,
+  state,
+  onBack,
+}: {
+  currentTime: number;
+  state: GameState;
+  onBack: () => void;
+}) {
+  const hearthFire = getInnKitchenHearthFireDisplay(state, currentTime);
+  const recipes = getInnKitchenRecipes();
+
+  return (
+    <div className="guild-inn-kitchen-view">
+      <div className="guild-roster-topline">
+        <div>
+          <span className="guild-recruit-kicker">Inn Kitchen</span>
+          <h3>Recipe Book</h3>
+        </div>
+        <button onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+      <div className="guild-inn-kitchen-status-bar">
+        <div title={hearthFire.tooltip}>
+          <strong>Hearth&apos;s Fire</strong>
+          <span>
+            {hearthFire.current.toFixed(1)} / {hearthFire.capacity.toFixed(1)}
+          </span>
+          <small>{hearthFire.generationPerHour.toFixed(1)} Fire/hour</small>
+        </div>
+      </div>
+      <div className="guild-inn-recipe-book-list">
+        {recipes.map((recipe) => {
+          const display = getInnKitchenRecipeDisplay(recipe.id, state);
+
+          return (
+            <article key={recipe.id}>
+              <div>
+                <strong>{recipe.displayName}</strong>
+                <span>Tier {recipe.tier}</span>
+              </div>
+              <p>{recipe.description}</p>
+              <dl className="guild-inn-room-detail-list">
+                <div>
+                  <dt>Effect</dt>
+                  <dd>{display.effectText}</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>{display.durationText}</dd>
+                </div>
+                <div>
+                  <dt>Cost</dt>
+                  <dd>{display.costText}</dd>
+                </div>
+                <div>
+                  <dt>Hearth&apos;s Fire</dt>
+                  <dd>{display.hearthFireCostText}</dd>
+                </div>
+                <div>
+                  <dt>Ingredients</dt>
+                  <dd>{display.ingredientText}</dd>
+                </div>
+              </dl>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function InnKitchenPantryView({
+  state,
+  onBack,
+}: {
+  state: GameState;
+  onBack: () => void;
+}) {
+  const pantry = getInnKitchenPantryDisplay(state);
+
+  return (
+    <div className="guild-inn-kitchen-view">
+      <div className="guild-roster-topline">
+        <div>
+          <span className="guild-recruit-kicker">Inn Kitchen</span>
+          <h3>Pantry</h3>
+        </div>
+        <button onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+      {pantry.ingredientGroups.length > 0 ? (
+        <div className="guild-inn-pantry-list">
+          {pantry.ingredientGroups.map((group) => (
+            <section key={group.groupName}>
+              <h4>{group.groupName}</h4>
+              {group.ingredients.map((ingredient) => (
+                <div key={ingredient.ingredientId}>
+                  <span>{ingredient.isUnlocked ? ingredient.displayName : "???"}</span>
+                  <strong>{ingredient.quantity.toLocaleString()}</strong>
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <p className="guild-recruit-message">{pantry.emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function InnKitchenUpgradesView({
+  canUse,
+  currentTime,
+  resultMessage,
+  state,
+  onBack,
+  onPurchase,
+}: {
+  canUse: boolean;
+  currentTime: number;
+  resultMessage?: string | null;
+  state: GameState;
+  onBack: () => void;
+  onPurchase: (upgradeId: InnKitchenUpgradeId) => void;
+}) {
+  const crowns = getCurrencyBalance(state.wallet, "crowns");
+  const hearthFire = getInnKitchenHearthFireDisplay(state, currentTime);
+  const upgradeStatuses = getInnKitchenUpgradeStatuses(state);
+
+  return (
+    <div className="guild-upgrades-view">
+      <button className="guild-recruit-back-button" onClick={onBack} type="button">
+        &lt; Back
+      </button>
+
+      <div className="guild-upgrades-card">
+        <div className="guild-roster-topline">
+          <div>
+            <span className="guild-recruit-kicker">Inn Investment</span>
+            <h3>Kitchen Upgrades</h3>
+          </div>
+          <strong className="guild-upgrade-crowns">
+            Crowns: {crowns.toLocaleString()} | Hearth&apos;s Fire:{" "}
+            {hearthFire.current.toFixed(1)}/{hearthFire.capacity.toFixed(1)}
+          </strong>
+        </div>
+
+        {!canUse ? (
+          <GuildInnRequirementMessage />
+        ) : null}
+        {resultMessage ? (
+          <p className={getGuildMessageClassName(resultMessage)}>{resultMessage}</p>
+        ) : null}
+
+        <div className="guild-upgrade-list">
+          {upgradeStatuses.map((upgrade) => (
+            <GuildUpgradeRow
+              canUse={canUse}
+              key={upgrade.id}
+              upgrade={upgrade}
+              onPurchase={() => onPurchase(upgrade.id)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatKitchenMissingResources(
+  missingCrowns: number,
+  missingHearthFire: number,
+): string {
+  const parts: string[] = [];
+
+  if (missingCrowns > 0) {
+    parts.push(`${missingCrowns} Crowns`);
+  }
+
+  if (missingHearthFire > 0) {
+    parts.push(`${missingHearthFire.toFixed(1)} Fire`);
+  }
+
+  return parts.length > 0 ? parts.join(" and ") : "resources";
 }
 
 function GuildRecruitView({

@@ -2674,12 +2674,26 @@ export type GuildUpgradesState = {
 
 export type InnRoomUpgradeId = "inn_room_count";
 
+export type InnKitchenUpgradeId =
+  | "hearth_capacity"
+  | "fire_generation"
+  | "hearth_tier"
+  | "efficient_cooking";
+
 export type InnRoomUpgradeLevels = {
   inn_room_count: number;
 };
 
+export type InnKitchenUpgradeLevels = {
+  hearth_capacity: number;
+  fire_generation: number;
+  hearth_tier: number;
+  efficient_cooking: number;
+};
+
 export type InnUpgradesState = {
   rooms: InnRoomUpgradeLevels;
+  kitchen: InnKitchenUpgradeLevels;
 };
 
 export type WorldDiscoveryState = {
@@ -2735,11 +2749,32 @@ export type InnKitchenMealBuffState = {
 export type InnKitchenCompanionPreferenceState = {
   selectedRecipeId: InnKitchenRecipeId;
   autoCookEnabled: boolean;
+  autoCookRenewThresholdPercent: number;
+};
+
+export type InnKitchenHearthFireState = {
+  current: number;
+  lastUpdatedAtMs: number;
+};
+
+export type InnKitchenPantryState = {
+  unlockedIngredientIds: string[];
+  ingredientQuantitiesById: Record<string, number>;
+};
+
+export type InnKitchenAutoCookFailureState = {
+  recipeId: InnKitchenRecipeId;
+  failedAtMs: number;
+  missingCrowns: number;
+  missingHearthFire: number;
 };
 
 export type InnKitchenState = {
   activeMealBuffsByCompanionId: Record<string, InnKitchenMealBuffState>;
   preferencesByCompanionId: Record<string, InnKitchenCompanionPreferenceState>;
+  hearthFire: InnKitchenHearthFireState;
+  pantry: InnKitchenPantryState;
+  autoCookFailuresByCompanionId: Record<string, InnKitchenAutoCookFailureState>;
 };
 
 export type GuildNoticeBoardState = {

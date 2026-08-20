@@ -131,6 +131,8 @@ import {
   cookInnMealForCompanion,
   getInnKitchenPreference,
   processInnKitchenAutoCook,
+  purchaseInnKitchenUpgrade,
+  setInnKitchenAutoCookRenewThresholdPercent,
   setInnKitchenAutoCookEnabled,
   setInnKitchenSelectedRecipe,
   purchaseInnRoomUpgrade,
@@ -202,6 +204,7 @@ import {
   type GuildSecondaryPartyRedeemSummary,
   type GuildSecondaryPartyUpgradeId,
   type InnRoomUpgradeId,
+  type InnKitchenUpgradeId,
   type GuildNoticeBoardUpgradeId,
   type GuildRecruitUpgradeId,
   type InnKitchenRecipeId,
@@ -4572,6 +4575,30 @@ function App() {
     setGameState(purchase.state);
   }
 
+  function purchaseInnKitchenUpgradeCommand(upgradeId: InnKitchenUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseInnKitchenUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Inn kitchen upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
   function openGuildNoticeBoardMenu() {
     if (!canUseGuildTavern) {
       setGuildNoticeBoardResultMessage("Requires Guild & Inn");
@@ -4814,8 +4841,12 @@ function App() {
       );
     } else {
       setInnKitchenResultMessage(
-        cooked.reason === "insufficient_crowns"
-          ? "Not enough Crowns."
+        cooked.reason === "insufficient_crowns" ||
+          cooked.reason === "insufficient_hearth_fire"
+          ? formatInnKitchenMissingResourcesMessage(
+              cooked.missingCrowns,
+              cooked.missingHearthFire,
+            )
           : cooked.reason === "missing_companion"
             ? "Companion unavailable."
             : "Recipe unavailable.",
@@ -4847,7 +4878,11 @@ function App() {
     );
     const processed = enabled
       ? processInnKitchenAutoCook(toggledState, currentTime)
-      : { state: toggledState, disabledCompanionIds: [] as string[] };
+      : {
+          state: toggledState,
+          disabledCompanionIds: [] as string[],
+          failedCompanionIds: [] as string[],
+        };
     const nextState = processed.state;
     const nextPreference = getInnKitchenPreference(nextState, companionId);
 
@@ -4862,8 +4897,29 @@ function App() {
     }
 
     queueSaveAfterStateChange("Inn kitchen auto-cook saved");
-    setInnKitchenResultMessage(enabled ? "Auto-cook enabled" : "Auto-cook disabled");
+    setInnKitchenResultMessage(
+      enabled
+        ? processed.failedCompanionIds.includes(companionId)
+          ? "Auto-cook enabled. Waiting for resources."
+          : "Auto-cook enabled"
+        : "Auto-cook disabled",
+    );
     setGameState(nextState);
+  }
+
+  function setInnKitchenAutoCookThresholdFromMenu(
+    companionId: string,
+    thresholdPercent: number,
+  ) {
+    queueSaveAfterStateChange("Inn kitchen auto-cook threshold saved");
+    setInnKitchenResultMessage(`Auto-cook renews at ${thresholdPercent}%.`);
+    setGameState((state) =>
+      setInnKitchenAutoCookRenewThresholdPercent(
+        state,
+        companionId,
+        thresholdPercent,
+      ),
+    );
   }
 
   function bulkCookInnMealsFromMenu(companionIds: string[], label: string) {
@@ -4887,8 +4943,12 @@ function App() {
       );
     } else {
       setInnKitchenResultMessage(
-        cooked.reason === "insufficient_crowns"
-          ? `Missing ${cooked.missingCrowns ?? 0} Crowns.`
+        cooked.reason === "insufficient_crowns" ||
+          cooked.reason === "insufficient_hearth_fire"
+          ? formatInnKitchenMissingResourcesMessage(
+              cooked.missingCrowns,
+              cooked.missingHearthFire,
+            )
           : cooked.reason === "missing_companion"
             ? "Companion unavailable."
             : cooked.reason === "empty_target_list"
@@ -6071,6 +6131,7 @@ function App() {
                 purchaseGuildSecondaryPartyUpgradeCommand
               }
               onPurchaseInnRoomUpgrade={purchaseInnRoomUpgradeCommand}
+              onPurchaseInnKitchenUpgrade={purchaseInnKitchenUpgradeCommand}
               onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
               onRerollGuildNoticeBoard={rerollGuildNoticeBoardFromMenu}
               onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
@@ -6086,6 +6147,9 @@ function App() {
               onCookInnMeal={cookInnMealFromMenu}
               onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
               onToggleInnKitchenAutoCook={toggleInnKitchenAutoCookFromMenu}
+              onSetInnKitchenAutoCookThreshold={
+                setInnKitchenAutoCookThresholdFromMenu
+              }
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
@@ -6275,6 +6339,25 @@ function App() {
       </section>
     </main>
   );
+}
+
+function formatInnKitchenMissingResourcesMessage(
+  missingCrowns = 0,
+  missingHearthFire = 0,
+): string {
+  const missingParts: string[] = [];
+
+  if (missingCrowns > 0) {
+    missingParts.push(`${missingCrowns} Crowns`);
+  }
+
+  if (missingHearthFire > 0) {
+    missingParts.push(`${missingHearthFire.toFixed(1)} Hearth's Fire`);
+  }
+
+  return missingParts.length > 0
+    ? `Missing ${missingParts.join(" and ")}.`
+    : "Not enough resources.";
 }
 
 export default App;

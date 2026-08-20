@@ -71,6 +71,7 @@ describe("inn room upgrades", () => {
   it("increases capacity by one room per level", () => {
     const state = createTestGameState({
       innUpgrades: {
+        ...createInitialInnUpgradesState(),
         rooms: {
           inn_room_count: 4,
         },
@@ -91,6 +92,7 @@ describe("inn room upgrades", () => {
     const state = setCurrencyBalanceForDebug(
       createTestGameState({
         innUpgrades: {
+          ...createInitialInnUpgradesState(),
           rooms: {
             inn_room_count: 5,
           },
@@ -117,6 +119,7 @@ describe("inn room upgrades", () => {
   it("preserves Inn upgrades through save and restore", () => {
     const state = createTestGameState({
       innUpgrades: {
+        ...createInitialInnUpgradesState(),
         rooms: {
           inn_room_count: 3,
         },

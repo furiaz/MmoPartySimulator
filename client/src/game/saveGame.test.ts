@@ -24,8 +24,8 @@ import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import {
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
   cookInnMealForCompanion,
-  createInitialInnKitchenState,
   setInnKitchenAutoCookEnabled,
+  setInnKitchenAutoCookRenewThresholdPercent,
   setInnKitchenSelectedRecipe,
 } from "./innKitchen";
 import { createInitialInnUpgradesState } from "./innRoomUpgrades";
@@ -406,22 +406,26 @@ describe("save game serialization", () => {
       { x: 0, y: 0 },
       "meal-companion",
     );
-    const state = setInnKitchenAutoCookEnabled(
-      setInnKitchenSelectedRecipe(
-        createTestGameState({
-          entities: {
-            [companion.id]: companion,
-          },
-          partyLeaderId: companion.id,
-          currentMapId: HUB_MAP_ID,
-          map: createDebugMap(),
-          simulationTimeMs: NOW_MS,
-        }),
+    const state = setInnKitchenAutoCookRenewThresholdPercent(
+      setInnKitchenAutoCookEnabled(
+        setInnKitchenSelectedRecipe(
+          createTestGameState({
+            entities: {
+              [companion.id]: companion,
+            },
+            partyLeaderId: companion.id,
+            currentMapId: HUB_MAP_ID,
+            map: createDebugMap(),
+            simulationTimeMs: NOW_MS,
+          }),
+          companion.id,
+          INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        ),
         companion.id,
-        INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        true,
       ),
       companion.id,
-      true,
+      25,
     );
 
     const save = createSavedGame(state, NOW_MS);
@@ -436,6 +440,7 @@ describe("save game serialization", () => {
       [companion.id]: {
         selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
         autoCookEnabled: true,
+        autoCookRenewThresholdPercent: 25,
       },
     });
   });
@@ -583,7 +588,18 @@ describe("save game serialization", () => {
     );
     expect(restored.state.guildUpgrades?.secondaryParties.secondary_party_count).toBe(0);
     expect(restored.state.innUpgrades).toEqual(createInitialInnUpgradesState());
-    expect(restored.state.innKitchen).toEqual(createInitialInnKitchenState());
+    expect(restored.state.innKitchen).toMatchObject({
+      activeMealBuffsByCompanionId: {},
+      preferencesByCompanionId: {},
+      hearthFire: {
+        current: 10,
+      },
+      pantry: {
+        unlockedIngredientIds: [],
+        ingredientQuantitiesById: {},
+      },
+      autoCookFailuresByCompanionId: {},
+    });
     expect(restored.state.worldDiscovery).toEqual({
       visitedMapIds: [],
       visitedSubzonesByMapId: {},
@@ -628,12 +644,32 @@ describe("save game serialization", () => {
           },
         },
         preferencesByCompanionId: {},
+        hearthFire: {
+          current: 10,
+          lastUpdatedAtMs: NOW_MS,
+        },
+        pantry: {
+          unlockedIngredientIds: [],
+          ingredientQuantitiesById: {},
+        },
+        autoCookFailuresByCompanionId: {},
       },
     });
 
     const save = createSavedGame(state, NOW_MS);
 
-    expect(save.state.innKitchen).toEqual(createInitialInnKitchenState());
+    expect(save.state.innKitchen).toMatchObject({
+      activeMealBuffsByCompanionId: {},
+      preferencesByCompanionId: {},
+      hearthFire: {
+        current: 10,
+      },
+      pantry: {
+        unlockedIngredientIds: [],
+        ingredientQuantitiesById: {},
+      },
+      autoCookFailuresByCompanionId: {},
+    });
   });
 });
 

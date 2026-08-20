@@ -5,6 +5,10 @@ import type {
   InnUpgradesState,
 } from "./types";
 import {
+  createInitialInnKitchenUpgradeLevels,
+  sanitizeInnKitchenUpgradeLevels,
+} from "./innKitchenUpgrades";
+import {
   canAfford,
   getCurrencyBalance,
   removeCurrencyFromWalletState,
@@ -82,6 +86,7 @@ const INN_ROOM_UPGRADE_DEFINITIONS: Record<
 export function createInitialInnUpgradesState(): InnUpgradesState {
   return {
     rooms: createInitialInnRoomUpgradeLevels(),
+    kitchen: createInitialInnKitchenUpgradeLevels(),
   };
 }
 
@@ -94,6 +99,7 @@ export function sanitizeInnUpgradesState(
 ): InnUpgradesState {
   return {
     rooms: sanitizeInnRoomUpgradeLevels(innUpgrades?.rooms),
+    kitchen: sanitizeInnKitchenUpgradeLevels(innUpgrades?.kitchen),
   };
 }
 

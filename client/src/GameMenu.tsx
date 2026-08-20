@@ -33,6 +33,7 @@ import type {
   CraftingRecipeId,
   GuildNoticeBoardUpgradeId,
   GuildRecruitUpgradeId,
+  InnKitchenUpgradeId,
   InnKitchenRecipeId,
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
@@ -91,6 +92,7 @@ export function GameMenu({
   onPurchaseGuildRecruitUpgrade,
   onPurchaseGuildSecondaryPartyUpgrade,
   onPurchaseInnRoomUpgrade,
+  onPurchaseInnKitchenUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
@@ -102,6 +104,7 @@ export function GameMenu({
   onCookInnMeal,
   onSelectInnKitchenRecipe,
   onToggleInnKitchenAutoCook,
+  onSetInnKitchenAutoCookThreshold,
   onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
@@ -182,6 +185,7 @@ export function GameMenu({
     partyId?: string | null,
   ) => void;
   onPurchaseInnRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
+  onPurchaseInnKitchenUpgrade: (upgradeId: InnKitchenUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -203,6 +207,10 @@ export function GameMenu({
     recipeId: InnKitchenRecipeId,
   ) => void;
   onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onSetInnKitchenAutoCookThreshold: (
+    companionId: string,
+    thresholdPercent: number,
+  ) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
@@ -348,6 +356,7 @@ export function GameMenu({
                     onPurchaseGuildSecondaryPartyUpgrade
                   }
                   onPurchaseInnRoomUpgrade={onPurchaseInnRoomUpgrade}
+                  onPurchaseInnKitchenUpgrade={onPurchaseInnKitchenUpgrade}
                   onOpenGuildNoticeBoard={onOpenGuildNoticeBoard}
                   onRerollGuildNoticeBoard={onRerollGuildNoticeBoard}
                   onTakeGuildNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
@@ -363,6 +372,9 @@ export function GameMenu({
                   onCookInnMeal={onCookInnMeal}
                   onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
                   onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
+                  onSetInnKitchenAutoCookThreshold={
+                    onSetInnKitchenAutoCookThreshold
+                  }
                   onBulkCookInnMeals={onBulkCookInnMeals}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
@@ -413,6 +425,7 @@ function AtlasPanel({
   onPurchaseGuildRecruitUpgrade,
   onPurchaseGuildSecondaryPartyUpgrade,
   onPurchaseInnRoomUpgrade,
+  onPurchaseInnKitchenUpgrade,
   onOpenGuildNoticeBoard,
   onRerollGuildNoticeBoard,
   onTakeGuildNoticeBoardQuest,
@@ -424,6 +437,7 @@ function AtlasPanel({
   onCookInnMeal,
   onSelectInnKitchenRecipe,
   onToggleInnKitchenAutoCook,
+  onSetInnKitchenAutoCookThreshold,
   onBulkCookInnMeals,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
@@ -453,6 +467,7 @@ function AtlasPanel({
     partyId?: string | null,
   ) => void;
   onPurchaseInnRoomUpgrade: (upgradeId: InnRoomUpgradeId) => void;
+  onPurchaseInnKitchenUpgrade: (upgradeId: InnKitchenUpgradeId) => void;
   onOpenGuildNoticeBoard: () => void;
   onRerollGuildNoticeBoard: () => void;
   onTakeGuildNoticeBoardQuest: (slotIndex?: number) => void;
@@ -474,6 +489,10 @@ function AtlasPanel({
     recipeId: InnKitchenRecipeId,
   ) => void;
   onToggleInnKitchenAutoCook: (companionId: string, enabled: boolean) => void;
+  onSetInnKitchenAutoCookThreshold: (
+    companionId: string,
+    thresholdPercent: number,
+  ) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
@@ -557,6 +576,7 @@ function AtlasPanel({
             onPurchaseGuildSecondaryPartyUpgrade
           }
           onPurchaseRoomUpgrade={onPurchaseInnRoomUpgrade}
+          onPurchaseKitchenUpgrade={onPurchaseInnKitchenUpgrade}
           onRecruit={onRecruitGuildCandidate}
           onRerollNoticeBoard={onRerollGuildNoticeBoard}
           onTakeNoticeBoardQuest={onTakeGuildNoticeBoardQuest}
@@ -568,6 +588,7 @@ function AtlasPanel({
           onCookInnMeal={onCookInnMeal}
           onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
           onToggleInnKitchenAutoCook={onToggleInnKitchenAutoCook}
+          onSetInnKitchenAutoCookThreshold={onSetInnKitchenAutoCookThreshold}
           onBulkCookInnMeals={onBulkCookInnMeals}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
         />
