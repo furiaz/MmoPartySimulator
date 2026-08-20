@@ -3,7 +3,6 @@ import { createAttackSlotPathDistanceCache } from "./attackSlots";
 import { updateCompanionAoeChannelSystem } from "./companionAoeChannelSystem";
 import { updateCombatProjectileSystem } from "./combatProjectileSystem";
 import {
-  clearExpiredHubDepartureFoodWarning,
   clearExpiredConsumableBuffs,
   updateConsumableBehaviorSystem,
   updateConsumableSystem,
@@ -98,7 +97,6 @@ export function updateGame(
   nextState = updateRuneSkillRuntime(nextState, timing.nowMs);
   nextState = clearExpiredSkillRuntimeState(nextState, timing.nowMs);
   nextState = clearExpiredConsumableBuffs(nextState, timing.nowMs);
-  nextState = clearExpiredHubDepartureFoodWarning(nextState, timing.nowMs);
   nextState = updateRoleBonusAssignments(nextState, timing.nowMs);
   const movedEntityIds = new Set<string>();
   const attackSlotPathDistanceCache = createAttackSlotPathDistanceCache();

@@ -619,10 +619,8 @@ describe("quest debug test tools", () => {
 
     expect(nextState.quests.clear_the_shore.status).toBe("ready_to_turn_in");
     expect(nextState.quests.stolen_field_supplies.status).toBe("completed");
-    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(35);
-    expect(nextState.inventory.slots).toEqual([
-      { itemId: "hearty_trail_rations", quantity: 1 },
-    ]);
+    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(45);
+    expect(nextState.inventory.slots).toEqual([]);
   });
 
   it("leaves a ready quest ready when debug turn-in reward validation fails", () => {

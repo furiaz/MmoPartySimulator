@@ -5,7 +5,6 @@ import {
   getCharacterXpProgress,
   getCompanionDerivedStatsWithPartyBuffs,
   getCompanionFlaskDisplayState,
-  getItemDefinition,
   type ClassPath,
   type Companion,
   type CompanionGlobalCooldownState,
@@ -19,19 +18,6 @@ const classPathLabels: Record<ClassPath, string> = {
   arcane: "Arcane Path",
   holy: "Holy Path",
 };
-
-function getActiveFoodRemainingSeconds(
-  member: Companion,
-  currentTime: number,
-): number | null {
-  const foodBuff = member.consumableBuffs.food;
-
-  if (!foodBuff || foodBuff.expiresAt <= currentTime) {
-    return null;
-  }
-
-  return Math.ceil((foodBuff.expiresAt - currentTime) / 1000);
-}
 
 export function CompanionVitalsPanel({
   currentTime,
@@ -58,17 +44,6 @@ export function CompanionVitalsPanel({
         const classDefinition = CLASS_DEFINITIONS[member.classId];
         const classPath = classDefinition.path;
         const classPathLabel = classPath ? classPathLabels[classPath] : null;
-        const assignedFoodDefinition = member.consumables.foodItemId
-          ? getItemDefinition(member.consumables.foodItemId)
-          : null;
-        const activeFoodRemainingSeconds = getActiveFoodRemainingSeconds(
-          member,
-          currentTime,
-        );
-        const activeFoodDefinition =
-          activeFoodRemainingSeconds !== null && member.consumableBuffs.food
-            ? getItemDefinition(member.consumableBuffs.food.itemId)
-            : null;
         const derivedStats = getCompanionDerivedStatsWithPartyBuffs(
           gameState,
           member,
@@ -99,11 +74,6 @@ export function CompanionVitalsPanel({
           member,
           currentTime,
         );
-        const displayedFoodDefinition =
-          activeFoodDefinition ?? assignedFoodDefinition;
-        const displayedFoodIconSrc = displayedFoodDefinition
-          ? INVENTORY_ITEM_ICON_SRC[displayedFoodDefinition.id]
-          : null;
         const globalCooldown = globalCooldownsByCompanionId?.[member.id];
         const globalCooldownRemainingMs =
           globalCooldown && globalCooldown.expiresAt > currentTime
@@ -221,32 +191,6 @@ export function CompanionVitalsPanel({
                     {flaskDisplayState
                       ? `${flaskDisplayState.displayName}`
                       : "Empty"}
-                  </span>
-                </span>
-                <span
-                  className="companion-vitals-consumable"
-                  title={
-                    activeFoodRemainingSeconds !== null &&
-                    displayedFoodDefinition
-                      ? `${displayedFoodDefinition.displayName}: ${activeFoodRemainingSeconds}s remaining`
-                      : assignedFoodDefinition?.displayName ?? "No food assigned"
-                  }
-                >
-                  <span className="companion-vitals-slot-label">Food:</span>
-                  <span className="companion-vitals-icon-frame">
-                    {displayedFoodIconSrc ? (
-                      <img
-                        alt=""
-                        className="companion-vitals-slot-icon"
-                        draggable={false}
-                        src={displayedFoodIconSrc}
-                      />
-                    ) : null}
-                  </span>
-                  <span>
-                    {activeFoodRemainingSeconds !== null
-                      ? `${activeFoodRemainingSeconds}s`
-                      : assignedFoodDefinition?.displayName ?? "Empty"}
                   </span>
                 </span>
               </div>

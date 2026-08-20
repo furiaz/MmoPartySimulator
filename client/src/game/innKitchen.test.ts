@@ -207,42 +207,6 @@ describe("Inn Kitchen", () => {
     ).toBe(secondBaseMaxHealth);
   });
 
-  it("does not touch old equipped food or consumable food buffs", () => {
-    const companion = {
-      ...createKitchenCompanion("first", 0),
-      consumables: {
-        ...createKitchenCompanion("first", 0).consumables,
-        foodItemId: "hearty_trail_rations",
-      },
-      consumableBuffs: {
-        ...createKitchenCompanion("first", 0).consumableBuffs,
-        food: {
-          itemId: "hearty_trail_rations",
-          kind: "food",
-          expiresAt: 100_000,
-          primaryStatModifiers: { constitution: 1 },
-          statModifiers: {},
-        },
-      },
-    } satisfies Companion;
-    const state = withCrowns(createKitchenState([companion]), 100);
-
-    const result = cookInnMealForCompanion(
-      state,
-      companion.id,
-      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
-      NOW_MS,
-    );
-
-    expect(result.ok).toBe(true);
-    expect((result.state.entities[companion.id] as Companion).consumables).toEqual(
-      companion.consumables,
-    );
-    expect(
-      (result.state.entities[companion.id] as Companion).consumableBuffs,
-    ).toEqual(companion.consumableBuffs);
-  });
-
   it("auto-cooks expired meals for eligible hub companions", () => {
     const companion = createKitchenCompanion("first", 0);
     const cooked = cookInnMealForCompanion(

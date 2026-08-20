@@ -80,8 +80,6 @@ export const INVENTORY_ITEM_ICON_SRC: Partial<Record<ItemId, string>> = {
   orc_hide: `${nowAssetPackPath}/wood-node.png`,
   minor_recovery_flask: `${beginnerSkillEffectsPath}/first_aid.png`,
   soldiers_recovery_flask: `${beginnerSkillEffectsPath}/rally_call.png`,
-  hearty_trail_rations: `${nowAssetPackPath}/herb-node.png`,
-  skirmisher_rations: `${nowAssetPackPath}/herb-node.png`,
   // skill-book-icons-grid
   throw_rock_skill_book: `${skillBookIconPath}/beginner/throw_rock_skill_book.png`,
   kick_skill_book: `${skillBookIconPath}/beginner/kick_skill_book.png`,

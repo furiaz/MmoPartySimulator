@@ -54,9 +54,15 @@ import type {
   InventorySlot,
   ItemId,
   OfflineFarmingPendingLootState,
+  PartyInventory,
   ZoneSubzone,
 } from "./types";
 import type { QuestId, QuestState, QuestStatus } from "./questTypes";
+
+const OBSOLETE_FOOD_ITEM_IDS = new Set<string>([
+  "hearty_trail_rations",
+  "skirmisher_rations",
+]);
 
 export const SAVE_VERSION = 1;
 export const MAX_OFFLINE_FARMING_MS = 30 * 60 * 1000;
@@ -495,7 +501,9 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     innUpgrades,
     innKitchen,
     worldDiscovery,
-    inventory: sanitizePartyInventory(state.inventory),
+    inventory: sanitizeObsoleteFoodFromInventory(
+      sanitizePartyInventory(state.inventory),
+    ),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {
       ...sanitizePartyBank(state.bank),
@@ -562,7 +570,6 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     enemyAoeChannelsByCasterId: {},
     enemyAoeCooldownsByCasterId: {},
     consumableUsesByCompanionId: {},
-    hubDepartureFoodWarning: null,
     dropVisualEvents: [],
     pendingOfflineFarmingLoot: sanitizePendingOfflineFarmingLoot(
       state.pendingOfflineFarmingLoot,
@@ -968,9 +975,11 @@ function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity
       currentTargetId: entity.state === "dead" || isLeader ? null : leaderId,
       commandPriority: "autonomous",
       defendPosition: null,
+      consumables: {
+        flask: sanitizedCompanion.consumables.flask,
+      },
       consumableBuffs: {
         flask: null,
-        food: null,
       },
     };
   }
@@ -1042,14 +1051,25 @@ function sanitizeRestingCompanionsForSave(
             currentTargetId: null,
             commandPriority: "autonomous",
             defendPosition: null,
+            consumables: {
+              flask: sanitizedCompanion.consumables.flask,
+            },
             consumableBuffs: {
               flask: null,
-              food: null,
             },
           },
         ];
       }),
   );
+}
+
+function sanitizeObsoleteFoodFromInventory(inventory: PartyInventory): PartyInventory {
+  return {
+    ...inventory,
+    slots: inventory.slots.filter(
+      (slot) => !OBSOLETE_FOOD_ITEM_IDS.has(slot.itemId),
+    ),
+  };
 }
 
 function isSavedCompanion(value: unknown): value is Companion {

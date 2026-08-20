@@ -6,7 +6,6 @@ import {
   moveEntityTo,
 } from "./entities";
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
-import { addHubDepartureFoodWarningIfNeeded } from "./consumables";
 import {
   clearSlimewardDungeonRuntime,
   createSlimewardChestNpc,
@@ -145,7 +144,6 @@ export function triggerMapTeleport(
 export function teleportWorldTravelDestination(
   state: GameState,
   targetMapId: DebugMapId,
-  nowMs = Date.now(),
 ): { state: GameState; result: WorldTravelTeleportResult } {
   const status = getWorldTravelTeleportStatus(state, targetMapId);
 
@@ -209,7 +207,6 @@ export function teleportWorldTravelDestination(
       ...teleport,
       arrivalPositions: status.arrivalPositions,
     },
-    nowMs,
   );
 
   return {
@@ -241,7 +238,7 @@ export function setMapTeleportPoi(
 export function updateTeleportSystem(
   state: GameState,
   movedEntityIds = new Set<string>(),
-  nowMs = Date.now(),
+  _nowMs = Date.now(),
 ): GameState {
   if (isAiTeleportPausedForResurrection(state)) {
     return state;
@@ -256,7 +253,7 @@ export function updateTeleportSystem(
   }
 
   if (isPartyWithinTeleportRange(activatedState)) {
-    return completeTeleport(activatedState, nowMs);
+    return completeTeleport(activatedState);
   }
 
   return movePartyToTeleport(activatedState, movedEntityIds);
@@ -418,7 +415,7 @@ function movePartyToTeleport(
   return nextState;
 }
 
-function completeTeleport(state: GameState, nowMs: number): GameState {
+function completeTeleport(state: GameState): GameState {
   const teleport = state.activeTeleport;
 
   if (!teleport) {
@@ -435,7 +432,6 @@ function completeTeleport(state: GameState, nowMs: number): GameState {
     state,
     teleport,
     teleportDefinition,
-    nowMs,
   );
 }
 
@@ -443,17 +439,12 @@ function completeTeleportWithDefinition(
   state: GameState,
   teleport: ActiveTeleport,
   teleportDefinition: DebugTeleportPoint,
-  nowMs: number,
 ): GameState {
   const previousMapId = state.currentMapId;
   const previousMap = state.map;
   const sourceState = shouldResetSlimewardDungeonOnTeleport(teleport.id)
     ? clearSlimewardDungeonRuntime(state)
     : state;
-  const hubDepartureFoodWarning =
-    previousMapId === HUB_MAP_ID && teleport.targetMapId !== HUB_MAP_ID
-      ? addHubDepartureFoodWarningIfNeeded(sourceState, nowMs).hubDepartureFoodWarning
-      : sourceState.hubDepartureFoodWarning;
   const positionsBeforeTransition = getEntityPositions(sourceState.entities);
   const targetMap = createDebugMapForQuestState(
     teleport.targetMapId,
@@ -465,7 +456,6 @@ function completeTeleportWithDefinition(
     entities,
     currentMapId: teleport.targetMapId,
     map: targetMap,
-    hubDepartureFoodWarning,
     partyIntent: null,
     leaderIntent: null,
     localPoiTarget: null,

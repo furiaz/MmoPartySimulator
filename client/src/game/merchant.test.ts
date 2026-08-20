@@ -167,11 +167,6 @@ describe("merchant buy", () => {
           group: "flasks",
         }),
         expect.objectContaining({
-          itemId: "hearty_trail_rations",
-          priceCrowns: 15,
-          group: "food",
-        }),
-        expect.objectContaining({
           itemId: "first_aid_skill_book",
           priceCrowns: 25,
           group: "books",
@@ -277,6 +272,8 @@ describe("merchant buy", () => {
         "bastion_cuirass",
         "acolyte_robe",
         "blessed_robe",
+        "hearty_trail_rations",
+        "skirmisher_rations",
       ]),
     );
   });

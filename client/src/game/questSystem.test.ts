@@ -568,12 +568,11 @@ describe("prototype quest system", () => {
 
     expect(state.quests.clear_the_shore.status).toBe("completed");
     expect(state.quests.stolen_field_supplies.status).toBe("completed");
-    expect(state.wallet.balancesByCurrencyId.crowns).toBe(85);
+    expect(state.wallet.balancesByCurrencyId.crowns).toBe(95);
     expect(state.inventory.slots).toEqual([
       { itemId: "wolf_pelt", quantity: 2 },
       { itemId: "minor_recovery_flask", quantity: 1 },
       { itemId: "guard_coif", quantity: 1 },
-      { itemId: "hearty_trail_rations", quantity: 1 },
     ]);
     expect(getCompanion(state, "companion-1").lastCharacterXpGained).toBe(12);
   });
@@ -581,7 +580,7 @@ describe("prototype quest system", () => {
   it("does not partially finish ready quests when combined rewards cannot fit", () => {
     let state = createStateWithParty({
       inventory: {
-        capacity: 4,
+        capacity: 2,
         slots: [],
       },
       quests: createQuestStates({
@@ -1115,11 +1114,11 @@ describe("prototype quest system", () => {
     );
   });
 
-  it("uses existing stack space before requiring new reward slots", () => {
+  it("does not require inventory space for quests with no item rewards", () => {
     let state = createStateWithParty({
       inventory: {
-        capacity: 1,
-        slots: [{ itemId: "hearty_trail_rations", quantity: 1 }],
+        capacity: 0,
+        slots: [],
       },
       quests: createQuestStates({
         clear_the_shore: "completed",
@@ -1130,10 +1129,8 @@ describe("prototype quest system", () => {
     state = updateQuestGiverInteraction(state);
 
     expect(state.quests.stolen_field_supplies.status).toBe("completed");
-    expect(state.inventory.slots).toEqual([
-      { itemId: "hearty_trail_rations", quantity: 2 },
-    ]);
-    expect(state.wallet.balancesByCurrencyId.crowns).toBe(35);
+    expect(state.inventory.slots).toEqual([]);
+    expect(state.wallet.balancesByCurrencyId.crowns).toBe(45);
   });
 
   it("does not grant quest xp to dead party members or reduce xp by level gap", () => {

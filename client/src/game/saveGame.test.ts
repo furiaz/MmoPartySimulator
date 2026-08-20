@@ -44,7 +44,7 @@ import {
 } from "./saveGame";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
-import type { Companion, GameEntity, PartyMemberRole } from "./types";
+import type { Companion, GameEntity, ItemId, PartyMemberRole } from "./types";
 import { addCurrencyToWalletState } from "./wallet";
 
 const NOW_MS = 1_000_000;
@@ -166,14 +166,6 @@ describe("save game serialization", () => {
       state: "attack",
       currentTargetId: "enemy-1",
       commandPriority: "direct",
-      consumableBuffs: {
-        flask: null,
-        food: {
-          itemId: "hearty_trail_rations",
-          kind: "food",
-          expiresAt: NOW_MS + 1_000,
-        },
-      },
     };
     const activeState = createTestGameState({
       entities: {
@@ -199,7 +191,6 @@ describe("save game serialization", () => {
     expect(save.state.highestCharacterLevelEver).toBe(50);
     expect(save.state.restingCompanionsById?.[veteran.id]?.consumableBuffs).toEqual({
       flask: null,
-      food: null,
     });
     expect(restored.ok).toBe(true);
     if (!restored.ok) {
@@ -214,6 +205,58 @@ describe("save game serialization", () => {
     });
     expect(restored.state.highestCharacterLevelEver).toBe(50);
     expect(getPartySizeLimit(restored.state)).toBe(4);
+  });
+
+  it("cleans obsolete prototype food from old saves", () => {
+    const companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      consumables: {
+        flask: null,
+        foodItemId: "hearty_trail_rations",
+      },
+      consumableBuffs: {
+        flask: null,
+        food: {
+          itemId: "skirmisher_rations",
+          kind: "food",
+          expiresAt: NOW_MS + 1_000,
+        },
+      },
+    } as unknown as Companion;
+    const state = createTestGameState({
+      entities: { [companion.id]: companion },
+      inventory: {
+        capacity: 6,
+        slots: [
+          { itemId: "hearty_trail_rations" as ItemId, quantity: 2 },
+          { itemId: "skirmisher_rations" as ItemId, quantity: 1 },
+          { itemId: "minor_recovery_flask", quantity: 1 },
+        ],
+      },
+      partyLeaderId: companion.id,
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+    const savedCompanion = save.state.entities[companion.id] as Companion;
+
+    expect(save.state.inventory.slots).toEqual([
+      { itemId: "minor_recovery_flask", quantity: 1 },
+    ]);
+    expect(savedCompanion.consumables).toEqual({ flask: null });
+    expect(savedCompanion.consumableBuffs).toEqual({ flask: null });
+    expect("hubDepartureFoodWarning" in save.state).toBe(false);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.inventory.slots).toEqual([
+      { itemId: "minor_recovery_flask", quantity: 1 },
+    ]);
+    expect((restored.state.entities[companion.id] as Companion).consumables).toEqual({
+      flask: null,
+    });
   });
 
   it("preserves Guild recruit candidate, timer, and sequence through save restore", () => {

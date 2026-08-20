@@ -234,7 +234,6 @@ function sanitizeRestingCompanion(companion: PartyMember): PartyMember {
     defendPosition: null,
     consumableBuffs: {
       flask: null,
-      food: null,
     },
   };
 }

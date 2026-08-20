@@ -229,9 +229,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
     ],
     unlocksQuestIds: ["break_lower_shore_blockage"],
     rewards: {
-      crowns: 35,
+      crowns: 45,
       characterXp: 12,
-      items: [{ itemId: "hearty_trail_rations", quantity: 1 }],
     },
   },
   break_lower_shore_blockage: {
@@ -365,9 +364,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
     ],
     unlocksQuestIds: ["hold_the_field_cache"],
     rewards: {
-      crowns: 55,
+      crowns: 65,
       characterXp: 22,
-      items: [{ itemId: "skirmisher_rations", quantity: 1 }],
     },
   },
   hold_the_field_cache: {
@@ -505,9 +503,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
       },
     ],
     rewards: {
-      crowns: 35,
+      crowns: 45,
       characterXp: 10,
-      items: [{ itemId: "hearty_trail_rations", quantity: 1 }],
     },
     unlocksQuestIds: ["crawler_shelf_report"],
   },

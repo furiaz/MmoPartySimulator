@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { HUB_DEPARTURE_FOOD_WARNING_DURATION_MS } from "./consumables";
 import {
   createCompanion,
   createDebugMap,
@@ -16,26 +15,20 @@ import {
   SLIMEWARD_FLOOR_TWO_ID,
   slimewardCampDungeonEntranceArrivalPositions,
 } from "./debugMap";
-import { addItemToInventoryState } from "./inventory";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
 import { updateTeleportSystem } from "./teleportSystem";
 import type { ActiveTeleport } from "./types";
 
 describe("teleport system", () => {
-  it("uses supplied simulation time for hub departure food warning", () => {
+  it("does not create obsolete hub departure food warnings", () => {
     const nowMs = 12345;
-    const state = createHubTeleportReadyState({
-      hubDepartureFoodWarning: null,
-    });
+    const state = createHubTeleportReadyState();
 
     const nextState = updateTeleportSystem(state, new Set(), nowMs);
 
     expect(nextState.currentMapId).toBe(MAP_ONE_ID);
-    expect(nextState.hubDepartureFoodWarning).toMatchObject({
-      createdAt: nowMs,
-      expiresAt: nowMs + HUB_DEPARTURE_FOOD_WARNING_DURATION_MS,
-    });
+    expect("hubDepartureFoodWarning" in nextState).toBe(false);
   });
 
   it("clears transient movement runtime after teleport completion", () => {
@@ -154,21 +147,14 @@ function createHubTeleportReadyState(overrides: Partial<GameState> = {}) {
     "fighter",
     0,
   );
-  const leader = {
-    ...baseLeader,
-    consumables: {
-      ...baseLeader.consumables,
-      foodItemId: "hearty_trail_rations" as const,
-    },
-  };
 
-  const state = createTestGameState({
+  return createTestGameState({
     currentMapId: HUB_MAP_ID,
     map,
     entities: {
-      [leader.id]: leader,
+      [baseLeader.id]: baseLeader,
     },
-    partyLeaderId: leader.id,
+    partyLeaderId: baseLeader.id,
     activeTeleport: {
       id: teleport.id,
       position: teleport.position,
@@ -179,13 +165,6 @@ function createHubTeleportReadyState(overrides: Partial<GameState> = {}) {
     } satisfies ActiveTeleport,
     ...overrides,
   });
-
-  return addItemToInventoryState(
-    state,
-    "hearty_trail_rations",
-    1,
-    "debug",
-  ).state;
 }
 
 function createTeleportReadyState(

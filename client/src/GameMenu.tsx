@@ -72,7 +72,6 @@ export function GameMenu({
   onAllocateStatPoint,
   onChangeLeader,
   onChangeRole,
-  onAssignFood,
   onChangeConsumableBehavior,
   onChangeSkillBehavior,
   onEquipEquipment,
@@ -145,7 +144,6 @@ export function GameMenu({
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
   onChangeLeader: (companionId: string) => void;
   onChangeRole: (companionId: string, role: PartyMemberRole) => void;
-  onAssignFood: (companionId: string, itemId: ItemId | null) => void;
   onChangeConsumableBehavior: (
     companionId: string,
     update: Partial<Companion["consumableBehavior"]>,
@@ -288,7 +286,6 @@ export function GameMenu({
                   selectedCompanionId={selectedCompanionId}
                   highestCharacterLevelEver={highestCharacterLevelEver}
                   onAllocateStatPoint={onAllocateStatPoint}
-                  onAssignFood={onAssignFood}
                   onChangeSkillBehavior={onChangeSkillBehavior}
                   onEquipEquipment={onEquipEquipment}
                   onEquipFlask={onEquipFlask}

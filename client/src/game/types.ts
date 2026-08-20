@@ -296,7 +296,7 @@ export type CompanionDerivedStats = {
 
 export type CompanionEquipment = Record<EquipmentSlot, ItemId | null>;
 
-export type ConsumableKind = "flask" | "food";
+export type ConsumableKind = "flask";
 
 export type ConsumableUseSource = "manual" | "ai";
 
@@ -518,9 +518,7 @@ export type EquipmentItemId =
 
 export type ConsumableItemId =
   | "minor_recovery_flask"
-  | "soldiers_recovery_flask"
-  | "hearty_trail_rations"
-  | "skirmisher_rations";
+  | "soldiers_recovery_flask";
 
 export type SkillBookItemId =
   | "throw_rock_skill_book"
@@ -664,7 +662,6 @@ export type EquippedFlaskState = {
 
 export type CompanionConsumables = {
   flask: EquippedFlaskState | null;
-  foodItemId: ConsumableItemId | null;
 };
 
 export type ConsumableBuffState = {
@@ -677,7 +674,6 @@ export type ConsumableBuffState = {
 
 export type CompanionConsumableBuffs = {
   flask: ConsumableBuffState | null;
-  food: ConsumableBuffState | null;
 };
 
 export type CompanionConsumableBehavior = {
@@ -735,12 +731,6 @@ export type ConsumableUseState = {
   completesAt: number;
   durationMs: number;
   healthAtStart: number;
-};
-
-export type HubDepartureFoodWarningState = {
-  companionIds: string[];
-  createdAt: number;
-  expiresAt: number;
 };
 
 export type InventorySlot = {

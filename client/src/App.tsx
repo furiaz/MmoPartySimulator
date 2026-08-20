@@ -70,7 +70,6 @@ import {
   debugToggleSuperSpeed,
   debugTurnInCurrentQuest,
   enemyIds,
-  assignFoodToCompanion,
   equipItemToCompanion,
   equipFlaskToCompanion,
   exportDebugTelemetryReport,
@@ -390,7 +389,6 @@ type EntityHoverTooltipState = {
 const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
   all: "All",
   flasks: "Flasks",
-  food: "Food",
   supplies: "Supplies",
   books: "Books",
   weapons: "Weapons",
@@ -405,7 +403,6 @@ const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
 const merchantBuyFilters: MerchantBuyFilter[] = [
   "all",
   "flasks",
-  "food",
   "supplies",
   "books",
   "weapons",
@@ -2249,10 +2246,6 @@ function getMerchantSlotText(itemDefinition: ItemDefinition): string {
     return "Flask Slot";
   }
 
-  if (itemDefinition.consumableKind === "food") {
-    return "Food Assignment";
-  }
-
   if (itemDefinition.equipmentKind === "accessory") {
     return "Accessory";
   }
@@ -2273,10 +2266,6 @@ function getMerchantTypeText(itemDefinition: ItemDefinition): string {
 
   if (itemDefinition.consumableKind === "flask") {
     return "Flask";
-  }
-
-  if (itemDefinition.consumableKind === "food") {
-    return "Food";
   }
 
   return itemDefinition.equipmentType
@@ -3138,11 +3127,6 @@ function App() {
     gameState.worldWipeRecovery?.status === "rescued" &&
     gameState.worldWipeRecovery.expiresAt > currentTime
       ? gameState.worldWipeRecovery
-      : null;
-  const hubDepartureFoodWarning =
-    gameState.hubDepartureFoodWarning &&
-    gameState.hubDepartureFoodWarning.expiresAt > currentTime
-      ? gameState.hubDepartureFoodWarning
       : null;
   const activeDirectCommandFeedback =
     directCommandFeedback && directCommandFeedback.expiresAt > currentTime
@@ -4029,17 +4013,13 @@ function App() {
         return;
       }
 
-      if (event.key !== "1" && event.key !== "2") {
+      if (event.key !== "1") {
         return;
       }
 
       event.preventDefault();
       setGameState((state) =>
-        startPartyConsumableUse(
-          state,
-          event.key === "1" ? "flask" : "food",
-          Date.now(),
-        ),
+        startPartyConsumableUse(state, "flask", Date.now()),
       );
     }
 
@@ -4303,13 +4283,6 @@ function App() {
     queueSaveAfterStateChange("Flask saved");
     setGameState((state) =>
       unequipFlaskFromCompanion(state, companionId).state,
-    );
-  }
-
-  function assignFood(companionId: string, itemId: ItemId | null) {
-    queueSaveAfterStateChange("Food assignment saved");
-    setGameState((state) =>
-      assignFoodToCompanion(state, companionId, itemId).state,
     );
   }
 
@@ -6095,7 +6068,6 @@ function App() {
               onAllocateStatPoint={allocateStatPoint}
               onChangeLeader={changePartyLeader}
               onChangeRole={changePartyMemberRole}
-              onAssignFood={assignFood}
               onChangeConsumableBehavior={changeConsumableBehavior}
               onChangeSkillBehavior={changeSkillBehavior}
               onEquipEquipment={equipEquipment}
@@ -6172,13 +6144,6 @@ function App() {
           quest={displayQuest}
           onHide={() => setIsQuestTrackerHidden(true)}
         />
-        {hubDepartureFoodWarning ? (
-          <div className="hub-food-warning-toast" role="status">
-            Food buffs missing for {hubDepartureFoodWarning.companionIds.length}{" "}
-            companion
-            {hubDepartureFoodWarning.companionIds.length === 1 ? "" : "s"}
-          </div>
-        ) : null}
         {activeDirectCommandFeedback ? (
           <div className="direct-command-feedback-toast" role="status">
             {activeDirectCommandFeedback.text}

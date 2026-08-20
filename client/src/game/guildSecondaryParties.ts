@@ -711,7 +711,6 @@ function createEntitiesForActiveRoster(
       partyOrder: index,
       consumableBuffs: {
         flask: null,
-        food: null,
       },
     };
   });
@@ -763,7 +762,6 @@ function sanitizeRestingCompanion(
     partyOrder,
     consumableBuffs: {
       flask: null,
-      food: null,
     },
   };
 }

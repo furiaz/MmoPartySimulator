@@ -22,7 +22,6 @@ import type {
   GuildNoticeBoardState,
   GuildRecruitState,
   GuildUpgradesState,
-  HubDepartureFoodWarningState,
   InnKitchenState,
   InnUpgradesState,
   KeyItemsById,
@@ -253,7 +252,6 @@ export type GameState = {
   enemyAoeChannelsByCasterId?: Record<string, EnemyAoeChannelState>;
   enemyAoeCooldownsByCasterId?: Record<string, EnemyAoeCooldownState>;
   consumableUsesByCompanionId?: Record<string, ConsumableUseState>;
-  hubDepartureFoodWarning?: HubDepartureFoodWarningState | null;
   flaskRechargeEnemyKillCounter?: number;
   flaskRechargeCountedEnemyDefeats?: Record<string, number>;
   dropVisualEvents?: DropVisualEvent[];

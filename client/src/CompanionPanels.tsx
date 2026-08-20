@@ -60,7 +60,6 @@ import {
   getScaledSkillDefinitionForCompanion,
   getRoleBonusDisplayState,
   isFlaskItemDefinition,
-  isFoodItemDefinition,
   getPartySizeUnlockRequirement,
   getSkillRoleScore,
   getSkillCooldownMs,
@@ -261,7 +260,6 @@ export function PartyMenuPanel({
   selectedCompanionId,
   highestCharacterLevelEver,
   onAllocateStatPoint,
-  onAssignFood,
   onChangeSkillBehavior,
   onEquipEquipment,
   onEquipFlask,
@@ -279,7 +277,6 @@ export function PartyMenuPanel({
   selectedCompanionId: string | null;
   highestCharacterLevelEver: number;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
-  onAssignFood: (companionId: string, itemId: ItemId | null) => void;
   onChangeSkillBehavior: (
     companionId: string,
     update: Partial<Companion["skillBehavior"]>,
@@ -336,7 +333,6 @@ export function PartyMenuPanel({
             inventory={inventory}
             member={selectedMember}
             onAllocateStatPoint={onAllocateStatPoint}
-            onAssignFood={onAssignFood}
             onChangeSkillBehavior={onChangeSkillBehavior}
             onEquipEquipment={onEquipEquipment}
             onEquipFlask={onEquipFlask}
@@ -360,7 +356,6 @@ function PartyMenuSectionPanel({
   member,
   onEquipEquipment,
   onAllocateStatPoint,
-  onAssignFood,
   onChangeSkillBehavior,
   onEquipFlask,
   onSetLegacySkillEnabled,
@@ -378,7 +373,6 @@ function PartyMenuSectionPanel({
     targetSlot: EquipmentSlot,
   ) => void;
   onAllocateStatPoint: (companionId: string, statId: PrimaryStatId) => void;
-  onAssignFood: (companionId: string, itemId: ItemId | null) => void;
   onChangeSkillBehavior: (
     companionId: string,
     update: Partial<Companion["skillBehavior"]>,
@@ -408,7 +402,6 @@ function PartyMenuSectionPanel({
         currentTime={currentTime}
         inventory={inventory}
         member={member}
-        onAssignFood={onAssignFood}
         onEquipEquipment={onEquipEquipment}
         onEquipFlask={onEquipFlask}
         onUnequipEquipment={onUnequipEquipment}
@@ -1049,7 +1042,6 @@ function PartyEquipmentSection({
   currentTime,
   inventory,
   member,
-  onAssignFood,
   onEquipEquipment,
   onEquipFlask,
   onUnequipEquipment,
@@ -1058,7 +1050,6 @@ function PartyEquipmentSection({
   currentTime: number;
   inventory: PartyInventory;
   member: Companion;
-  onAssignFood: (companionId: string, itemId: ItemId | null) => void;
   onEquipEquipment: (
     companionId: string,
     itemId: ItemId,
@@ -1088,22 +1079,10 @@ function PartyEquipmentSection({
     inventory,
     isFlaskItemDefinition,
   );
-  const foodInventorySlots = getGroupedConsumableInventorySlots(
-    inventory,
-    isFoodItemDefinition,
-  );
   const equippedFlask = member.consumables.flask;
   const equippedFlaskDefinition = equippedFlask
     ? getItemDefinition(equippedFlask.itemId)
     : null;
-  const assignedFoodDefinition = member.consumables.foodItemId
-    ? getItemDefinition(member.consumables.foodItemId)
-    : null;
-  const assignedFoodCount = member.consumables.foodItemId
-    ? inventory.slots
-        .filter((slot) => slot.itemId === member.consumables.foodItemId)
-        .reduce((total, slot) => total + slot.quantity, 0)
-    : 0;
   const cooldownRemainingMs = getConsumableCooldownRemainingMs(
     member,
     currentTime,
@@ -1203,61 +1182,6 @@ function PartyEquipmentSection({
           {equippedFlask ? (
             <button onClick={() => onUnequipFlask(member.id)} type="button">
               Unequip Flask
-            </button>
-          ) : null}
-        </div>
-        <div className="equipment-consumable-card">
-          <span className="equipment-section-label">Food Assignment</span>
-          <strong>{assignedFoodDefinition?.displayName ?? "None"}</strong>
-          <span>
-            {assignedFoodDefinition
-              ? `${assignedFoodCount} available | ${getActiveFoodBuffText(member, currentTime)}`
-              : "No food assigned"}
-          </span>
-          <div className="equipment-inventory-list">
-            {foodInventorySlots.length > 0 ? (
-              foodInventorySlots.map((slot) => {
-                const itemDefinition = getItemDefinition(slot.itemId);
-                const levelRequirementMet =
-                  !itemDefinition.levelRequirement ||
-                  member.characterLevel >= itemDefinition.levelRequirement;
-
-                return (
-                  <div
-                    className="equipment-inventory-row"
-                    key={`food-${slot.itemId}`}
-                  >
-                    <span className="equipment-inventory-item-name">
-                      {INVENTORY_ITEM_ICON_SRC[slot.itemId] ? (
-                        <img
-                          alt=""
-                          aria-hidden="true"
-                          className="equipment-inventory-item-icon"
-                          src={INVENTORY_ITEM_ICON_SRC[slot.itemId]}
-                        />
-                      ) : null}
-                      <span>{itemDefinition.displayName} x{slot.quantity}</span>
-                    </span>
-                    <span>{getConsumableMetadataText(itemDefinition)}</span>
-                    <button
-                      disabled={!levelRequirementMet}
-                      onClick={() => onAssignFood(member.id, slot.itemId)}
-                      type="button"
-                    >
-                      {levelRequirementMet
-                        ? "Assign Food"
-                        : `Requires Level ${itemDefinition.levelRequirement}`}
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <span className="party-menu-empty">No food in inventory</span>
-            )}
-          </div>
-          {assignedFoodDefinition ? (
-            <button onClick={() => onAssignFood(member.id, null)} type="button">
-              Clear Food
             </button>
           ) : null}
         </div>
@@ -1494,16 +1418,6 @@ function getGroupedConsumableInventorySlots(
     itemId,
     quantity,
   }));
-}
-
-function getActiveFoodBuffText(member: Companion, currentTime: number): string {
-  const foodBuff = member.consumableBuffs.food;
-
-  if (!foodBuff || foodBuff.expiresAt <= currentTime) {
-    return "No active food buff";
-  }
-
-  return `${Math.ceil((foodBuff.expiresAt - currentTime) / 1000)}s food buff`;
 }
 
 function getTargetSlotsForItem(itemDefinition: ItemDefinition): EquipmentSlot[] {
