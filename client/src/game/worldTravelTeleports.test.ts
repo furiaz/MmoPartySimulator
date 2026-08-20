@@ -64,7 +64,6 @@ describe("world travel teleport echoes", () => {
         autoModeEnabled: true,
       },
       SLIMEWARD_CAMP_ID,
-      1000,
     );
 
     expect(teleport.result).toEqual({

@@ -1,4 +1,5 @@
 import { getEntityById, updateEntity, type GameState } from "./state";
+import { pruneMissingEntityRuntimeState } from "./mapRuntimeCleanup";
 import { createPendingRoleBonusState } from "./roleBonus";
 import { getRolePriority } from "./roleProfiles";
 import { isActiveResource } from "./entityGuards";
@@ -20,6 +21,80 @@ export function getPartyMembers(state: GameState): PartyMember[] {
   return Object.values(state.entities).filter(
     (entity): entity is PartyMember =>
       isPartyMember(entity) && entity.state !== "dead",
+  );
+}
+
+export function getActiveCompanions(state: GameState): PartyMember[] {
+  return Object.values(state.entities).filter(isPartyMember);
+}
+
+export function getRestingCompanions(state: GameState): PartyMember[] {
+  return Object.values(state.restingCompanionsById ?? {});
+}
+
+export function getAllRosterCompanions(state: GameState): PartyMember[] {
+  return [...getActiveCompanions(state), ...getRestingCompanions(state)];
+}
+
+export function getHighestCompanionCharacterLevel(state: GameState): number {
+  return getAllRosterCompanions(state).reduce(
+    (highestLevel, companion) =>
+      Math.max(highestLevel, sanitizeCharacterLevel(companion.characterLevel)),
+    1,
+  );
+}
+
+export function getHighestCharacterLevelEver(state: GameState): number {
+  return Math.max(
+    sanitizeCharacterLevel(state.highestCharacterLevelEver),
+    getHighestCompanionCharacterLevel(state),
+  );
+}
+
+export function recordHighestCharacterLevelEver(
+  state: GameState,
+  characterLevel: number,
+): GameState {
+  const nextHighestLevel = Math.max(
+    getHighestCharacterLevelEver(state),
+    sanitizeCharacterLevel(characterLevel),
+  );
+
+  if (state.highestCharacterLevelEver === nextHighestLevel) {
+    return state;
+  }
+
+  return {
+    ...state,
+    highestCharacterLevelEver: nextHighestLevel,
+  };
+}
+
+export function moveCompanionToRestingReserve(
+  state: GameState,
+  companionId: string,
+): GameState {
+  const companion = state.entities[companionId];
+
+  if (!isPartyMember(companion) || companion.id === state.partyLeaderId) {
+    return state;
+  }
+
+  const activeEntities = { ...state.entities };
+  delete activeEntities[companion.id];
+
+  return pruneMissingEntityRuntimeState(
+    recordHighestCharacterLevelEver(
+      {
+        ...state,
+        entities: activeEntities,
+        restingCompanionsById: {
+          ...(state.restingCompanionsById ?? {}),
+          [companion.id]: sanitizeRestingCompanion(companion),
+        },
+      },
+      companion.characterLevel,
+    ),
   );
 }
 
@@ -150,3 +225,21 @@ function comparePartyMembers(a: PartyMember, b: PartyMember): number {
   );
 }
 
+function sanitizeRestingCompanion(companion: PartyMember): PartyMember {
+  return {
+    ...companion,
+    state: "idle",
+    currentTargetId: null,
+    commandPriority: "autonomous",
+    defendPosition: null,
+    consumableBuffs: {
+      flask: null,
+    },
+  };
+}
+
+function sanitizeCharacterLevel(level: number | undefined): number {
+  return typeof level === "number" && Number.isFinite(level)
+    ? Math.max(1, Math.floor(level))
+    : 1;
+}

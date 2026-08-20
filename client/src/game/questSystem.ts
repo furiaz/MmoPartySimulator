@@ -27,7 +27,10 @@ import {
   getDebugXpMultiplier,
   grantCharacterXpToCompanion,
 } from "./leveling";
-import { getPartyMembers } from "./partySystem";
+import {
+  getPartyMembers,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 import {
   addCombatFeedback,
   PROTOTYPE_VISUAL_FEEDBACK_DURATION_MS,
@@ -226,9 +229,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
     ],
     unlocksQuestIds: ["break_lower_shore_blockage"],
     rewards: {
-      crowns: 35,
+      crowns: 45,
       characterXp: 12,
-      items: [{ itemId: "hearty_trail_rations", quantity: 1 }],
     },
   },
   break_lower_shore_blockage: {
@@ -362,9 +364,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
     ],
     unlocksQuestIds: ["hold_the_field_cache"],
     rewards: {
-      crowns: 55,
+      crowns: 65,
       characterXp: 22,
-      items: [{ itemId: "skirmisher_rations", quantity: 1 }],
     },
   },
   hold_the_field_cache: {
@@ -502,9 +503,8 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
       },
     ],
     rewards: {
-      crowns: 35,
+      crowns: 45,
       characterXp: 10,
-      items: [{ itemId: "hearty_trail_rations", quantity: 1 }],
     },
     unlocksQuestIds: ["crawler_shelf_report"],
   },
@@ -1521,6 +1521,10 @@ function grantQuestXpToCurrentParty(
 
     const updatedCompanion = grantCharacterXpToCompanion(companion, xpAmount);
     nextState = updateEntity(nextState, updatedCompanion);
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
     nextState = appendDebugTelemetryEvent(nextState, {
       type: "quest_reward_xp_awarded",
       entityId: companion.id,

@@ -18,13 +18,20 @@ import type {
   GameMap,
   GameEntity,
   Enemy,
-  HubDepartureFoodWarningState,
+  GuildSecondaryPartiesState,
+  GuildNoticeBoardState,
+  GuildRecruitState,
+  GuildUpgradesState,
+  InnKitchenState,
+  InnUpgradesState,
   KeyItemsById,
   LeaderIntent,
   NewsBroadcastEvent,
+  OfflineFarmingPendingLootState,
   PartyIntent,
   PartyInventory,
   PartyWallet,
+  RestingCompanionsById,
   PartyFormationState,
   PartyBank,
   PartyMemberRole,
@@ -57,6 +64,7 @@ import type {
   SlimewardDungeonRuntimeState,
   StatusEffectState,
   TeleportRuntimeState,
+  WorldDiscoveryState,
   WorldWipeRecoveryState,
 } from "./types";
 import {
@@ -155,6 +163,15 @@ export type {
 
 export type GameState = {
   entities: Record<string, GameEntity>;
+  restingCompanionsById?: RestingCompanionsById;
+  highestCharacterLevelEver?: number;
+  guildRecruit?: GuildRecruitState;
+  guildUpgrades?: GuildUpgradesState;
+  guildNoticeBoard?: GuildNoticeBoardState;
+  guildSecondaryParties?: GuildSecondaryPartiesState;
+  innUpgrades?: InnUpgradesState;
+  innKitchen?: InnKitchenState;
+  worldDiscovery?: WorldDiscoveryState;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;
   bank: PartyBank;
@@ -235,10 +252,10 @@ export type GameState = {
   enemyAoeChannelsByCasterId?: Record<string, EnemyAoeChannelState>;
   enemyAoeCooldownsByCasterId?: Record<string, EnemyAoeCooldownState>;
   consumableUsesByCompanionId?: Record<string, ConsumableUseState>;
-  hubDepartureFoodWarning?: HubDepartureFoodWarningState | null;
   flaskRechargeEnemyKillCounter?: number;
   flaskRechargeCountedEnemyDefeats?: Record<string, number>;
   dropVisualEvents?: DropVisualEvent[];
+  pendingOfflineFarmingLoot?: OfflineFarmingPendingLootState | null;
   newsBroadcasts?: NewsBroadcastEvent[];
   autonomousTargetSuppressionsByEnemyId?: Record<string, AutonomousTargetSuppressionState>;
   slimewardDungeon?: SlimewardDungeonRuntimeState;

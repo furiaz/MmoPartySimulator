@@ -15,6 +15,13 @@ import {
   targetDummyPosition,
 } from "./debugMap";
 import { createEmptyPartyBank } from "./bank";
+import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
+import { createInitialGuildRecruitState } from "./guildRecruit";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { createInitialInnKitchenState } from "./innKitchen";
+import { createInitialInnUpgradesState } from "./innRoomUpgrades";
+import { createInitialWorldDiscoveryState } from "./worldDiscovery";
 import {
   addItemToInventoryState,
   createEmptyPartyInventory,
@@ -60,6 +67,18 @@ export function createInitialGameState(): GameState {
     createTargetDummy(aoeTargetDummyId, aoeTargetDummyPosition),
   ].reduce(addEntity, {
     entities: {},
+    restingCompanionsById: {},
+    highestCharacterLevelEver: Math.max(
+      leader.characterLevel,
+      secondCompanion.characterLevel,
+    ),
+    guildRecruit: createInitialGuildRecruitState(),
+    guildUpgrades: createInitialGuildUpgradesState(),
+    guildNoticeBoard: createInitialGuildNoticeBoardState(),
+    guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
+    innUpgrades: createInitialInnUpgradesState(),
+    innKitchen: createInitialInnKitchenState(),
+    worldDiscovery: createInitialWorldDiscoveryState(),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),
@@ -116,6 +135,7 @@ export function createInitialGameState(): GameState {
     skillVisualEvents: [],
     companionAoeChannelsByCasterId: {},
     dropVisualEvents: [],
+    pendingOfflineFarmingLoot: null,
     newsBroadcasts: [],
     lastCompanionDamageTakenAtByCompanionId: {},
   });

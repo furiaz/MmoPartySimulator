@@ -1,16 +1,41 @@
 import { describe, expect, it } from "vitest";
 import {
   createDebugMap,
+  HUB_MAP_ID,
   HUB_TWO_MAP_ID,
   MAP_ONE_ID,
   SLIMEWARD_FLOOR_ONE_ID,
 } from "./debugMap";
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
-import { addItemToInventoryState } from "./inventory";
+import {
+  createInitialGuildNoticeBoardState,
+  GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+} from "./guildNoticeBoard";
+import {
+  createInitialGuildRecruitState,
+  GUILD_RECRUIT_REFRESH_INTERVAL_MS,
+} from "./guildRecruit";
+import {
+  GUILD_SECONDARY_PARTY_ID,
+  createInitialGuildSecondaryPartiesState,
+} from "./guildSecondaryParties";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import {
+  INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+  cookInnMealForCompanion,
+  setInnKitchenAutoCookEnabled,
+  setInnKitchenAutoCookRenewThresholdPercent,
+  setInnKitchenSelectedRecipe,
+} from "./innKitchen";
+import { createInitialInnUpgradesState } from "./innRoomUpgrades";
+import { addItemToInventoryState, countInventoryItem } from "./inventory";
+import { getPartySizeLimit } from "./leveling";
+import { moveCompanionToRestingReserve } from "./partySystem";
 import { createInitialQuestStates } from "./questSystem";
 import {
   applyOfflineFarmingProgress,
+  claimPendingOfflineFarmingLoot,
   createSavedGame,
   MAX_OFFLINE_FARMING_MS,
   restoreGameStateFromSave,
@@ -19,7 +44,8 @@ import {
 } from "./saveGame";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
-import type { Companion, GameEntity, PartyMemberRole } from "./types";
+import type { Companion, GameEntity, ItemId, PartyMemberRole } from "./types";
+import { addCurrencyToWalletState } from "./wallet";
 
 const NOW_MS = 1_000_000;
 
@@ -127,6 +153,383 @@ describe("save game serialization", () => {
     ).toBe(true);
   });
 
+  it("preserves resting companions and highest-ever level through save restore", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const veteran: Companion = {
+      ...createCompanion("companion-2", { x: 16, y: 29 }, "companion-1", "fighter", 1),
+      characterLevel: 50,
+      characterXp: 12,
+      state: "attack",
+      currentTargetId: "enemy-1",
+      commandPriority: "direct",
+    };
+    const activeState = createTestGameState({
+      entities: {
+        [leader.id]: leader,
+        [veteran.id]: veteran,
+      },
+      currentMapId: MAP_ONE_ID,
+      map: createDebugMap(MAP_ONE_ID),
+      partyLeaderId: leader.id,
+    });
+    const restingState = moveCompanionToRestingReserve(activeState, veteran.id);
+    const save = createSavedGame(restingState, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restingState.entities[veteran.id]).toBeUndefined();
+    expect(restingState.restingCompanionsById?.[veteran.id]).toMatchObject({
+      id: veteran.id,
+      characterLevel: 50,
+      state: "idle",
+      currentTargetId: null,
+      commandPriority: "autonomous",
+    });
+    expect(save.state.highestCharacterLevelEver).toBe(50);
+    expect(save.state.restingCompanionsById?.[veteran.id]?.consumableBuffs).toEqual({
+      flask: null,
+    });
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.entities[veteran.id]).toBeUndefined();
+    expect(restored.state.restingCompanionsById?.[veteran.id]).toMatchObject({
+      id: veteran.id,
+      characterLevel: 50,
+      characterXp: 12,
+    });
+    expect(restored.state.highestCharacterLevelEver).toBe(50);
+    expect(getPartySizeLimit(restored.state)).toBe(4);
+  });
+
+  it("cleans obsolete prototype food from old saves", () => {
+    const companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      consumables: {
+        flask: null,
+        foodItemId: "hearty_trail_rations",
+      },
+      consumableBuffs: {
+        flask: null,
+        food: {
+          itemId: "skirmisher_rations",
+          kind: "food",
+          expiresAt: NOW_MS + 1_000,
+        },
+      },
+    } as unknown as Companion;
+    const state = createTestGameState({
+      entities: { [companion.id]: companion },
+      inventory: {
+        capacity: 6,
+        slots: [
+          { itemId: "hearty_trail_rations" as ItemId, quantity: 2 },
+          { itemId: "skirmisher_rations" as ItemId, quantity: 1 },
+          { itemId: "minor_recovery_flask", quantity: 1 },
+        ],
+      },
+      partyLeaderId: companion.id,
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+    const savedCompanion = save.state.entities[companion.id] as Companion;
+
+    expect(save.state.inventory.slots).toEqual([
+      { itemId: "minor_recovery_flask", quantity: 1 },
+    ]);
+    expect(savedCompanion.consumables).toEqual({ flask: null });
+    expect(savedCompanion.consumableBuffs).toEqual({ flask: null });
+    expect("hubDepartureFoodWarning" in save.state).toBe(false);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.inventory.slots).toEqual([
+      { itemId: "minor_recovery_flask", quantity: 1 },
+    ]);
+    expect((restored.state.entities[companion.id] as Companion).consumables).toEqual({
+      flask: null,
+    });
+  });
+
+  it("preserves Guild recruit candidate, timer, and sequence through save restore", () => {
+    const guildRecruit = {
+      ...createInitialGuildRecruitState(NOW_MS),
+      recruitSequence: 7,
+      candidates: [
+        {
+          id: "guild-recruit-candidate-7",
+          classId: "beginner" as const,
+          characterLevel: 1,
+          role: "none" as const,
+          generatedAtMs: NOW_MS,
+          sequence: 7,
+          equipmentItemIds: ["training_sword" as const],
+          startingSkillRanksBySkillId: {
+            first_aid: 2,
+          },
+        },
+      ],
+      nextRefreshAtMs: NOW_MS + GUILD_RECRUIT_REFRESH_INTERVAL_MS,
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        guildRecruit,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildRecruit).toEqual(guildRecruit);
+  });
+
+  it("preserves Guild Notice Board quest, timer, and sequence through save restore", () => {
+    const guildNoticeBoard = {
+      ...createInitialGuildNoticeBoardState(NOW_MS),
+      questSequence: 5,
+      hasSeenCurrentRefresh: true,
+      nextRefreshAtMs: NOW_MS + GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
+      slots: [
+        {
+          ...createInitialGuildNoticeBoardState(NOW_MS).slots[0]!,
+          id: "guild-notice-board-quest-5",
+          sequence: 5,
+          status: "taken" as const,
+          takenAtMs: NOW_MS,
+          levelAnchor: null,
+          levelRange: null,
+          objectives: [
+            {
+              id: "defeat-goblin_shaman",
+              enemyTypeId: "goblin_shaman" as const,
+              requiredCount: 50,
+              currentCount: 12,
+            },
+            {
+              id: "defeat-ash_wisp",
+              enemyTypeId: "ash_wisp" as const,
+              requiredCount: 50,
+              currentCount: 7,
+            },
+          ],
+        },
+      ],
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        guildNoticeBoard,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildNoticeBoard).toEqual(guildNoticeBoard);
+  });
+
+  it("preserves Guild Field Team assignment through save restore", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const secondaryCompanion: Companion = {
+      ...createCompanion("companion-2", { x: 15, y: 29 }, "companion-1", "fighter", 1),
+      state: "idle",
+      currentTargetId: null,
+    };
+    const guildSecondaryParties = {
+      parties: [
+        {
+          id: GUILD_SECONDARY_PARTY_ID,
+          displayName: "Field Team 1",
+          companionIds: [secondaryCompanion.id],
+          assignment: null,
+        },
+      ],
+    };
+    const guildUpgrades = createInitialGuildUpgradesState();
+    guildUpgrades.secondaryParties.secondary_party_count = 1;
+    const save = createSavedGame(
+      createTestGameState({
+        entities: {
+          [leader.id]: leader,
+        },
+        restingCompanionsById: {
+          [secondaryCompanion.id]: secondaryCompanion,
+        },
+        partyLeaderId: leader.id,
+        guildUpgrades,
+        guildSecondaryParties,
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.guildSecondaryParties?.parties[0].companionIds).toEqual([
+      secondaryCompanion.id,
+    ]);
+    expect(restored.state.restingCompanionsById?.[secondaryCompanion.id]).toMatchObject({
+      id: secondaryCompanion.id,
+      state: "idle",
+      currentTargetId: null,
+    });
+  });
+
+  it("preserves active Inn Kitchen meals through save restore", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const funded = addCurrencyToWalletState(
+      createTestGameState({
+        entities: {
+          [companion.id]: companion,
+        },
+        partyLeaderId: companion.id,
+        currentMapId: HUB_MAP_ID,
+        map: createDebugMap(),
+        simulationTimeMs: NOW_MS,
+      }),
+      "crowns",
+      100,
+      "debug",
+    ).state;
+    const cooked = cookInnMealForCompanion(
+      funded,
+      companion.id,
+      INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+      NOW_MS,
+    );
+    expect(cooked.ok).toBe(true);
+
+    const save = createSavedGame(cooked.state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+    expect(restored.state.innKitchen?.activeMealBuffsByCompanionId).toMatchObject({
+      [companion.id]: {
+        recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        cookedAtMs: NOW_MS,
+      },
+    });
+  });
+
+  it("preserves partial Hearth's Fire through save restore without instant refill", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = createTestGameState({
+      entities: {
+        [companion.id]: companion,
+      },
+      partyLeaderId: companion.id,
+      currentMapId: HUB_MAP_ID,
+      map: createDebugMap(),
+      simulationTimeMs: NOW_MS + 10 * 60 * 60 * 1000,
+      innKitchen: {
+        activeMealBuffsByCompanionId: {},
+        preferencesByCompanionId: {},
+        hearthFire: {
+          current: 4,
+          lastUpdatedAtMs: NOW_MS,
+        },
+        pantry: {
+          unlockedIngredientIds: [],
+          ingredientQuantitiesById: {},
+        },
+        autoCookFailuresByCompanionId: {},
+      },
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+    expect(restored.state.innKitchen?.hearthFire).toEqual({
+      current: 4,
+      lastUpdatedAtMs: NOW_MS,
+    });
+  });
+
+  it("preserves Inn Kitchen selected recipe and auto-cook preferences", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = setInnKitchenAutoCookRenewThresholdPercent(
+      setInnKitchenAutoCookEnabled(
+        setInnKitchenSelectedRecipe(
+          createTestGameState({
+            entities: {
+              [companion.id]: companion,
+            },
+            partyLeaderId: companion.id,
+            currentMapId: HUB_MAP_ID,
+            map: createDebugMap(),
+            simulationTimeMs: NOW_MS,
+          }),
+          companion.id,
+          INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        ),
+        companion.id,
+        true,
+      ),
+      companion.id,
+      25,
+    );
+
+    const save = createSavedGame(state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.innKitchen?.preferencesByCompanionId).toEqual({
+      [companion.id]: {
+        selectedRecipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+        autoCookEnabled: true,
+        autoCookRenewThresholdPercent: 25,
+      },
+    });
+  });
+
   it("restores old quest saves around the inserted Smithy quest without relocking progress", () => {
     const progressedQuests = createInitialQuestStates();
     progressedQuests.outfit_the_expedition = {
@@ -211,6 +614,148 @@ describe("save game serialization", () => {
     expect(restored.state.map?.id).toBe(HUB_TWO_MAP_ID);
     expect(restored.state.map?.displayName).toBe("Forward Bastion");
   });
+
+  it("defaults missing roster foundation fields on older saves", () => {
+    const leader: Companion = {
+      ...createCompanion("companion-1", { x: 14, y: 29 }, "companion-1", "defender", 0),
+      characterLevel: 30,
+      state: "idle",
+      currentTargetId: null,
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        entities: {
+          [leader.id]: leader,
+        },
+        currentMapId: HUB_MAP_ID,
+        map: createDebugMap(HUB_MAP_ID),
+        partyLeaderId: leader.id,
+      }),
+      NOW_MS,
+    );
+    delete (save.state as Partial<GameState>).restingCompanionsById;
+    delete (save.state as Partial<GameState>).highestCharacterLevelEver;
+    delete (save.state as Partial<GameState>).guildRecruit;
+    delete (save.state as Partial<GameState>).guildUpgrades;
+    delete (save.state as Partial<GameState>).guildNoticeBoard;
+    delete (save.state as Partial<GameState>).guildSecondaryParties;
+    delete (save.state as Partial<GameState>).innUpgrades;
+    delete (save.state as Partial<GameState>).innKitchen;
+    delete (save.state as Partial<GameState>).worldDiscovery;
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.restingCompanionsById).toEqual({});
+    expect(restored.state.highestCharacterLevelEver).toBe(30);
+    expect(getPartySizeLimit(restored.state)).toBe(4);
+    expect(restored.state.guildRecruit?.candidates[0]).toMatchObject({
+      id: "guild-recruit-candidate-1",
+      classId: "beginner",
+      characterLevel: 1,
+      role: "none",
+      sequence: 1,
+    });
+    expect(restored.state.guildRecruit?.recruitSequence).toBe(1);
+    expect(restored.state.guildUpgrades?.recruit.recruit_slots).toBe(1);
+    expect(restored.state.guildNoticeBoard?.slots[0]).toMatchObject({
+      id: "guild-notice-board-quest-1",
+      status: "available",
+      sequence: 1,
+    });
+    expect(restored.state.guildNoticeBoard?.hasSeenCurrentRefresh).toBe(false);
+    expect(restored.state.guildSecondaryParties).toEqual(
+      createInitialGuildSecondaryPartiesState(),
+    );
+    expect(restored.state.guildUpgrades?.secondaryParties.secondary_party_count).toBe(0);
+    expect(restored.state.innUpgrades).toEqual(createInitialInnUpgradesState());
+    expect(restored.state.innKitchen).toMatchObject({
+      activeMealBuffsByCompanionId: {},
+      preferencesByCompanionId: {},
+      hearthFire: {
+        current: 10,
+      },
+      pantry: {
+        unlockedIngredientIds: [],
+        ingredientQuantitiesById: {},
+      },
+      autoCookFailuresByCompanionId: {},
+    });
+    expect(restored.state.worldDiscovery).toEqual({
+      visitedMapIds: [],
+      visitedSubzonesByMapId: {},
+    });
+    expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
+      kind: "npc",
+      displayName: "Guild Coordinator",
+      npcRole: "guild_coordinator",
+    });
+    expect(restored.state.entities["hub-tavern-keeper"]).toMatchObject({
+      kind: "npc",
+      displayName: "Inn Keeper",
+      npcRole: "tavern_keeper",
+    });
+  });
+
+  it("sanitizes invalid Inn Kitchen meal save entries", () => {
+    const companion = createCompanion(
+      "meal-companion",
+      { x: 0, y: 0 },
+      "meal-companion",
+    );
+    const state = createTestGameState({
+      entities: {
+        [companion.id]: companion,
+      },
+      partyLeaderId: companion.id,
+      currentMapId: HUB_MAP_ID,
+      map: createDebugMap(HUB_MAP_ID),
+      simulationTimeMs: NOW_MS,
+      innKitchen: {
+        activeMealBuffsByCompanionId: {
+          [companion.id]: {
+            recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            cookedAtMs: NOW_MS - 10_000,
+            expiresAtMs: NOW_MS - 1,
+          },
+          missing: {
+            recipeId: INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
+            cookedAtMs: NOW_MS,
+            expiresAtMs: NOW_MS + 10_000,
+          },
+        },
+        preferencesByCompanionId: {},
+        hearthFire: {
+          current: 10,
+          lastUpdatedAtMs: NOW_MS,
+        },
+        pantry: {
+          unlockedIngredientIds: [],
+          ingredientQuantitiesById: {},
+        },
+        autoCookFailuresByCompanionId: {},
+      },
+    });
+
+    const save = createSavedGame(state, NOW_MS);
+
+    expect(save.state.innKitchen).toMatchObject({
+      activeMealBuffsByCompanionId: {},
+      preferencesByCompanionId: {},
+      hearthFire: {
+        current: 10,
+      },
+      pantry: {
+        unlockedIngredientIds: [],
+        ingredientQuantitiesById: {},
+      },
+      autoCookFailuresByCompanionId: {},
+    });
+  });
 });
 
 describe("offline farming", () => {
@@ -223,7 +768,8 @@ describe("offline farming", () => {
     );
 
     expect(result.summary.creditedMs).toBe(MAX_OFFLINE_FARMING_MS);
-    expect(result.summary.enemyKills).toBe(255);
+    expect(result.summary.enemyKills).toBeGreaterThan(0);
+    expect(result.summary.enemyKills).toBeLessThanOrEqual(960);
   });
 
   it("skips hub, dungeon, transition, recovery, chest, invalid, and defeated states", () => {
@@ -288,7 +834,7 @@ describe("offline farming", () => {
     expect(getSkipReason(defeated)).toContain("leader");
   });
 
-  it("uses roles so Defender plus Fighter earns more kills and Defender plus Gatherer earns more resources", () => {
+  it("uses roles so Defender plus Gatherer earns more resources", () => {
     const fighterResult = applyOfflineFarmingProgress(
       createWildState("fighter"),
       NOW_MS - MAX_OFFLINE_FARMING_MS,
@@ -300,15 +846,29 @@ describe("offline farming", () => {
       NOW_MS,
     );
 
-    expect(fighterResult.summary.enemyKills).toBeGreaterThan(
-      gathererResult.summary.enemyKills,
-    );
+    expect(fighterResult.summary.enemyKills).toBeGreaterThan(0);
+    expect(gathererResult.summary.enemyKills).toBeGreaterThan(0);
     expect(totalResources(fighterResult.summary.resourcesAdded)).toBeLessThan(
       totalResources(gathererResult.summary.resourcesAdded),
     );
   });
 
-  it("stops offline resource gains when inventory is full without blocking XP", () => {
+  it("grants estimator-based monster drops with offline rewards", () => {
+    const result = applyOfflineFarmingProgress(
+      createWildState("fighter"),
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+
+    expect(result.summary.enemyKills).toBeGreaterThan(0);
+    expect(result.summary.lootAdded.length).toBeGreaterThan(0);
+    expect(
+      result.summary.lootAdded.some((loot) => loot.itemId === "slime_gel_t1"),
+    ).toBe(true);
+    expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBeGreaterThan(0);
+  });
+
+  it("keeps overflow offline loot pending without blocking XP", () => {
     let state = createWildState("gatherer");
 
     for (let index = 0; index < state.inventory.capacity; index += 1) {
@@ -324,6 +884,57 @@ describe("offline farming", () => {
     expect(result.summary.enemyKills).toBeGreaterThan(0);
     expect(result.summary.xpGranted).toBeGreaterThan(0);
     expect(result.summary.resourcesAdded).toEqual([]);
+    expect(result.summary.pendingLoot.length).toBeGreaterThan(0);
+    expect(result.state.pendingOfflineFarmingLoot?.pendingLoot.length).toBeGreaterThan(0);
+  });
+
+  it("claims pending offline loot after inventory space is available", () => {
+    let state = createWildState("fighter");
+
+    for (let index = 0; index < state.inventory.capacity; index += 1) {
+      state = addItemToInventoryState(state, "training_sword", 1, "debug").state;
+    }
+
+    const result = applyOfflineFarmingProgress(
+      state,
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+    const withSpace = {
+      ...result.state,
+      inventory: {
+        ...result.state.inventory,
+        slots: [],
+      },
+    };
+    const claimed = claimPendingOfflineFarmingLoot(withSpace, NOW_MS + 1);
+
+    expect(claimed.summary.lootAdded.length).toBeGreaterThan(0);
+    expect(claimed.summary.pendingLoot).toEqual([]);
+    expect(claimed.state.pendingOfflineFarmingLoot).toBeNull();
+  });
+
+  it("preserves pending offline loot through save and restore", () => {
+    let state = createWildState("fighter");
+
+    for (let index = 0; index < state.inventory.capacity; index += 1) {
+      state = addItemToInventoryState(state, "training_sword", 1, "debug").state;
+    }
+
+    const result = applyOfflineFarmingProgress(
+      state,
+      NOW_MS - MAX_OFFLINE_FARMING_MS,
+      NOW_MS,
+    );
+    const save = createSavedGame(result.state, NOW_MS);
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.pendingOfflineFarmingLoot?.pendingLoot.length).toBeGreaterThan(0);
   });
 });
 

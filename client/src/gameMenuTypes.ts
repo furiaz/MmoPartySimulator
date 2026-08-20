@@ -6,7 +6,12 @@ export type GameMenuTab =
   | "world"
   | "options";
 
-export type AtlasSubpage = "quests" | "crafts" | "bank";
+export type AtlasSubpage =
+  | "quests"
+  | "crafts"
+  | "bank"
+  | "guildTavern"
+  | "afkEstimate";
 
 export type PartyMenuSection =
   | "stats"

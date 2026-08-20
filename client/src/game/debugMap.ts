@@ -363,6 +363,18 @@ export const hubNpcStartData = [
     displayName: "Test Blade",
     npcRole: "test_blade",
   },
+  {
+    id: "hub-guild-coordinator",
+    position: { x: 50, y: 56 },
+    displayName: "Guild Coordinator",
+    npcRole: "guild_coordinator",
+  },
+  {
+    id: "hub-tavern-keeper",
+    position: { x: 61, y: 56 },
+    displayName: "Inn Keeper",
+    npcRole: "tavern_keeper",
+  },
 ] as const;
 
 export const classMentorNpcStartData = {
@@ -414,6 +426,18 @@ export const hubTwoNpcStartData = [
     position: { x: 70, y: 58 },
     displayName: "Gate Dog",
     npcRole: "dog",
+  },
+  {
+    id: "hub-2-guild-coordinator",
+    position: { x: 107, y: 60 },
+    displayName: "Guild Coordinator",
+    npcRole: "guild_coordinator",
+  },
+  {
+    id: "hub-2-tavern-keeper",
+    position: { x: 117, y: 60 },
+    displayName: "Inn Keeper",
+    npcRole: "tavern_keeper",
   },
 ] as const;
 
@@ -1601,6 +1625,14 @@ const HUB_VISUAL_OBJECTS: MapVisualObject[] = [
     heightCells: 9,
     anchorY: 1,
   },
+  {
+    id: "hub-guild-tavern",
+    visualId: "guild_tavern_building",
+    position: { x: 55, y: 55 },
+    widthCells: 18,
+    heightCells: 13,
+    anchorY: 1,
+  },
 ];
 
 const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
@@ -1666,6 +1698,14 @@ const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
     position: { x: 83, y: 58 },
     widthCells: 10,
     heightCells: 10,
+    anchorY: 1,
+  },
+  {
+    id: "hub-2-guild-tavern",
+    visualId: "guild_tavern_building",
+    position: { x: 112, y: 58 },
+    widthCells: 18,
+    heightCells: 13,
     anchorY: 1,
   },
 ];

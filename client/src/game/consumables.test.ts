@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  addHubDepartureFoodWarningIfNeeded,
-  assignFoodToCompanion,
   equipFlaskToCompanion,
   FLASK_RECHARGE_KILLS_PER_CHARGE,
   getCompanionFlaskDisplayState,
-  getHubDepartureFoodWarningCompanionIds,
   startPartyConsumableUse,
   updateCompanionConsumableBehavior,
   updateConsumableBehaviorSystem,
@@ -15,7 +12,6 @@ import {
 import { createCompanion, createEnemy } from "./entities";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
 import { getCompanionDerivedStats } from "./stats";
-import { syncPartyDerivedMaxHealth } from "./healthSystem";
 import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { updateEntity, type GameState } from "./state";
 import { createTestGameState } from "./testState";
@@ -223,58 +219,6 @@ describe("prototype consumables", () => {
     expect(completedCompanion.consumables.flask?.charges).toBe(1);
   });
 
-  it("consumes assigned food only on completed hub use", () => {
-    const baseCompanion = {
-      ...createCompanion(
-        "companion-1",
-        { x: 0, y: 0 },
-        "companion-1",
-        "fighter",
-        0,
-      ),
-      characterLevel: 5,
-    };
-    const baseMaxHealth = getCompanionDerivedStats(baseCompanion).maxHealth;
-    const { state, companion } = createConsumableState(
-      ["hearty_trail_rations"],
-      5,
-      baseMaxHealth,
-    );
-    const assigned = assignFoodToCompanion(
-      state,
-      companion.id,
-      "hearty_trail_rations",
-    ).state;
-    const started = startPartyConsumableUse(assigned, "food", 1000);
-    const beforeCompletion = updateConsumableSystem(started, 5000);
-    const completed = updateConsumableSystem(beforeCompletion, 6000);
-    const completedCompanion = completed.entities[companion.id] as Companion;
-
-    expect(countInventoryItem(beforeCompletion.inventory, "hearty_trail_rations")).toBe(1);
-    expect(countInventoryItem(completed.inventory, "hearty_trail_rations")).toBe(0);
-    expect(completedCompanion.consumables.foodItemId).toBe("hearty_trail_rations");
-    expect(completedCompanion.consumableBuffs.food?.itemId).toBe("hearty_trail_rations");
-  });
-
-  it("interrupts food on damage without consuming inventory or applying buffs", () => {
-    const { state, companion } = createConsumableState(["hearty_trail_rations"]);
-    const assigned = assignFoodToCompanion(
-      state,
-      companion.id,
-      "hearty_trail_rations",
-    ).state;
-    const started = startPartyConsumableUse(assigned, "food", 1000);
-    const damaged = updateEntity(started, {
-      ...(started.entities[companion.id] as Companion),
-      health: 9,
-    });
-    const completed = updateConsumableSystem(damaged, 6000);
-    const completedCompanion = completed.entities[companion.id] as Companion;
-
-    expect(countInventoryItem(completed.inventory, "hearty_trail_rations")).toBe(1);
-    expect(completedCompanion.consumableBuffs.food).toBeNull();
-  });
-
   it("replaces active flask buffs and includes consumables in stat sync", () => {
     const { state, companion } = createConsumableState([
       "soldiers_recovery_flask",
@@ -315,27 +259,6 @@ describe("prototype consumables", () => {
     );
     expect(secondCompanion.consumableBuffs.flask?.expiresAt).toBeGreaterThan(
       firstBuffExpiresAt ?? 0,
-    );
-  });
-
-  it("keeps max-health sync stable when food constitution buffs complete", () => {
-    const { state, companion } = createConsumableState(["hearty_trail_rations"]);
-    const assigned = assignFoodToCompanion(
-      state,
-      companion.id,
-      "hearty_trail_rations",
-    ).state;
-    const started = startPartyConsumableUse(assigned, "food", 1000);
-    const completed = syncPartyDerivedMaxHealth(
-      updateConsumableSystem(started, 6000),
-    );
-    const completedCompanion = completed.entities[companion.id] as Companion;
-
-    expect(completedCompanion.consumableBuffs.food?.itemId).toBe(
-      "hearty_trail_rations",
-    );
-    expect(completedCompanion.maxHealth).toBeGreaterThan(
-      getCompanionDerivedStats(companion).maxHealth,
     );
   });
 
@@ -437,87 +360,6 @@ describe("prototype consumables", () => {
       kind: "flask",
       source: "manual",
     });
-  });
-
-  it("auto-starts hub food only when safe and no active food buff exists", () => {
-    const { state, companion } = createConsumableState(["hearty_trail_rations"]);
-    const assigned = assignFoodToCompanion(
-      state,
-      companion.id,
-      "hearty_trail_rations",
-    ).state;
-    const started = updateConsumableBehaviorSystem(assigned, 1000);
-    const wilderness = updateConsumableBehaviorSystem(
-      {
-        ...assigned,
-        currentMapId: "map-1",
-      },
-      1000,
-    );
-    const unsafe = updateConsumableBehaviorSystem(
-      updateEntity(assigned, {
-        ...(assigned.entities[companion.id] as Companion),
-        state: "attack",
-      }),
-      1000,
-    );
-    const buffed = updateConsumableBehaviorSystem(
-      updateEntity(assigned, {
-        ...(assigned.entities[companion.id] as Companion),
-        consumableBuffs: {
-          ...(assigned.entities[companion.id] as Companion).consumableBuffs,
-          food: {
-            itemId: "hearty_trail_rations",
-            kind: "food",
-            expiresAt: 10000,
-          },
-        },
-      }),
-      1000,
-    );
-
-    expect(started.consumableUsesByCompanionId?.[companion.id]).toMatchObject({
-      kind: "food",
-      source: "ai",
-    });
-    expect(wilderness.consumableUsesByCompanionId).toBeUndefined();
-    expect(unsafe.consumableUsesByCompanionId).toBeUndefined();
-    expect(buffed.consumableUsesByCompanionId).toBeUndefined();
-  });
-
-  it("creates a non-blocking hub departure food warning only when food is available and buffs are missing", () => {
-    const { state, companion } = createConsumableState(["hearty_trail_rations"]);
-    const assigned = assignFoodToCompanion(
-      state,
-      companion.id,
-      "hearty_trail_rations",
-    ).state;
-    const warning = addHubDepartureFoodWarningIfNeeded(assigned, 1000);
-    const buffed = updateEntity(assigned, {
-      ...(assigned.entities[companion.id] as Companion),
-      consumableBuffs: {
-        ...(assigned.entities[companion.id] as Companion).consumableBuffs,
-        food: {
-          itemId: "hearty_trail_rations",
-          kind: "food",
-          expiresAt: 10000,
-        },
-      },
-    });
-    const noInventory = {
-      ...assigned,
-      inventory: {
-        ...assigned.inventory,
-        slots: [],
-      },
-    };
-
-    expect(warning.hubDepartureFoodWarning).toMatchObject({
-      companionIds: [companion.id],
-      createdAt: 1000,
-    });
-    expect(getHubDepartureFoodWarningCompanionIds(buffed, 1000)).toEqual([]);
-    expect(getHubDepartureFoodWarningCompanionIds(noInventory, 1000)).toEqual([]);
   });
 
   it("refills equipped flasks to max charges at hub healing fountains", () => {

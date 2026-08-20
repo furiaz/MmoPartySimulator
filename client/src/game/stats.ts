@@ -10,6 +10,7 @@ import {
   getCompanionConsumablePrimaryStatModifiers,
   getCompanionConsumableStatModifiers,
 } from "./consumables";
+import { getInnKitchenMaxHealthPercentModifier } from "./innKitchen";
 import { getCompanionRoleBonusModifiers } from "./roleBonus";
 import type { GameState } from "./state";
 import type {
@@ -306,7 +307,12 @@ export function getCompanionDerivedStatsWithPartyBuffs(
     getCompanionRoleBonusModifiers(companion).statModifiers,
   );
 
-  return getDerivedStatsFromActualStats(companion, actualStats, equipmentStatModifiers);
+  return getDerivedStatsFromActualStats(companion, actualStats, equipmentStatModifiers, {
+    maxHealthPercentModifier: getInnKitchenMaxHealthPercentModifier(
+      state,
+      companion.id,
+    ),
+  });
 }
 
 export function syncCompanionDerivedMaxHealth(companion: Companion): Companion {
@@ -346,7 +352,24 @@ function getDerivedStatsFromActualStats(
   companion: Companion,
   actualStats: CompanionPrimaryStats,
   equipmentStatModifiers: EquipmentStatModifiers,
+  options: {
+    maxHealthPercentModifier?: number;
+  } = {},
 ): CompanionDerivedStats {
+  const baseMaxHealth =
+    10 +
+    companion.characterLevel * 2 +
+    actualStats.constitution * 2 +
+    (equipmentStatModifiers.maxHealth ?? 0);
+  const maxHealthPercentModifier = Math.max(
+    0,
+    options.maxHealthPercentModifier ?? 0,
+  );
+  const percentMaxHealthBonus =
+    maxHealthPercentModifier > 0
+      ? Math.ceil(baseMaxHealth * (maxHealthPercentModifier / 100))
+      : 0;
+
   return {
     attack:
       1 +
@@ -357,11 +380,7 @@ function getDerivedStatsFromActualStats(
       Math.floor(actualStats.constitution / 2) +
       Math.floor(actualStats.wisdom / 3) +
       (equipmentStatModifiers.defense ?? 0),
-    maxHealth:
-      10 +
-      companion.characterLevel * 2 +
-      actualStats.constitution * 2 +
-      (equipmentStatModifiers.maxHealth ?? 0),
+    maxHealth: baseMaxHealth + percentMaxHealthBonus,
     evasion:
       Math.floor(actualStats.dexterity / 2) +
       (equipmentStatModifiers.evasion ?? 0),

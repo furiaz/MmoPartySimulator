@@ -3,7 +3,6 @@ import { createAttackSlotPathDistanceCache } from "./attackSlots";
 import { updateCompanionAoeChannelSystem } from "./companionAoeChannelSystem";
 import { updateCombatProjectileSystem } from "./combatProjectileSystem";
 import {
-  clearExpiredHubDepartureFoodWarning,
   clearExpiredConsumableBuffs,
   updateConsumableBehaviorSystem,
   updateConsumableSystem,
@@ -29,6 +28,7 @@ import { updateFollowSystem } from "./followSystem";
 import { updateGatherSystem } from "./gatherSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
 import { updateNewsBroadcasts } from "./newsBroadcast";
+import { processInnKitchenAutoCook } from "./innKitchen";
 import {
   syncPartyDerivedMaxHealth,
   updatePassiveHealthRegen,
@@ -75,6 +75,7 @@ import {
   createSimulationTiming,
   type SimulationTiming,
 } from "./simulationTiming";
+import { recordCurrentWorldDiscovery } from "./worldDiscovery";
 
 export function updateGame(
   state: GameState,
@@ -96,7 +97,6 @@ export function updateGame(
   nextState = updateRuneSkillRuntime(nextState, timing.nowMs);
   nextState = clearExpiredSkillRuntimeState(nextState, timing.nowMs);
   nextState = clearExpiredConsumableBuffs(nextState, timing.nowMs);
-  nextState = clearExpiredHubDepartureFoodWarning(nextState, timing.nowMs);
   nextState = updateRoleBonusAssignments(nextState, timing.nowMs);
   const movedEntityIds = new Set<string>();
   const attackSlotPathDistanceCache = createAttackSlotPathDistanceCache();
@@ -107,6 +107,7 @@ export function updateGame(
   nextState = debugApplyCompanionInfiniteHealth(nextState);
   nextState = updateConsumableBehaviorSystem(nextState, timing.nowMs);
   nextState = updateConsumableSystem(nextState, timing.nowMs);
+  nextState = processInnKitchenAutoCook(nextState, timing.nowMs).state;
   nextState = syncPartyDerivedMaxHealth(nextState);
   nextState = debugApplyCompanionInfiniteHealth(nextState);
 
@@ -223,6 +224,8 @@ export function updateGame(
   nextState = updateSkillShieldBlockPositions(nextState);
   nextState = idleAutonomousPartyMembersWithoutPoi(nextState);
   nextState = debugApplyCompanionInfiniteHealth(nextState);
+
+  nextState = recordCurrentWorldDiscovery(nextState);
 
   return recordDebugTelemetryTick(
     state,

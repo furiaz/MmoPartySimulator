@@ -5,6 +5,7 @@ import {
 } from "./debugMap";
 import { DROP_VISUAL_DURATION_MS } from "./dropSystem";
 import { getItemDefinition } from "./items";
+import { recordEnemyDefeatedForGuildNoticeBoard } from "./guildNoticeBoard";
 import {
   QUEST_DEFINITIONS,
   QUEST_ORDER,
@@ -65,6 +66,8 @@ export function recordEnemyDefeatedForQuests(
       1,
     );
   }
+
+  nextState = recordEnemyDefeatedForGuildNoticeBoard(nextState, defeatedEnemy);
 
   return nextState;
 }

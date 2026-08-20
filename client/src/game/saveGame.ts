@@ -1,18 +1,44 @@
-import { createDebugMapForQuestState, debugMapDefinitions } from "./debugMap";
+import {
+  createDebugMapForQuestState,
+  debugMapDefinitions,
+  getHubNpcStartDataForQuestState,
+  getHubTwoNpcStartDataForQuestState,
+  HUB_MAP_ID,
+  HUB_TWO_MAP_ID,
+  slimewardCampNpcStartData,
+  SLIMEWARD_CAMP_ID,
+} from "./debugMap";
 import {
   sanitizeBankAutoRoutingMode,
   sanitizePartyBank,
 } from "./bank";
+import { createNpc } from "./entities";
+import { estimateCurrentPartyAfkCombat } from "./afkCombatEstimate";
+import {
+  estimateEnemyDropTableRewards,
+  getLootTierForLevel,
+} from "./dropTables";
+import { getEnemyType } from "./enemyArchetypes";
+import { SUPERIOR_ENEMY_CHANCE } from "./enemyVariants";
+import { sanitizeGuildNoticeBoardState } from "./guildNoticeBoard";
 import { addItemToInventoryState } from "./inventory";
+import { sanitizeGuildRecruitState } from "./guildRecruit";
+import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
+import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { sanitizeInnKitchenState } from "./innKitchen";
+import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
+import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
 import { sanitizePartyInventory } from "./inventory";
 import { getItemDefinitionForResourceType } from "./items";
 import { sanitizeKeyItemsById } from "./keyItems";
 import {
-  getLevelGapXpModifier,
-  getSameLevelEnemyXp,
   grantCharacterXpToCompanion,
 } from "./leveling";
-import { getPartyLeader } from "./partySystem";
+import {
+  getHighestCharacterLevelEver,
+  getPartyLeader,
+  recordHighestCharacterLevelEver,
+} from "./partySystem";
 import {
   createInitialQuestStates,
   QUEST_DEFINITIONS,
@@ -25,12 +51,18 @@ import type {
   Companion,
   DebugMapId,
   GameEntity,
+  InventorySlot,
   ItemId,
-  PartyMemberRole,
-  ResourceLocation,
+  OfflineFarmingPendingLootState,
+  PartyInventory,
   ZoneSubzone,
 } from "./types";
 import type { QuestId, QuestState, QuestStatus } from "./questTypes";
+
+const OBSOLETE_FOOD_ITEM_IDS = new Set<string>([
+  "hearty_trail_rations",
+  "skirmisher_rations",
+]);
 
 export const SAVE_VERSION = 1;
 export const MAX_OFFLINE_FARMING_MS = 30 * 60 * 1000;
@@ -64,12 +96,9 @@ export type OfflineFarmingSummary = {
   enemyKills: number;
   xpGranted: number;
   resourcesAdded: OfflineFarmingResourceSummary[];
+  lootAdded: OfflineFarmingResourceSummary[];
+  pendingLoot: OfflineFarmingResourceSummary[];
   skippedReason?: string;
-};
-
-type OfflineFarmingProfile = {
-  enemyRatePerMinute: number;
-  resourceRatePerMinute: number;
 };
 
 const WILD_MAP_IDS: DebugMapId[] = [
@@ -82,52 +111,6 @@ const WILD_MAP_IDS: DebugMapId[] = [
   "map-7",
 ];
 
-const OFFLINE_FARMING_PROFILES: Record<string, OfflineFarmingProfile> = {
-  "map-1:shore-fringe": { enemyRatePerMinute: 10, resourceRatePerMinute: 2.4 },
-  "map-1:mossy-glade": { enemyRatePerMinute: 8, resourceRatePerMinute: 2.16 },
-  "map-1:lower-shore": { enemyRatePerMinute: 6.5, resourceRatePerMinute: 1.92 },
-  "map-2:south-center": { enemyRatePerMinute: 6, resourceRatePerMinute: 1.3 },
-  "map-2:south-east": { enemyRatePerMinute: 5.5, resourceRatePerMinute: 1.9 },
-  "map-2:north-east": { enemyRatePerMinute: 4.8, resourceRatePerMinute: 1.8 },
-  "map-3:south-west": { enemyRatePerMinute: 4.2, resourceRatePerMinute: 1.2 },
-  "map-3:north-west": { enemyRatePerMinute: 3.8, resourceRatePerMinute: 1.7 },
-  "map-3:south-center": { enemyRatePerMinute: 3.5, resourceRatePerMinute: 1.7 },
-  "map-4:north-center": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.1 },
-  "map-4:north-east": { enemyRatePerMinute: 3.2, resourceRatePerMinute: 1.6 },
-  "map-4:south-east": { enemyRatePerMinute: 3, resourceRatePerMinute: 1.5 },
-  "map-5:crossing": { enemyRatePerMinute: 2.8, resourceRatePerMinute: 1.4 },
-  "map-5:burrows": { enemyRatePerMinute: 2.6, resourceRatePerMinute: 1.7 },
-  "map-5:thornfield": { enemyRatePerMinute: 2.4, resourceRatePerMinute: 1.7 },
-  "map-6:mire": { enemyRatePerMinute: 2.2, resourceRatePerMinute: 1.4 },
-  "map-6:canopy": { enemyRatePerMinute: 2, resourceRatePerMinute: 1.6 },
-  "map-6:oldroot": { enemyRatePerMinute: 1.8, resourceRatePerMinute: 1.6 },
-  "map-7:plaza": { enemyRatePerMinute: 1.5, resourceRatePerMinute: 1.3 },
-  "map-7:garden": { enemyRatePerMinute: 1.3, resourceRatePerMinute: 1.5 },
-};
-
-const COMBAT_ROLE_WEIGHTS: Record<PartyMemberRole, number> = {
-  defender: 0.8,
-  fighter: 1.2,
-  support: 0.4,
-  gatherer: 0.2,
-  none: 0.2,
-};
-
-const SAFETY_ROLE_WEIGHTS: Record<PartyMemberRole, number> = {
-  defender: 1.2,
-  fighter: 0.5,
-  support: 1,
-  gatherer: 0.3,
-  none: 0.2,
-};
-
-const GATHERING_ROLE_WEIGHTS: Record<PartyMemberRole, number> = {
-  defender: 0.25,
-  fighter: 0.2,
-  support: 0.3,
-  gatherer: 1.2,
-  none: 0.15,
-};
 
 export function createSavedGame(
   state: GameState,
@@ -162,6 +145,13 @@ export function validateSavedGame(value: unknown): SaveValidationResult {
 
   if (!isRecord(state.entities)) {
     return { ok: false, reason: "Save entities are missing." };
+  }
+
+  if (
+    state.restingCompanionsById !== undefined &&
+    !isRecord(state.restingCompanionsById)
+  ) {
+    return { ok: false, reason: "Save resting companions are invalid." };
   }
 
   if (!isRecord(state.inventory) || !Array.isArray(state.inventory.slots)) {
@@ -224,6 +214,8 @@ export function applyOfflineFarmingProgress(
     enemyKills: 0,
     xpGranted: 0,
     resourcesAdded: [],
+    lootAdded: [],
+    pendingLoot: state.pendingOfflineFarmingLoot?.pendingLoot ?? [],
   };
 
   if (creditedMs < 60_000) {
@@ -275,47 +267,45 @@ export function applyOfflineFarmingProgress(
   }
 
   const subzone = getSubzoneAtPosition(state.map, leader.position);
-  const profile = getOfflineFarmingProfile(state.currentMapId, subzone?.id);
 
-  if (!subzone || !profile) {
+  if (!subzone) {
     return {
       state,
-      summary: { ...baseSummary, skippedReason: "No offline farming profile matched the saved subzone." },
+      summary: { ...baseSummary, skippedReason: "No wild subzone matched the saved party position." },
     };
   }
 
   const minutes = creditedMs / 60_000;
-  const averageEnemyLevel = getAverageSubzoneEnemyLevel(subzone);
-  const averagePartyLevel =
-    livingCompanions.reduce((total, companion) => total + companion.characterLevel, 0) /
-    livingCompanions.length;
-  const levelRatio = clamp(averagePartyLevel / Math.max(1, averageEnemyLevel), 0.25, 1.5);
-  const combatEfficiency = clamp(
-    getRoleScore(livingCompanions, COMBAT_ROLE_WEIGHTS) * levelRatio / livingCompanions.length,
-    0,
-    1.25,
-  );
-  const safetyEfficiency = clamp(
-    getRoleScore(livingCompanions, SAFETY_ROLE_WEIGHTS) * levelRatio / livingCompanions.length,
-    0,
-    1.1,
-  );
-  const gatherEfficiency = clamp(
-    getRoleScore(livingCompanions, GATHERING_ROLE_WEIGHTS) * levelRatio,
-    0,
-    1.25,
-  );
-  const enemyKills = Math.floor(
-    minutes * profile.enemyRatePerMinute * combatEfficiency * safetyEfficiency,
-  );
-  const resourceGathers = Math.floor(
-    minutes * profile.resourceRatePerMinute * gatherEfficiency * safetyEfficiency,
-  );
+  const estimate = estimateCurrentPartyAfkCombat(state);
 
-  let nextState = grantOfflineXp(state, livingCompanions, enemyKills, averageEnemyLevel);
-  nextState = grantOfflineResources(nextState, subzone.resourceLocations, resourceGathers);
+  if (!estimate.available) {
+    return {
+      state,
+      summary: { ...baseSummary, skippedReason: estimate.message },
+    };
+  }
 
-  const resourcesAdded = getInventoryDelta(state, nextState);
+  const durationHours = creditedMs / 3_600_000;
+  const enemyKills = Math.floor(estimate.killsPerHour * durationHours);
+  const xpPerCompanion = Math.floor(estimate.experiencePerMinute * minutes);
+  const resourceGathers = Math.floor(estimate.resourceEstimatePerMinute * minutes);
+  const resourceLoot = getOfflineResourceLoot(subzone, resourceGathers);
+  const resourceItemIds = new Set(resourceLoot.map((slot) => slot.itemId));
+  const monsterLoot = getOfflineMonsterDropLoot(estimate.enemyKillShares, durationHours);
+  const rolledLoot = mergeInventorySlots([...resourceLoot, ...monsterLoot]);
+
+  let nextState = grantOfflineXp(state, livingCompanions, xpPerCompanion);
+  const collectionResult = collectOfflineLoot(nextState, rolledLoot);
+  nextState = collectionResult.state;
+  const resourcesAdded = filterLootByItemIds(
+    collectionResult.collectedLoot,
+    resourceItemIds,
+  );
+  const lootAdded = filterLootExcludingItemIds(
+    collectionResult.collectedLoot,
+    resourceItemIds,
+  );
+  const pendingLoot = collectionResult.pendingLoot;
   const xpGranted = livingCompanions.reduce((total, companion) => {
     const nextCompanion = nextState.entities[companion.id];
 
@@ -323,11 +313,34 @@ export function applyOfflineFarmingProgress(
       ? nextCompanion.lastCharacterXpGained ?? 0
       : 0);
   }, 0);
+  const collectedLoot = collectionResult.collectedLoot;
+
+  nextState = {
+    ...nextState,
+    pendingOfflineFarmingLoot: pendingLoot.length > 0
+      ? {
+          mapId: state.currentMapId,
+          subzoneId: subzone.id,
+          subzoneName: subzone.displayName,
+          creditedMs,
+          enemyKills,
+          xpGranted,
+          rolledLoot,
+          collectedLoot,
+          pendingLoot,
+          createdAtMs: nowMs,
+        }
+      : null,
+  };
 
   return {
     state: nextState,
     summary: {
-      didApply: enemyKills > 0 || resourcesAdded.length > 0,
+      didApply:
+        enemyKills > 0 ||
+        resourcesAdded.length > 0 ||
+        lootAdded.length > 0 ||
+        pendingLoot.length > 0,
       creditedMs,
       mapId: state.currentMapId,
       subzoneId: subzone.id,
@@ -335,9 +348,79 @@ export function applyOfflineFarmingProgress(
       enemyKills,
       xpGranted,
       resourcesAdded,
+      lootAdded,
+      pendingLoot,
       skippedReason:
-        enemyKills <= 0 && resourcesAdded.length === 0
+        enemyKills <= 0 &&
+        resourcesAdded.length === 0 &&
+        lootAdded.length === 0 &&
+        pendingLoot.length === 0
           ? "The party did not earn offline rewards in this subzone."
+          : undefined,
+    },
+  };
+}
+
+export function claimPendingOfflineFarmingLoot(
+  state: GameState,
+  nowMs = Date.now(),
+): { state: GameState; summary: OfflineFarmingSummary } {
+  const pending = state.pendingOfflineFarmingLoot;
+  const baseSummary: OfflineFarmingSummary = {
+    didApply: false,
+    creditedMs: pending?.creditedMs ?? 0,
+    mapId: pending?.mapId,
+    subzoneId: pending?.subzoneId,
+    subzoneName: pending?.subzoneName,
+    enemyKills: pending?.enemyKills ?? 0,
+    xpGranted: pending?.xpGranted ?? 0,
+    resourcesAdded: [],
+    lootAdded: [],
+    pendingLoot: pending?.pendingLoot ?? [],
+  };
+
+  if (!pending || pending.pendingLoot.length === 0) {
+    return {
+      state: {
+        ...state,
+        pendingOfflineFarmingLoot: null,
+      },
+      summary: {
+        ...baseSummary,
+        pendingLoot: [],
+        skippedReason: "No pending AFK loot to claim.",
+      },
+    };
+  }
+
+  const collectionResult = collectOfflineLoot(state, pending.pendingLoot);
+  const nextPendingLoot = collectionResult.pendingLoot;
+  const collectedLoot = mergeInventorySlots([
+    ...pending.collectedLoot,
+    ...collectionResult.collectedLoot,
+  ]);
+  const nextState = {
+    ...collectionResult.state,
+    pendingOfflineFarmingLoot: nextPendingLoot.length > 0
+      ? {
+          ...pending,
+          collectedLoot,
+          pendingLoot: nextPendingLoot,
+          createdAtMs: pending.createdAtMs || nowMs,
+        }
+      : null,
+  };
+
+  return {
+    state: nextState,
+    summary: {
+      ...baseSummary,
+      didApply: collectionResult.collectedLoot.length > 0,
+      lootAdded: collectionResult.collectedLoot,
+      pendingLoot: nextPendingLoot,
+      skippedReason:
+        collectionResult.collectedLoot.length === 0
+          ? "Inventory is still full."
           : undefined,
     },
   };
@@ -347,17 +430,80 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
   const currentMapId = state.currentMapId ?? "hub";
   const quests = sanitizeQuestStates(state.quests);
   const map = createDebugMapForQuestState(currentMapId, quests);
-  const entities = Object.fromEntries(
+  const savedEntities = Object.fromEntries(
     Object.entries(state.entities).map(([id, entity]) => [id, sanitizeEntityForSave(entity, state.partyLeaderId)]),
+  );
+  const entities = restoreCurrentMapNpcs(savedEntities, currentMapId, quests);
+  const restingCompanionsById = sanitizeRestingCompanionsForSave(
+    state.restingCompanionsById,
+    entities,
   );
   const followTrailsByEntityId = Object.fromEntries(
     Object.keys(entities).map((entityId) => [entityId, []]),
+  );
+  const highestCharacterLevelEver = getHighestCharacterLevelEver({
+    ...state,
+    entities,
+    restingCompanionsById,
+  });
+  const guildUpgrades = sanitizeGuildUpgradesState(state.guildUpgrades);
+  const innUpgrades = sanitizeInnUpgradesState(state.innUpgrades);
+  const guildRecruit = sanitizeGuildRecruitState(state.guildRecruit, undefined, {
+    ...state,
+    guildUpgrades,
+    innUpgrades,
+  });
+  const guildNoticeBoard = sanitizeGuildNoticeBoardState(
+    state.guildNoticeBoard,
+    undefined,
+    {
+      ...state,
+      guildUpgrades,
+    },
+  );
+  const guildSecondaryParties = sanitizeGuildSecondaryPartiesState(
+    state.guildSecondaryParties,
+    restingCompanionsById,
+    {
+      ...state,
+      entities,
+      restingCompanionsById,
+      guildUpgrades,
+      innUpgrades,
+      currentMapId,
+      map,
+    },
+  );
+  const innKitchen = sanitizeInnKitchenState(state.innKitchen, {
+    ...state,
+    entities,
+    restingCompanionsById,
+  }, undefined, { settleHearthFire: false });
+  const worldDiscovery = sanitizeWorldDiscoveryState(
+    state.worldDiscovery,
+    {
+      ...state,
+      entities,
+      currentMapId,
+      map,
+    },
   );
 
   return {
     ...state,
     entities,
-    inventory: sanitizePartyInventory(state.inventory),
+    restingCompanionsById,
+    highestCharacterLevelEver,
+    guildRecruit,
+    guildUpgrades,
+    guildNoticeBoard,
+    guildSecondaryParties,
+    innUpgrades,
+    innKitchen,
+    worldDiscovery,
+    inventory: sanitizeObsoleteFoodFromInventory(
+      sanitizePartyInventory(state.inventory),
+    ),
     keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
     bank: {
       ...sanitizePartyBank(state.bank),
@@ -424,8 +570,11 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     enemyAoeChannelsByCasterId: {},
     enemyAoeCooldownsByCasterId: {},
     consumableUsesByCompanionId: {},
-    hubDepartureFoodWarning: null,
     dropVisualEvents: [],
+    pendingOfflineFarmingLoot: sanitizePendingOfflineFarmingLoot(
+      state.pendingOfflineFarmingLoot,
+      currentMapId,
+    ),
     newsBroadcasts: [],
     slimewardDungeon: sanitizeSlimewardDungeon(state.slimewardDungeon),
     resurrectionProgressByCompanionId: {},
@@ -568,13 +717,6 @@ function completeSanitizedQuest(quest: QuestState): QuestState {
   };
 }
 
-function getOfflineFarmingProfile(
-  mapId: DebugMapId,
-  subzoneId: string | undefined,
-): OfflineFarmingProfile | undefined {
-  return subzoneId ? OFFLINE_FARMING_PROFILES[`${mapId}:${subzoneId}`] : undefined;
-}
-
 function getSaveOfflineFarmingBlockedReason(state: GameState): string | undefined {
   if (state.activeTeleport) {
     return "Offline farming paused during active travel.";
@@ -598,119 +740,227 @@ function getSaveOfflineFarmingBlockedReason(state: GameState): string | undefine
   return undefined;
 }
 
-function getRoleScore(
-  companions: Companion[],
-  weights: Record<PartyMemberRole, number>,
-): number {
-  return companions.reduce(
-    (total, companion) => total + weights[companion.role],
-    0,
-  );
-}
-
-function getAverageSubzoneEnemyLevel(subzone: ZoneSubzone): number {
-  if (!subzone.enemyTypeIds || subzone.enemyTypeIds.length === 0) {
-    return (subzone.levelRange.min + subzone.levelRange.max) / 2;
-  }
-
-  return Math.max(1, (subzone.levelRange.min + subzone.levelRange.max) / 2);
-}
-
 function grantOfflineXp(
   state: GameState,
   companions: Companion[],
-  enemyKills: number,
-  averageEnemyLevel: number,
+  xpAmount: number,
 ): GameState {
-  if (enemyKills <= 0) {
+  if (xpAmount <= 0) {
     return state;
   }
 
-  const enemyLevel = Math.max(1, Math.round(averageEnemyLevel));
-  const averageXp = getSameLevelEnemyXp(enemyLevel);
   let nextState = state;
 
   for (const companion of companions) {
-    const xpModifier = getLevelGapXpModifier(companion.characterLevel, enemyLevel);
-    const xpAmount = Math.floor(enemyKills * averageXp * xpModifier);
-
-    if (xpAmount <= 0) {
-      continue;
-    }
+    const updatedCompanion = grantCharacterXpToCompanion(companion, xpAmount);
 
     nextState = {
       ...nextState,
       entities: {
         ...nextState.entities,
-        [companion.id]: grantCharacterXpToCompanion(companion, xpAmount),
+        [companion.id]: updatedCompanion,
       },
     };
+    nextState = recordHighestCharacterLevelEver(
+      nextState,
+      updatedCompanion.characterLevel,
+    );
   }
 
   return nextState;
 }
 
-function grantOfflineResources(
-  state: GameState,
-  resourceLocations: ResourceLocation[] | undefined,
+function getOfflineResourceLoot(
+  subzone: ZoneSubzone,
   resourceGathers: number,
-): GameState {
-  if (!resourceLocations || resourceLocations.length === 0 || resourceGathers <= 0) {
-    return state;
+): InventorySlot[] {
+  if (subzone.resourceLocations.length === 0 || resourceGathers <= 0) {
+    return [];
   }
 
-  let nextState = state;
+  const loot: InventorySlot[] = [];
 
   for (let index = 0; index < resourceGathers; index += 1) {
-    const resourceLocation = resourceLocations[index % resourceLocations.length];
+    const resourceLocation =
+      subzone.resourceLocations[index % subzone.resourceLocations.length];
     const itemDefinition = getItemDefinitionForResourceType(
       resourceLocation.resourceType,
       resourceLocation.tier ?? 1,
     );
+
+    loot.push({ itemId: itemDefinition.id, quantity: 1 });
+  }
+
+  return mergeInventorySlots(loot);
+}
+
+function getOfflineMonsterDropLoot(
+  enemyKillShares: Array<{ enemyTypeId: ItemId | string; level: number; killsPerHour: number }>,
+  durationHours: number,
+): InventorySlot[] {
+  const loot: InventorySlot[] = [];
+
+  for (const share of enemyKillShares) {
+    const enemyTypeId = share.enemyTypeId as Parameters<typeof getEnemyType>[0];
+    const enemyType = getEnemyType(enemyTypeId);
+
+    if (!enemyType) {
+      continue;
+    }
+
+    const tier = getLootTierForLevel(share.level);
+    const kills = share.killsPerHour * durationHours;
+    const superiorKills = kills * SUPERIOR_ENEMY_CHANCE;
+    const normalKills = Math.max(0, kills - superiorKills);
+
+    loot.push(
+      ...estimateEnemyDropTableRewards(
+        enemyType.archetypeId,
+        tier,
+        normalKills,
+        Math.random,
+        enemyTypeId,
+      ),
+      ...estimateEnemyDropTableRewards(
+        enemyType.archetypeId,
+        tier,
+        superiorKills,
+        Math.random,
+        enemyTypeId,
+        "superior",
+      ),
+    );
+  }
+
+  return mergeInventorySlots(loot);
+}
+
+function collectOfflineLoot(
+  state: GameState,
+  loot: InventorySlot[],
+): { state: GameState; collectedLoot: InventorySlot[]; pendingLoot: InventorySlot[] } {
+  let nextState = state;
+  const collectedLoot: InventorySlot[] = [];
+  const pendingLoot: InventorySlot[] = [];
+
+  for (const slot of loot) {
     const itemAdd = addItemToInventoryState(
       nextState,
-      itemDefinition.id,
-      1,
-      "gathering",
+      slot.itemId,
+      slot.quantity,
+      "combat_loot",
     );
-
     nextState = itemAdd.state;
 
-    if (itemAdd.result.addedQuantity <= 0) {
-      return nextState;
+    if (itemAdd.result.addedQuantity > 0) {
+      collectedLoot.push({
+        itemId: slot.itemId,
+        quantity: itemAdd.result.addedQuantity,
+      });
+    }
+
+    if (itemAdd.result.overflowQuantity > 0) {
+      pendingLoot.push({
+        itemId: slot.itemId,
+        quantity: itemAdd.result.overflowQuantity,
+      });
     }
   }
 
-  return nextState;
+  return {
+    state: nextState,
+    collectedLoot: mergeInventorySlots(collectedLoot),
+    pendingLoot: mergeInventorySlots(pendingLoot),
+  };
 }
 
-function getInventoryDelta(
-  previousState: GameState,
-  nextState: GameState,
+function filterLootByItemIds(
+  loot: InventorySlot[],
+  itemIds: Set<ItemId>,
 ): OfflineFarmingResourceSummary[] {
-  const previousCounts = getInventoryCounts(previousState);
-  const nextCounts = getInventoryCounts(nextState);
-  const added: OfflineFarmingResourceSummary[] = [];
-
-  for (const [itemId, quantity] of Object.entries(nextCounts)) {
-    const delta = quantity - (previousCounts[itemId as ItemId] ?? 0);
-
-    if (delta > 0) {
-      added.push({ itemId: itemId as ItemId, quantity: delta });
-    }
-  }
-
-  return added;
+  return loot
+    .filter((slot) => itemIds.has(slot.itemId))
+    .map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity }));
 }
 
-function getInventoryCounts(state: GameState): Partial<Record<ItemId, number>> {
-  const counts: Partial<Record<ItemId, number>> = {};
+function filterLootExcludingItemIds(
+  loot: InventorySlot[],
+  itemIds: Set<ItemId>,
+): OfflineFarmingResourceSummary[] {
+  return loot
+    .filter((slot) => !itemIds.has(slot.itemId))
+    .map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity }));
+}
 
-  for (const slot of state.inventory.slots) {
-    counts[slot.itemId] = (counts[slot.itemId] ?? 0) + slot.quantity;
+function mergeInventorySlots(slots: InventorySlot[]): InventorySlot[] {
+  const quantitiesByItemId = new Map<ItemId, number>();
+
+  for (const slot of slots) {
+    quantitiesByItemId.set(
+      slot.itemId,
+      (quantitiesByItemId.get(slot.itemId) ?? 0) + slot.quantity,
+    );
   }
 
-  return counts;
+  return [...quantitiesByItemId.entries()]
+    .filter(([, quantity]) => quantity > 0)
+    .map(([itemId, quantity]) => ({ itemId, quantity }));
+}
+
+function sanitizePendingOfflineFarmingLoot(
+  pending: OfflineFarmingPendingLootState | null | undefined,
+  fallbackMapId: DebugMapId,
+): OfflineFarmingPendingLootState | null {
+  if (!pending || !Array.isArray(pending.pendingLoot)) {
+    return null;
+  }
+
+  const pendingLoot = sanitizeInventorySlotList(pending.pendingLoot);
+
+  if (pendingLoot.length === 0) {
+    return null;
+  }
+
+  return {
+    mapId: pending.mapId && pending.mapId in debugMapDefinitions
+      ? pending.mapId
+      : fallbackMapId,
+    subzoneId: typeof pending.subzoneId === "string" ? pending.subzoneId : undefined,
+    subzoneName: typeof pending.subzoneName === "string" ? pending.subzoneName : undefined,
+    creditedMs: sanitizeNonNegativeNumber(pending.creditedMs),
+    enemyKills: sanitizeNonNegativeNumber(pending.enemyKills),
+    xpGranted: sanitizeNonNegativeNumber(pending.xpGranted),
+    rolledLoot: sanitizeInventorySlotList(pending.rolledLoot),
+    collectedLoot: sanitizeInventorySlotList(pending.collectedLoot),
+    pendingLoot,
+    createdAtMs: sanitizeNonNegativeNumber(pending.createdAtMs),
+  };
+}
+
+function sanitizeInventorySlotList(slots: unknown): InventorySlot[] {
+  if (!Array.isArray(slots)) {
+    return [];
+  }
+
+  return mergeInventorySlots(
+    slots.flatMap((slot) => {
+      if (!isRecord(slot) || typeof slot.itemId !== "string") {
+        return [];
+      }
+
+      const quantity = sanitizeNonNegativeNumber(slot.quantity);
+
+      return quantity > 0
+        ? [{ itemId: slot.itemId as ItemId, quantity }]
+        : [];
+    }),
+  );
+}
+
+function sanitizeNonNegativeNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : 0;
 }
 
 function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity {
@@ -725,9 +975,11 @@ function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity
       currentTargetId: entity.state === "dead" || isLeader ? null : leaderId,
       commandPriority: "autonomous",
       defendPosition: null,
+      consumables: {
+        flask: sanitizedCompanion.consumables.flask,
+      },
       consumableBuffs: {
         flask: null,
-        food: null,
       },
     };
   }
@@ -741,6 +993,92 @@ function sanitizeEntityForSave(entity: GameEntity, leaderId: string): GameEntity
   }
 
   return entity;
+}
+
+function restoreCurrentMapNpcs(
+  entities: Record<string, GameEntity>,
+  currentMapId: DebugMapId,
+  quests: GameState["quests"],
+): Record<string, GameEntity> {
+  const npcStartData =
+    currentMapId === HUB_MAP_ID
+      ? getHubNpcStartDataForQuestState(quests)
+      : currentMapId === HUB_TWO_MAP_ID
+        ? getHubTwoNpcStartDataForQuestState(quests)
+      : currentMapId === SLIMEWARD_CAMP_ID
+        ? slimewardCampNpcStartData
+        : [];
+
+  if (npcStartData.length === 0) {
+    return entities;
+  }
+
+  let nextEntities = entities;
+
+  for (const npc of npcStartData) {
+    if (nextEntities[npc.id] !== undefined) {
+      continue;
+    }
+
+    nextEntities = {
+      ...nextEntities,
+      [npc.id]: createNpc(npc.id, npc.position, npc.displayName, npc.npcRole),
+    };
+  }
+
+  return nextEntities;
+}
+
+function sanitizeRestingCompanionsForSave(
+  restingCompanionsById: GameState["restingCompanionsById"],
+  activeEntities: Record<string, GameEntity>,
+): GameState["restingCompanionsById"] {
+  return Object.fromEntries(
+    Object.entries(restingCompanionsById ?? {})
+      .filter(
+        ([companionId, companion]) =>
+          activeEntities[companionId] === undefined &&
+          isSavedCompanion(companion),
+      )
+      .map(([companionId, companion]) => {
+        const sanitizedCompanion = sanitizeProgressionForCompanion(companion);
+
+        return [
+          companionId,
+          {
+            ...sanitizedCompanion,
+            state: "idle",
+            currentTargetId: null,
+            commandPriority: "autonomous",
+            defendPosition: null,
+            consumables: {
+              flask: sanitizedCompanion.consumables.flask,
+            },
+            consumableBuffs: {
+              flask: null,
+            },
+          },
+        ];
+      }),
+  );
+}
+
+function sanitizeObsoleteFoodFromInventory(inventory: PartyInventory): PartyInventory {
+  return {
+    ...inventory,
+    slots: inventory.slots.filter(
+      (slot) => !OBSOLETE_FOOD_ITEM_IDS.has(slot.itemId),
+    ),
+  };
+}
+
+function isSavedCompanion(value: unknown): value is Companion {
+  return (
+    isRecord(value) &&
+    value.kind === "companion" &&
+    typeof value.id === "string" &&
+    Number.isFinite(value.characterLevel)
+  );
 }
 
 function sanitizeSlimewardDungeon(
@@ -771,8 +1109,4 @@ function sanitizeSlimewardDungeon(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

@@ -1,6 +1,5 @@
-import { HUB_MAP_ID } from "./debugMap";
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
-import { isLivingCompanion, isLivingEnemy } from "./entityGuards";
+import { isLivingCompanion } from "./entityGuards";
 import {
   addEquipmentStatModifiers,
   addPrimaryStatModifiers,
@@ -33,7 +32,6 @@ import type {
 } from "./types";
 
 export const DEFAULT_AUTO_FLASK_HP_THRESHOLD_PERCENT = 30;
-export const HUB_DEPARTURE_FOOD_WARNING_DURATION_MS = 5000;
 export const FLASK_RECHARGE_KILLS_PER_CHARGE = 20;
 
 export const PROTOTYPE_FLASK_ITEM_IDS = [
@@ -41,14 +39,8 @@ export const PROTOTYPE_FLASK_ITEM_IDS = [
   "soldiers_recovery_flask",
 ] as const satisfies readonly ConsumableItemId[];
 
-export const PROTOTYPE_FOOD_ITEM_IDS = [
-  "hearty_trail_rations",
-  "skirmisher_rations",
-] as const satisfies readonly ConsumableItemId[];
-
 export const PROTOTYPE_CONSUMABLE_ITEM_IDS = [
   ...PROTOTYPE_FLASK_ITEM_IDS,
-  ...PROTOTYPE_FOOD_ITEM_IDS,
 ] as const satisfies readonly ConsumableItemId[];
 
 export type ConsumableMutationStatus =
@@ -84,14 +76,12 @@ export type CompanionFlaskDisplayState = {
 export function createEmptyCompanionConsumables(): CompanionConsumables {
   return {
     flask: null,
-    foodItemId: null,
   };
 }
 
 export function createEmptyCompanionConsumableBuffs(): CompanionConsumableBuffs {
   return {
     flask: null,
-    food: null,
   };
 }
 
@@ -142,15 +132,6 @@ export function isFlaskItemDefinition(
   consumableKind: "flask";
 } {
   return isConsumableItemDefinition(itemDefinition) && itemDefinition.consumableKind === "flask";
-}
-
-export function isFoodItemDefinition(
-  itemDefinition: ItemDefinition,
-): itemDefinition is ItemDefinition & {
-  id: ConsumableItemId;
-  consumableKind: "food";
-} {
-  return isConsumableItemDefinition(itemDefinition) && itemDefinition.consumableKind === "food";
 }
 
 export function equipFlaskToCompanion(
@@ -287,56 +268,6 @@ export function unequipFlaskFromCompanion(
   };
 }
 
-export function assignFoodToCompanion(
-  state: GameState,
-  companionId: string,
-  itemId: ItemId | null,
-): { state: GameState; result: ConsumableMutationResult } {
-  const companion = state.entities[companionId];
-
-  if (companion?.kind !== "companion") {
-    return { state, result: { status: "failed_companion_not_found", companionId, itemId } };
-  }
-
-  if (!itemId) {
-    return {
-      state: updateEntity(state, {
-        ...companion,
-        consumables: {
-          ...companion.consumables,
-          foodItemId: null,
-        },
-      }),
-      result: { status: "success", companionId, itemId },
-    };
-  }
-
-  const itemDefinition = getItemDefinition(itemId);
-
-  if (!itemDefinition) {
-    return { state, result: { status: "failed_item_not_found", companionId, itemId } };
-  }
-
-  if (!isFoodItemDefinition(itemDefinition)) {
-    return { state, result: { status: "failed_wrong_kind", companionId, itemId } };
-  }
-
-  if (!meetsLevelRequirement(companion, itemDefinition)) {
-    return { state, result: { status: "failed_level_requirement", companionId, itemId } };
-  }
-
-  return {
-    state: updateEntity(state, {
-      ...companion,
-      consumables: {
-        ...companion.consumables,
-        foodItemId: itemDefinition.id,
-      },
-    }),
-    result: { status: "success", companionId, itemId },
-  };
-}
-
 export function startPartyConsumableUse(
   state: GameState,
   kind: ConsumableKind,
@@ -367,13 +298,13 @@ export function startCompanionConsumableUse(
     return state;
   }
 
-  const itemDefinition = getConsumableForUse(state, companion, kind);
+  const itemDefinition = getConsumableForUse(companion, kind);
 
   if (!itemDefinition) {
     return state;
   }
 
-  if (!canStartConsumableUse(state, companion, itemDefinition, now)) {
+  if (!canStartConsumableUse(companion, itemDefinition, now)) {
     return state;
   }
 
@@ -423,7 +354,7 @@ export function updateConsumableSystem(
       continue;
     }
 
-    if (!isConsumableUseStillValid(nextState, companion, itemDefinition, use, now)) {
+    if (!isConsumableUseStillValid(companion, itemDefinition, now)) {
       nextState = removeConsumableUse(nextState, use.companionId);
       continue;
     }
@@ -462,47 +393,7 @@ export function updateConsumableBehaviorSystem(
     }
   }
 
-  if (!isPartySafeForFood(nextState)) {
-    return nextState;
-  }
-
-  for (const companion of getPartyMembers(nextState)) {
-    const currentCompanion = nextState.entities[companion.id];
-
-    if (
-      currentCompanion?.kind !== "companion" ||
-      isFoodBuffActive(currentCompanion, now)
-    ) {
-      continue;
-    }
-
-    nextState = startCompanionConsumableUse(
-      nextState,
-      currentCompanion.id,
-      "food",
-      now,
-      "ai",
-    );
-  }
-
   return nextState;
-}
-
-export function clearExpiredHubDepartureFoodWarning(
-  state: GameState,
-  now: number,
-): GameState {
-  if (
-    !state.hubDepartureFoodWarning ||
-    state.hubDepartureFoodWarning.expiresAt > now
-  ) {
-    return state;
-  }
-
-  return {
-    ...state,
-    hubDepartureFoodWarning: null,
-  };
 }
 
 export function refillEquippedFlasksFromHubFountain(
@@ -590,47 +481,6 @@ export function updateFlaskRechargeFromEnemyKills(
   return nextState;
 }
 
-export function addHubDepartureFoodWarningIfNeeded(
-  state: GameState,
-  now: number,
-): GameState {
-  const companionIds = getHubDepartureFoodWarningCompanionIds(state, now);
-
-  if (companionIds.length === 0) {
-    return state;
-  }
-
-  return {
-    ...state,
-    hubDepartureFoodWarning: {
-      companionIds,
-      createdAt: now,
-      expiresAt: now + HUB_DEPARTURE_FOOD_WARNING_DURATION_MS,
-    },
-  };
-}
-
-export function getHubDepartureFoodWarningCompanionIds(
-  state: GameState,
-  now = Date.now(),
-): string[] {
-  if (state.currentMapId !== HUB_MAP_ID) {
-    return [];
-  }
-
-  return getPartyMembers(state)
-    .filter((companion) => {
-      const foodItemId = companion.consumables.foodItemId;
-
-      if (!foodItemId || isFoodBuffActive(companion, now)) {
-        return false;
-      }
-
-      return countInventoryItem(state.inventory, foodItemId) > 0;
-    })
-    .map((companion) => companion.id);
-}
-
 export function clearExpiredConsumableBuffs(
   state: GameState,
   now: number,
@@ -645,10 +495,9 @@ export function clearExpiredConsumableBuffs(
     const buffs = entity.consumableBuffs;
     const nextBuffs: CompanionConsumableBuffs = {
       flask: buffs.flask && buffs.flask.expiresAt > now ? buffs.flask : null,
-      food: buffs.food && buffs.food.expiresAt > now ? buffs.food : null,
     };
 
-    if (nextBuffs.flask === buffs.flask && nextBuffs.food === buffs.food) {
+    if (nextBuffs.flask === buffs.flask) {
       continue;
     }
 
@@ -748,10 +597,6 @@ function completeConsumableUse(
 ): GameState {
   if (isFlaskItemDefinition(itemDefinition)) {
     return completeFlaskUse(state, companion, itemDefinition, use, now);
-  }
-
-  if (isFoodItemDefinition(itemDefinition)) {
-    return completeFoodUse(state, companion, itemDefinition, use, now);
   }
 
   return removeConsumableUse(state, companion.id);
@@ -980,52 +825,6 @@ function completeFlaskUse(
   return nextState;
 }
 
-function completeFoodUse(
-  state: GameState,
-  companion: Companion,
-  itemDefinition: ItemDefinition & {
-    id: ConsumableItemId;
-    consumableKind: "food";
-  },
-  use: ConsumableUseState,
-  now: number,
-): GameState {
-  if (countInventoryItem(state.inventory, itemDefinition.id) <= 0) {
-    return removeConsumableUse(state, companion.id);
-  }
-
-  const removeResult = removeItemFromInventoryState(
-    state,
-    itemDefinition.id,
-    1,
-    "consumable",
-  );
-
-  if (removeResult.result.removedQuantity < 1) {
-    return removeConsumableUse(state, companion.id);
-  }
-
-  const refreshedCompanion = removeResult.state.entities[companion.id];
-
-  if (refreshedCompanion?.kind !== "companion") {
-    return removeConsumableUse(removeResult.state, companion.id);
-  }
-
-  let nextState = updateEntity(
-    removeResult.state,
-    applyConsumableBuff(refreshedCompanion, itemDefinition, now),
-  );
-  nextState = removeConsumableUse(nextState, use.companionId);
-  nextState = addCombatFeedback(nextState, {
-    type: "heal",
-    entityId: companion.id,
-    text: "Food Buff",
-    now,
-  });
-
-  return nextState;
-}
-
 function applyConsumableBuff(
   companion: Companion,
   itemDefinition: ItemDefinition & {
@@ -1067,7 +866,6 @@ function removeConsumableUse(state: GameState, companionId: string): GameState {
 }
 
 function canStartConsumableUse(
-  state: GameState,
   companion: Companion,
   itemDefinition: ItemDefinition & {
     id: ConsumableItemId;
@@ -1091,44 +889,29 @@ function canStartConsumableUse(
     );
   }
 
-  return (
-    state.currentMapId === HUB_MAP_ID &&
-    isPartySafeForFood(state) &&
-    companion.consumables.foodItemId === itemDefinition.id &&
-    countInventoryItem(state.inventory, itemDefinition.id) > 0
-  );
+  return false;
 }
 
 function isConsumableUseStillValid(
-  state: GameState,
   companion: Companion,
   itemDefinition: ItemDefinition & {
     id: ConsumableItemId;
     consumableKind: ConsumableKind;
   },
-  use: ConsumableUseState,
   now: number,
 ): boolean {
-  if (!canStartConsumableUse(state, companion, itemDefinition, now)) {
+  if (!canStartConsumableUse(companion, itemDefinition, now)) {
     return false;
-  }
-
-  if (itemDefinition.consumableKind === "food") {
-    return companion.health >= use.healthAtStart;
   }
 
   return true;
 }
 
 function getConsumableForUse(
-  state: GameState,
   companion: Companion,
   kind: ConsumableKind,
 ): (ItemDefinition & { id: ConsumableItemId; consumableKind: ConsumableKind }) | null {
-  const itemId =
-    kind === "flask"
-      ? companion.consumables.flask?.itemId
-      : companion.consumables.foodItemId;
+  const itemId = companion.consumables.flask?.itemId;
 
   if (!itemId) {
     return null;
@@ -1144,23 +927,12 @@ function getConsumableForUse(
     return null;
   }
 
-  if (kind === "food" && countInventoryItem(state.inventory, itemDefinition.id) <= 0) {
-    return null;
-  }
-
   return itemDefinition;
 }
 
 function getActiveConsumableBuffs(companion: Companion): ConsumableBuffState[] {
-  return [companion.consumableBuffs.flask, companion.consumableBuffs.food].filter(
+  return [companion.consumableBuffs.flask].filter(
     (buff): buff is ConsumableBuffState => Boolean(buff),
-  );
-}
-
-function isFoodBuffActive(companion: Companion, now: number): boolean {
-  return Boolean(
-    companion.consumableBuffs.food &&
-      companion.consumableBuffs.food.expiresAt > now,
   );
 }
 
@@ -1169,14 +941,6 @@ function meetsLevelRequirement(
   itemDefinition: ItemDefinition,
 ): boolean {
   return !itemDefinition.levelRequirement || companion.characterLevel >= itemDefinition.levelRequirement;
-}
-
-function isPartyInCombat(state: GameState): boolean {
-  return Object.values(state.entities).some(
-    (entity) =>
-      (isLivingCompanion(entity) || isLivingEnemy(entity)) &&
-      entity.state === "attack",
-  );
 }
 
 function shouldAutoUseFlask(
@@ -1212,20 +976,7 @@ function shouldAutoUseFlask(
 
   return (
     isFlaskItemDefinition(itemDefinition) &&
-    canStartConsumableUse(state, companion, itemDefinition, now)
-  );
-}
-
-function isPartySafeForFood(state: GameState): boolean {
-  return (
-    state.currentMapId === HUB_MAP_ID &&
-    !state.activeTeleport &&
-    !isPartyInCombat(state) &&
-    getPartyMembers(state).every(
-      (companion) =>
-        isLivingCompanion(companion) &&
-        companion.state !== "attack",
-    )
+    canStartConsumableUse(companion, itemDefinition, now)
   );
 }
 

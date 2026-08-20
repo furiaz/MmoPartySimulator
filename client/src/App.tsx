@@ -70,7 +70,6 @@ import {
   debugToggleSuperSpeed,
   debugTurnInCurrentQuest,
   enemyIds,
-  assignFoodToCompanion,
   equipItemToCompanion,
   equipFlaskToCompanion,
   exportDebugTelemetryReport,
@@ -83,6 +82,7 @@ import {
   getEnemyType,
   getFilteredMerchantBuyStock,
   getActiveQuest,
+  getActiveCompanions,
   getItemDefinition,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
@@ -95,6 +95,7 @@ import {
   SKILL_DEFINITIONS,
   acceptQuestFromQuestGiver,
   applyOfflineFarmingProgress,
+  claimPendingOfflineFarmingLoot,
   finishReadyQuestsForQuestGiver,
   createSavedGame,
   getPartyLeader,
@@ -103,7 +104,7 @@ import {
   getQuestGiverReadyQuests,
   getPoiSearchScope,
   getTeleportWorkingStateById,
-  getTotalPartyCharacterLevel,
+  getHighestCharacterLevelEver,
   hasQuestGiverWork,
   issueCompanionDirectCommand,
   issuePartyOrder,
@@ -122,6 +123,32 @@ import {
   depositInventorySlotToBank,
   isBankChestNpc,
   isPartyLeaderNearBankChest,
+  isPartyLeaderNearGuildTavern,
+  isCompanionHubEligibleForInnKitchen,
+  openGuildNoticeBoard,
+  bulkCookInnMealsForCompanions,
+  cookInnMealForCompanion,
+  getInnKitchenPreference,
+  processInnKitchenAutoCook,
+  purchaseInnKitchenUpgrade,
+  setInnKitchenAutoCookRenewThresholdPercent,
+  setInnKitchenAutoCookEnabled,
+  setInnKitchenSelectedRecipe,
+  purchaseInnRoomUpgrade,
+  assignGuildSecondaryParty,
+  redeemGuildSecondaryPartyAssignment,
+  returnGuildSecondaryPartyAssignment,
+  purchaseGuildNoticeBoardUpgrade,
+  purchaseGuildRecruitUpgrade,
+  purchaseGuildSecondaryPartyUpgrade,
+  recruitGuildCandidate,
+  rerollGuildNoticeBoard,
+  moveGuildRosterCompanion,
+  refreshGuildNoticeBoardState,
+  refreshGuildRecruitState,
+  shouldShowGuildNoticeBoardSign,
+  takeGuildNoticeBoardQuest,
+  cancelGuildNoticeBoardQuest,
   getNavigationClickCellKey,
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
@@ -171,8 +198,18 @@ import {
   type GameEntity,
   type GameMap,
   type GameState,
+  type GuildRosterMoveFailureReason,
+  type GuildRosterSlotRef,
+  type GuildSecondaryPartyRedeemSummary,
+  type GuildSecondaryPartyUpgradeId,
+  type InnRoomUpgradeId,
+  type InnKitchenUpgradeId,
+  type GuildNoticeBoardUpgradeId,
+  type GuildRecruitUpgradeId,
+  type InnKitchenRecipeId,
   type ItemDefinition,
   type ItemId,
+  type MapVisualObject,
   type MerchantBuyFailureReason,
   type MerchantStockEntry,
   type MerchantStockGroup,
@@ -227,6 +264,25 @@ const LazyPixiWorldRenderer = lazy(() =>
     default: module.PixiWorldRenderer,
   })),
 );
+
+const guildNoticeBoardSignVisuals: Partial<Record<DebugMapId, MapVisualObject>> = {
+  [HUB_MAP_ID]: {
+    id: "hub-guild-notice-board-new-quest-sign",
+    visualId: "guild_notice_board_new_quest_sign",
+    position: { x: 48, y: 54 },
+    widthCells: 2.2,
+    heightCells: 3.2,
+    anchorY: 1,
+  },
+  [HUB_TWO_MAP_ID]: {
+    id: "hub-2-guild-notice-board-new-quest-sign",
+    visualId: "guild_notice_board_new_quest_sign",
+    position: { x: 105, y: 57 },
+    widthCells: 2.2,
+    heightCells: 3.2,
+    anchorY: 1,
+  },
+};
 
 function PixiWorldRendererFallback({ mode }: { mode: "full" | "preview" }) {
   return (
@@ -311,7 +367,12 @@ type NavigationClickAccessibilityCache = {
 
 type MerchantPanel = "buy" | "sell";
 type QuestGiverPanel = "available" | "current";
-type NpcInteractionKind = "merchant" | "quest_giver" | "smith" | "bank_chest";
+type NpcInteractionKind =
+  | "merchant"
+  | "quest_giver"
+  | "smith"
+  | "bank_chest"
+  | "guild_tavern";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -328,7 +389,6 @@ type EntityHoverTooltipState = {
 const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
   all: "All",
   flasks: "Flasks",
-  food: "Food",
   supplies: "Supplies",
   books: "Books",
   weapons: "Weapons",
@@ -343,7 +403,6 @@ const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
 const merchantBuyFilters: MerchantBuyFilter[] = [
   "all",
   "flasks",
-  "food",
   "supplies",
   "books",
   "weapons",
@@ -435,6 +494,8 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   class_mentor: "Class Mentor",
   bounty_board: "Bounty Board",
   smith: "Smith",
+  guild_coordinator: "Guild Coordinator",
+  tavern_keeper: "Inn Keeper",
   bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
@@ -514,6 +575,47 @@ function getBankTransferFailureMessage(reason: string): string {
       return "Bank action failed";
   }
 }
+
+function getGuildRosterMoveFailureMessage(
+  reason: GuildRosterMoveFailureReason,
+): string {
+  switch (reason) {
+    case "party_assigned":
+      return "Assigned Field Teams are locked";
+    case "locked_main_party_slot":
+      return "That Main Party slot is locked";
+    case "main_party_requires_companion":
+      return "Main Party needs at least one companion";
+    case "unknown_companion":
+      return "Companion unavailable";
+    case "invalid_target":
+    default:
+      return "That slot is unavailable";
+  }
+}
+
+function getGuildSecondaryPartyAssignmentFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_party":
+      return "Unlock this Field Team first.";
+    case "empty_party":
+      return "Assign at least one companion.";
+    case "already_assigned":
+      return "This Field Team is already assigned.";
+    case "unknown_destination":
+    case "unvisited_destination":
+      return "Visit that subzone before assigning there.";
+    case "inventory_full":
+      return "Inventory is full. Make room before reassigning.";
+    case "estimate_unavailable":
+      return "Assignment estimate unavailable for this subzone.";
+    case "unknown_party":
+    default:
+      return "Assignment unavailable.";
+  }
+}
+
+type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
 
 function getWorldTravelTeleportFailureMessage(
   reason: WorldTravelTeleportFailureReason,
@@ -695,6 +797,13 @@ function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
 
   if (npc.npcRole === "bank_chest") {
     return "bank_chest";
+  }
+
+  if (
+    npc.npcRole === "guild_coordinator" ||
+    npc.npcRole === "tavern_keeper"
+  ) {
+    return "guild_tavern";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -2137,10 +2246,6 @@ function getMerchantSlotText(itemDefinition: ItemDefinition): string {
     return "Flask Slot";
   }
 
-  if (itemDefinition.consumableKind === "food") {
-    return "Food Assignment";
-  }
-
   if (itemDefinition.equipmentKind === "accessory") {
     return "Accessory";
   }
@@ -2161,10 +2266,6 @@ function getMerchantTypeText(itemDefinition: ItemDefinition): string {
 
   if (itemDefinition.consumableKind === "flask") {
     return "Flask";
-  }
-
-  if (itemDefinition.consumableKind === "food") {
-    return "Food";
   }
 
   return itemDefinition.equipmentType
@@ -2429,20 +2530,16 @@ function StartScreen({
 function OfflineSummaryToast({
   summary,
   onClose,
+  onClaimPending,
 }: {
   summary: OfflineFarmingSummary;
   onClose: () => void;
+  onClaimPending: () => void;
 }) {
-  const resourceText =
-    summary.resourcesAdded.length > 0
-      ? summary.resourcesAdded
-          .map((resource) => {
-            const item = getItemDefinition(resource.itemId);
-
-            return `${item.displayName} x${resource.quantity}`;
-          })
-          .join(", ")
-      : "None";
+  const resourceText = formatOfflineLootList(summary.resourcesAdded);
+  const lootText = formatOfflineLootList(summary.lootAdded);
+  const pendingText = formatOfflineLootList(summary.pendingLoot);
+  const hasPendingLoot = summary.pendingLoot.length > 0;
 
   return (
     <section className="offline-summary-toast" role="status">
@@ -2456,12 +2553,38 @@ function OfflineSummaryToast({
       </p>
       <p>XP earned: {summary.xpGranted}</p>
       <p>Gathered: {resourceText}</p>
+      <p>Drops: {lootText}</p>
+      {hasPendingLoot ? <p>Pending: {pendingText}</p> : null}
       {summary.skippedReason ? <p>{summary.skippedReason}</p> : null}
-      <button aria-label="Close Continue summary" onClick={onClose} type="button">
+      {hasPendingLoot ? (
+        <button onClick={onClaimPending} type="button">
+          Claim Pending
+        </button>
+      ) : null}
+      <button
+        aria-label="Close Continue summary"
+        disabled={hasPendingLoot}
+        onClick={onClose}
+        type="button"
+      >
         Close
       </button>
     </section>
   );
+}
+
+function formatOfflineLootList(
+  loot: OfflineFarmingSummary["resourcesAdded"],
+): string {
+  return loot.length > 0
+    ? loot
+        .map((resource) => {
+          const item = getItemDefinition(resource.itemId);
+
+          return `${item.displayName} x${resource.quantity}`;
+        })
+        .join(", ")
+    : "None";
 }
 
 function formatOfflineDuration(durationMs: number): string {
@@ -2534,6 +2657,20 @@ function App() {
     useState<string | null>(null);
   const [craftingResultMessage, setCraftingResultMessage] =
     useState<string | null>(null);
+  const [guildRecruitResultMessage, setGuildRecruitResultMessage] =
+    useState<string | null>(null);
+  const [guildUpgradeResultMessage, setGuildUpgradeResultMessage] =
+    useState<string | null>(null);
+  const [guildNoticeBoardResultMessage, setGuildNoticeBoardResultMessage] =
+    useState<string | null>(null);
+  const [guildSecondaryPartyResultMessage, setGuildSecondaryPartyResultMessage] =
+    useState<string | null>(null);
+  const [innKitchenResultMessage, setInnKitchenResultMessage] =
+    useState<string | null>(null);
+  const [
+    guildSecondaryPartyRedeemSummary,
+    setGuildSecondaryPartyRedeemSummary,
+  ] = useState<GuildSecondaryPartyRedeemSummaryState | null>(null);
   const [activeBankChestNpcId, setActiveBankChestNpcId] = useState<string | null>(
     null,
   );
@@ -2605,6 +2742,24 @@ function App() {
   const currentCrownBalance = getCurrencyBalance(gameState.wallet, "crowns");
   const previousCrownBalanceRef = useRef(currentCrownBalance);
   const currentMap = gameState.map ?? debugMap;
+  const renderMap = useMemo(() => {
+    const currentMapId = currentMap.id;
+    const signVisual = currentMapId
+      ? guildNoticeBoardSignVisuals[currentMapId]
+      : undefined;
+
+    if (
+      !signVisual ||
+      !shouldShowGuildNoticeBoardSign(gameState, currentTime)
+    ) {
+      return currentMap;
+    }
+
+    return {
+      ...currentMap,
+      visualObjects: [...(currentMap.visualObjects ?? []), signVisual],
+    };
+  }, [currentMap, currentTime, gameState]);
   const navigationLeader = getPartyLeader(gameState);
   const navigationLeaderCellKey = navigationLeader
     ? getNavigationClickCellKey(navigationLeader.position)
@@ -2759,12 +2914,44 @@ function App() {
     };
   }, [appMode, writeCurrentSave]);
 
+  useEffect(() => {
+    if (
+      appMode !== "playing" ||
+      !isGameMenuOpen ||
+      activeGameMenuTab !== "atlas" ||
+      activeAtlasSubpage !== "guildTavern"
+    ) {
+      return;
+    }
+
+    setGameState((state) => {
+      const refreshedRecruitState = refreshGuildRecruitState(state, currentTime);
+      const refreshedState = refreshGuildNoticeBoardState(
+        refreshedRecruitState,
+        currentTime,
+      );
+
+      if (refreshedState !== state) {
+        queueSaveAfterStateChange("Guild and notice board refresh saved");
+      }
+
+      return refreshedState;
+    });
+  }, [
+    activeAtlasSubpage,
+    activeGameMenuTab,
+    appMode,
+    currentTime,
+    isGameMenuOpen,
+    queueSaveAfterStateChange,
+  ]);
+
   const partyMembers = useMemo(
     () =>
-      companionIds
-        .map((id) => gameState.entities[id] as Companion | undefined)
-        .filter((companion): companion is Companion => Boolean(companion)),
-    [gameState.entities],
+      getActiveCompanions(gameState).sort(
+        (a, b) => a.partyOrder - b.partyOrder || a.id.localeCompare(b.id),
+      ),
+    [gameState],
   );
   const selectedMenuCompanionId = partyMembers.some(
     (member) => member.id === selectedCompanionId,
@@ -2777,7 +2964,7 @@ function App() {
   );
   const activeClassMentorFlowScreen =
     classMentorFlow[classMentorFlow.length - 1] ?? null;
-  const totalPartyLevel = getTotalPartyCharacterLevel(gameState);
+  const highestCharacterLevelEver = getHighestCharacterLevelEver(gameState);
   const leader = navigationLeader;
   const hasPartyLeader = Boolean(leader);
   const leaderCoordinateText = leader
@@ -2887,6 +3074,7 @@ function App() {
       : null;
   const activeBankCanManage =
     Boolean(activeBankChest) && isPartyLeaderNearBankChest(gameState);
+  const canUseGuildTavern = isPartyLeaderNearGuildTavern(gameState);
   const activeMerchantLocked =
     Boolean(activeMerchant) && !isMerchantUnlockedForQuests(gameState);
   const activeQuestGiver =
@@ -2940,11 +3128,6 @@ function App() {
     gameState.worldWipeRecovery.expiresAt > currentTime
       ? gameState.worldWipeRecovery
       : null;
-  const hubDepartureFoodWarning =
-    gameState.hubDepartureFoodWarning &&
-    gameState.hubDepartureFoodWarning.expiresAt > currentTime
-      ? gameState.hubDepartureFoodWarning
-      : null;
   const activeDirectCommandFeedback =
     directCommandFeedback && directCommandFeedback.expiresAt > currentTime
       ? directCommandFeedback
@@ -2971,6 +3154,8 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
     setActiveMerchantNpcId(npc.id);
     setActiveMerchantPanel(null);
     setMerchantResultMessage(
@@ -2999,6 +3184,9 @@ function App() {
     setQuestGiverResultMessage(null);
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
   }, []);
 
   const openSmithInteraction = useCallback((npc: NpcEntity) => {
@@ -3033,8 +3221,34 @@ function App() {
     setClassMentorFlow([]);
     setClassMentorResultMessage(null);
     setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
     setActiveBankChestNpcId(npc.id);
     setBankResultMessage(null);
+  }, []);
+
+  const openGuildTavernInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("guildTavern");
+    void npc;
   }, []);
 
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
@@ -3057,9 +3271,15 @@ function App() {
 
     if (interactionKind === "bank_chest") {
       openBankChestInteraction(npc);
+      return;
+    }
+
+    if (interactionKind === "guild_tavern") {
+      openGuildTavernInteraction(npc);
     }
   }, [
     openBankChestInteraction,
+    openGuildTavernInteraction,
     openMerchantInteraction,
     openQuestGiverInteraction,
     openSmithInteraction,
@@ -3215,6 +3435,8 @@ function App() {
             enemyKills: 0,
             xpGranted: 0,
             resourcesAdded: [],
+            lootAdded: [],
+            pendingLoot: restored.state.pendingOfflineFarmingLoot?.pendingLoot ?? [],
             skippedReason: loadedSave.save.offlineFarmingBlockedReason,
           },
         }
@@ -3231,6 +3453,25 @@ function App() {
     setHasLocalSaveFile(true);
     setSaveStatusMessage("Save loaded.");
     enterGameState(offlineResult.state);
+  }
+
+  function claimPendingOfflineLoot() {
+    const now = Date.now();
+    const result = claimPendingOfflineFarmingLoot(gameState, now);
+    const saved = writeLocalSave(result.state, now);
+
+    if (!saved.ok) {
+      setSaveStatusMessage(`Pending loot save failed: ${saved.reason}`);
+      return;
+    }
+
+    setOfflineSummary(result.summary);
+    setSaveStatusMessage(
+      result.summary.pendingLoot.length > 0
+        ? "Inventory still has pending AFK loot."
+        : "Pending AFK loot claimed.",
+    );
+    enterGameState(result.state);
   }
 
   function startNewGame() {
@@ -3772,17 +4013,13 @@ function App() {
         return;
       }
 
-      if (event.key !== "1" && event.key !== "2") {
+      if (event.key !== "1") {
         return;
       }
 
       event.preventDefault();
       setGameState((state) =>
-        startPartyConsumableUse(
-          state,
-          event.key === "1" ? "flask" : "food",
-          Date.now(),
-        ),
+        startPartyConsumableUse(state, "flask", Date.now()),
       );
     }
 
@@ -4049,13 +4286,6 @@ function App() {
     );
   }
 
-  function assignFood(companionId: string, itemId: ItemId | null) {
-    queueSaveAfterStateChange("Food assignment saved");
-    setGameState((state) =>
-      assignFoodToCompanion(state, companionId, itemId).state,
-    );
-  }
-
   function changeConsumableBehavior(
     companionId: string,
     update: ConsumableBehaviorUpdate,
@@ -4170,6 +4400,525 @@ function App() {
   function selectAtlasSubpage(subpage: AtlasSubpage) {
     setActiveAtlasSubpage(subpage);
     setCraftingResultMessage(null);
+    if (subpage !== "guildTavern") {
+      setGuildRecruitResultMessage(null);
+      setGuildUpgradeResultMessage(null);
+      setGuildNoticeBoardResultMessage(null);
+      setGuildSecondaryPartyResultMessage(null);
+      setInnKitchenResultMessage(null);
+      setGuildSecondaryPartyRedeemSummary(null);
+    }
+  }
+
+  function recruitGuildCompanion(candidateId?: string) {
+    if (!canUseGuildTavern) {
+      setGuildRecruitResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const recruit = recruitGuildCandidate(gameState, currentTime, candidateId);
+
+    if (recruit.ok) {
+      queueSaveAfterStateChange("Guild recruit saved");
+      setGuildRecruitResultMessage(
+        recruit.destination === "active_party"
+          ? "Recruit joined the active party"
+          : "Recruit sent to Inn's Reserve",
+      );
+      setSelectedCompanionId(recruit.companion.id);
+    } else {
+      setGuildRecruitResultMessage(
+        recruit.reason === "roster_full"
+          ? "No active slot or Inn room."
+          : "No recruit available.",
+      );
+    }
+
+    setGameState(recruit.state);
+  }
+
+  function purchaseGuildRecruitUpgradeCommand(upgradeId: GuildRecruitUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildRecruitUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild upgrade saved");
+      setGuildUpgradeResultMessage(
+        `Upgraded to Lv ${purchase.nextLevel}. Next recruits use the new benefits after refresh.`,
+      );
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "locked"
+            ? "Upgrade is locked."
+            : purchase.reason === "max_level"
+              ? "Upgrade is already maxed."
+              : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function purchaseGuildNoticeBoardUpgradeCommand(
+    upgradeId: GuildNoticeBoardUpgradeId,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildNoticeBoardUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild notice board upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function purchaseGuildSecondaryPartyUpgradeCommand(
+    upgradeId: GuildSecondaryPartyUpgradeId,
+    partyId?: string | null,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseGuildSecondaryPartyUpgrade(
+      gameState,
+      upgradeId,
+      partyId ?? null,
+    );
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Guild field team upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "locked"
+            ? "Upgrade is locked."
+            : purchase.reason === "max_level"
+              ? "Upgrade is already maxed."
+              : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function purchaseInnRoomUpgradeCommand(upgradeId: InnRoomUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseInnRoomUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Inn room upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function purchaseInnKitchenUpgradeCommand(upgradeId: InnKitchenUpgradeId) {
+    if (!canUseGuildTavern) {
+      setGuildUpgradeResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const purchase = purchaseInnKitchenUpgrade(gameState, upgradeId);
+
+    if (purchase.ok) {
+      queueSaveAfterStateChange("Inn kitchen upgrade saved");
+      setGuildUpgradeResultMessage(`Upgraded to Lv ${purchase.nextLevel}.`);
+    } else {
+      setGuildUpgradeResultMessage(
+        purchase.reason === "insufficient_crowns"
+          ? "Not enough Crowns."
+          : purchase.reason === "max_level"
+            ? "Upgrade is already maxed."
+            : "Upgrade unavailable.",
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function openGuildNoticeBoardMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const opened = openGuildNoticeBoard(gameState, currentTime);
+
+    if (opened.claimedRewards.length > 0) {
+      queueSaveAfterStateChange("Guild notice board rewards saved");
+      setGuildNoticeBoardResultMessage(
+        opened.claimedRewards
+          .map((reward) => {
+            const bookNames = reward.skillBookItemIds
+              .map((itemId) => getItemDefinition(itemId).displayName)
+              .join(", ");
+            return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookNames}`;
+          })
+          .join(" | "),
+      );
+    } else {
+      queueSaveAfterStateChange("Guild notice board checked");
+      setGuildNoticeBoardResultMessage(null);
+    }
+
+    setGameState(opened.state);
+  }
+
+  function takeGuildNoticeBoardQuestFromMenu(slotIndex?: number) {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const taken = takeGuildNoticeBoardQuest(gameState, currentTime, slotIndex);
+
+    if (taken.ok) {
+      queueSaveAfterStateChange("Guild notice board quest taken");
+      setGuildNoticeBoardResultMessage("Quest taken");
+    } else {
+      setGuildNoticeBoardResultMessage("No available quest");
+    }
+
+    setGameState(taken.state);
+  }
+
+  function cancelGuildNoticeBoardQuestFromMenu(slotIndex?: number) {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const canceled = cancelGuildNoticeBoardQuest(gameState, currentTime, slotIndex);
+
+    if (canceled.ok) {
+      queueSaveAfterStateChange("Guild notice board quest canceled");
+      setGuildNoticeBoardResultMessage("Quest canceled");
+    } else {
+      setGuildNoticeBoardResultMessage("No taken quest to cancel");
+    }
+
+    setGameState(canceled.state);
+  }
+
+  function rerollGuildNoticeBoardFromMenu() {
+    if (!canUseGuildTavern) {
+      setGuildNoticeBoardResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const rerolled = rerollGuildNoticeBoard(gameState, currentTime);
+    const claimedMessage = rerolled.claimedRewards
+      .map((reward) => {
+        const bookNames = reward.skillBookItemIds
+          .map((itemId) => getItemDefinition(itemId).displayName)
+          .join(", ");
+        return `${reward.questTitle}: +${reward.crowns} Crowns, ${bookNames}`;
+      })
+      .join(" | ");
+
+    if (rerolled.ok) {
+      queueSaveAfterStateChange("Guild notice board reroll saved");
+      setGuildNoticeBoardResultMessage(
+        claimedMessage
+          ? `Rerolled postings. Claimed ${claimedMessage}`
+          : "Rerolled postings",
+      );
+    } else {
+      setGuildNoticeBoardResultMessage(
+        rerolled.reason === "locked"
+          ? "Unlock Scouts to reroll postings."
+          : "No rerolls remaining today.",
+      );
+    }
+
+    setGameState(rerolled.state);
+  }
+
+  function moveGuildRosterCompanionFromMenu(
+    companionId: string,
+    target: GuildRosterSlotRef,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const moved = moveGuildRosterCompanion(gameState, companionId, target);
+
+    if (moved.ok) {
+      queueSaveAfterStateChange("Guild field team roster saved");
+      setGuildSecondaryPartyResultMessage("Roster updated");
+      setSelectedCompanionId(companionId);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        getGuildRosterMoveFailureMessage(moved.reason),
+      );
+    }
+
+    setGameState(moved.state);
+  }
+
+  function assignGuildSecondaryPartyFromMenu(
+    partyId: string,
+    mapId: DebugMapId,
+    subzoneId: string,
+  ) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const assigned = assignGuildSecondaryParty(
+      gameState,
+      partyId,
+      mapId,
+      subzoneId,
+      currentTime,
+    );
+
+    if (assigned.ok) {
+      queueSaveAfterStateChange("Guild field team assignment saved");
+      setGuildSecondaryPartyResultMessage("Field Team assigned");
+      setGuildSecondaryPartyRedeemSummary(assigned.settledSummary);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        getGuildSecondaryPartyAssignmentFailureMessage(assigned.reason),
+      );
+      setGuildSecondaryPartyRedeemSummary(assigned.settledSummary);
+    }
+
+    setGameState(assigned.state);
+  }
+
+  function redeemGuildSecondaryPartyAssignmentFromMenu(partyId: string) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const redeemed = redeemGuildSecondaryPartyAssignment(
+      gameState,
+      partyId,
+      currentTime,
+    );
+
+    if (redeemed.ok) {
+      queueSaveAfterStateChange("Guild field team assignment redeemed");
+      setGuildSecondaryPartyResultMessage("Assignment redeemed");
+      setGuildSecondaryPartyRedeemSummary(redeemed.summary);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        redeemed.reason === "inventory_full"
+          ? "Inventory is full. Make room before claiming."
+          : redeemed.reason === "not_ready"
+            ? "Assignment needs at least 1 minute before redeeming."
+            : "Assignment unavailable.",
+      );
+      setGuildSecondaryPartyRedeemSummary(redeemed.summary);
+    }
+
+    setGameState(redeemed.state);
+  }
+
+  function returnGuildSecondaryPartyAssignmentFromMenu(partyId: string) {
+    if (!canUseGuildTavern) {
+      setGuildSecondaryPartyResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const returned = returnGuildSecondaryPartyAssignment(
+      gameState,
+      partyId,
+      currentTime,
+    );
+
+    if (returned.ok) {
+      queueSaveAfterStateChange("Guild field team returned");
+      setGuildSecondaryPartyResultMessage("Field Team returned");
+      setGuildSecondaryPartyRedeemSummary(returned.summary);
+    } else {
+      setGuildSecondaryPartyResultMessage(
+        returned.reason === "inventory_full"
+          ? "Inventory is full. Make room before returning."
+          : returned.reason === "not_ready"
+            ? "Assignment needs at least 1 minute before returning rewards."
+            : "Assignment unavailable.",
+      );
+      setGuildSecondaryPartyRedeemSummary(returned.summary);
+    }
+
+    setGameState(returned.state);
+  }
+
+  function cookInnMealFromMenu(
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) {
+    if (!canUseGuildTavern) {
+      setInnKitchenResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    if (!isCompanionHubEligibleForInnKitchen(gameState, companionId)) {
+      setInnKitchenResultMessage("Companion is not at a hub.");
+      return;
+    }
+
+    const cooked = cookInnMealForCompanion(
+      gameState,
+      companionId,
+      recipeId,
+      currentTime,
+    );
+
+    if (cooked.ok) {
+      queueSaveAfterStateChange("Inn kitchen meal saved");
+      setInnKitchenResultMessage(
+        `${cooked.recipe.displayName} served to ${cooked.companionId}.`,
+      );
+    } else {
+      setInnKitchenResultMessage(
+        cooked.reason === "insufficient_crowns" ||
+          cooked.reason === "insufficient_hearth_fire"
+          ? formatInnKitchenMissingResourcesMessage(
+              cooked.missingCrowns,
+              cooked.missingHearthFire,
+            )
+          : cooked.reason === "missing_companion"
+            ? "Companion unavailable."
+            : "Recipe unavailable.",
+      );
+    }
+
+    setGameState(cooked.state);
+  }
+
+  function selectInnKitchenRecipeFromMenu(
+    companionId: string,
+    recipeId: InnKitchenRecipeId,
+  ) {
+    queueSaveAfterStateChange("Inn kitchen preference saved");
+    setInnKitchenResultMessage("Recipe preference saved");
+    setGameState((state) =>
+      setInnKitchenSelectedRecipe(state, companionId, recipeId),
+    );
+  }
+
+  function cycleInnKitchenAutoCookFromMenu(companionId: string) {
+    const preference = getInnKitchenPreference(gameState, companionId);
+    const nextThreshold =
+      !preference.autoCookEnabled
+        ? 25
+        : preference.autoCookRenewThresholdPercent < 25
+          ? 25
+          : preference.autoCookRenewThresholdPercent < 50
+            ? 50
+            : preference.autoCookRenewThresholdPercent < 75
+              ? 75
+              : preference.autoCookRenewThresholdPercent < 90
+                ? 90
+                : 0;
+    const nextEnabled = nextThreshold > 0;
+    const thresholdState = setInnKitchenAutoCookRenewThresholdPercent(
+      gameState,
+      companionId,
+      nextThreshold,
+    );
+    const toggledState = setInnKitchenAutoCookEnabled(
+      thresholdState,
+      companionId,
+      nextEnabled,
+    );
+    const processed = nextEnabled
+      ? processInnKitchenAutoCook(toggledState, currentTime)
+      : {
+          state: toggledState,
+          failedCompanionIds: [] as string[],
+        };
+
+    queueSaveAfterStateChange("Inn kitchen auto-cook saved");
+    setInnKitchenResultMessage(
+      nextEnabled
+        ? processed.failedCompanionIds.includes(companionId)
+          ? `Auto-cook On ${nextThreshold}%. Waiting for resources.`
+          : `Auto-cook On ${nextThreshold}%`
+        : "Auto-cook Off",
+    );
+    setGameState(processed.state);
+  }
+
+  function bulkCookInnMealsFromMenu(companionIds: string[], label: string) {
+    if (!canUseGuildTavern) {
+      setInnKitchenResultMessage("Requires Guild & Inn");
+      return;
+    }
+
+    const cooked = bulkCookInnMealsForCompanions(
+      gameState,
+      companionIds,
+      currentTime,
+    );
+
+    if (cooked.ok) {
+      queueSaveAfterStateChange("Inn kitchen meals saved");
+      setInnKitchenResultMessage(
+        `${label}: served ${cooked.companionIds.length} meal${
+          cooked.companionIds.length === 1 ? "" : "s"
+        }.`,
+      );
+    } else {
+      setInnKitchenResultMessage(
+        cooked.reason === "insufficient_crowns" ||
+          cooked.reason === "insufficient_hearth_fire"
+          ? formatInnKitchenMissingResourcesMessage(
+              cooked.missingCrowns,
+              cooked.missingHearthFire,
+            )
+          : cooked.reason === "missing_companion"
+            ? "Companion unavailable."
+            : cooked.reason === "empty_target_list"
+              ? "No companions selected."
+              : "Recipe unavailable.",
+      );
+    }
+
+    setGameState(cooked.state);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -4873,7 +5622,7 @@ function App() {
               enemyAoeChannelsByCasterId={enemyAoeChannelsByCasterId}
               entities={allEntities}
               leaderIntent={gameState.leaderIntent}
-              map={currentMap}
+              map={renderMap}
               mode="full"
               movementClickFeedbackEvents={activeMovementClickFeedbackEvents}
               navigationClickAccessibility={navigationClickAccessibility}
@@ -4922,7 +5671,7 @@ function App() {
               cellPixelSize={mapConstructionCellPixelSize}
               entities={allEntities}
               leaderIntent={gameState.leaderIntent}
-              map={currentMap}
+              map={renderMap}
               mode="preview"
               movementClickFeedbackEvents={activeMovementClickFeedbackEvents}
               navigationClickAccessibility={navigationClickAccessibility}
@@ -5308,11 +6057,17 @@ function App() {
               selectedCompanionId={selectedMenuCompanionId}
               selectedQuestId={selectedMenuQuestId}
               craftingResultMessage={craftingResultMessage}
-              totalPartyLevel={totalPartyLevel}
+              guildRecruitResultMessage={guildRecruitResultMessage}
+              guildUpgradeResultMessage={guildUpgradeResultMessage}
+              guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
+              guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
+              innKitchenResultMessage={innKitchenResultMessage}
+              guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
+              canUseGuildTavern={canUseGuildTavern}
+              highestCharacterLevelEver={highestCharacterLevelEver}
               onAllocateStatPoint={allocateStatPoint}
               onChangeLeader={changePartyLeader}
               onChangeRole={changePartyMemberRole}
-              onAssignFood={assignFood}
               onChangeConsumableBehavior={changeConsumableBehavior}
               onChangeSkillBehavior={changeSkillBehavior}
               onEquipEquipment={equipEquipment}
@@ -5327,6 +6082,35 @@ function App() {
               onSelectQuest={setSelectedQuestId}
               onSelectTab={selectGameMenuTab}
               onCraftRecipe={craftSelectedRecipe}
+              onRecruitGuildCandidate={recruitGuildCompanion}
+              onPurchaseGuildNoticeBoardUpgrade={
+                purchaseGuildNoticeBoardUpgradeCommand
+              }
+              onPurchaseGuildRecruitUpgrade={purchaseGuildRecruitUpgradeCommand}
+              onPurchaseGuildSecondaryPartyUpgrade={
+                purchaseGuildSecondaryPartyUpgradeCommand
+              }
+              onPurchaseInnRoomUpgrade={purchaseInnRoomUpgradeCommand}
+              onPurchaseInnKitchenUpgrade={purchaseInnKitchenUpgradeCommand}
+              onOpenGuildNoticeBoard={openGuildNoticeBoardMenu}
+              onRerollGuildNoticeBoard={rerollGuildNoticeBoardFromMenu}
+              onTakeGuildNoticeBoardQuest={takeGuildNoticeBoardQuestFromMenu}
+              onCancelGuildNoticeBoardQuest={cancelGuildNoticeBoardQuestFromMenu}
+              onMoveGuildRosterCompanion={moveGuildRosterCompanionFromMenu}
+              onAssignGuildSecondaryParty={assignGuildSecondaryPartyFromMenu}
+              onRedeemGuildSecondaryPartyAssignment={
+                redeemGuildSecondaryPartyAssignmentFromMenu
+              }
+              onReturnGuildSecondaryPartyAssignment={
+                returnGuildSecondaryPartyAssignmentFromMenu
+              }
+              onCookInnMeal={cookInnMealFromMenu}
+              onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
+              onCycleInnKitchenAutoCook={cycleInnKitchenAutoCookFromMenu}
+              onBulkCookInnMeals={bulkCookInnMealsFromMenu}
+              onClearGuildSecondaryPartySummary={() =>
+                setGuildSecondaryPartyRedeemSummary(null)
+              }
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
               onTeleportWorldTravelDestination={teleportWorldTravel}
@@ -5344,6 +6128,7 @@ function App() {
         {offlineSummary ? (
           <OfflineSummaryToast
             summary={offlineSummary}
+            onClaimPending={claimPendingOfflineLoot}
             onClose={() => setOfflineSummary(null)}
           />
         ) : null}
@@ -5359,13 +6144,6 @@ function App() {
           quest={displayQuest}
           onHide={() => setIsQuestTrackerHidden(true)}
         />
-        {hubDepartureFoodWarning ? (
-          <div className="hub-food-warning-toast" role="status">
-            Food buffs missing for {hubDepartureFoodWarning.companionIds.length}{" "}
-            companion
-            {hubDepartureFoodWarning.companionIds.length === 1 ? "" : "s"}
-          </div>
-        ) : null}
         {activeDirectCommandFeedback ? (
           <div className="direct-command-feedback-toast" role="status">
             {activeDirectCommandFeedback.text}
@@ -5511,6 +6289,25 @@ function App() {
       </section>
     </main>
   );
+}
+
+function formatInnKitchenMissingResourcesMessage(
+  missingCrowns = 0,
+  missingHearthFire = 0,
+): string {
+  const missingParts: string[] = [];
+
+  if (missingCrowns > 0) {
+    missingParts.push(`${missingCrowns} Crowns`);
+  }
+
+  if (missingHearthFire > 0) {
+    missingParts.push(`${missingHearthFire.toFixed(1)} Hearth's Fire`);
+  }
+
+  return missingParts.length > 0
+    ? `Missing ${missingParts.join(" and ")}.`
+    : "Not enough resources.";
 }
 
 export default App;

@@ -15,6 +15,7 @@ const wildernessMapAssetPath = "/assets/Generated/map-wilderness";
 const hubFloorAssetPath = "/assets/Generated/hub-floors";
 const hubCastleWallAssetPath = "/assets/Generated/hub-castle-walls";
 const hubStructureAssetPath = "/assets/Generated/hub-structures/256";
+const guildTavernAssetPath = "/assets/Generated/guild-tavern";
 const teleportAssetPath = "/assets/Generated/teleports";
 const passageBlockerAssetPath = "/assets/Generated/passage-blockers";
 const slimewardDungeonAssetPath = "/assets/Generated/Dungeon Generation";
@@ -79,8 +80,6 @@ export const INVENTORY_ITEM_ICON_SRC: Partial<Record<ItemId, string>> = {
   orc_hide: `${nowAssetPackPath}/wood-node.png`,
   minor_recovery_flask: `${beginnerSkillEffectsPath}/first_aid.png`,
   soldiers_recovery_flask: `${beginnerSkillEffectsPath}/rally_call.png`,
-  hearty_trail_rations: `${nowAssetPackPath}/herb-node.png`,
-  skirmisher_rations: `${nowAssetPackPath}/herb-node.png`,
   // skill-book-icons-grid
   throw_rock_skill_book: `${skillBookIconPath}/beginner/throw_rock_skill_book.png`,
   kick_skill_book: `${skillBookIconPath}/beginner/kick_skill_book.png`,
@@ -356,6 +355,8 @@ export const NPC_ICON_SRC: Partial<Record<NpcEntity["npcRole"], string>> = {
   class_mentor: `${nowAssetPackPath}/class-mentor.png`,
   merchant: `${nowAssetPackPath}/merchant.png`,
   smith: `${nowAssetPackPath}/smith.png`,
+  guild_coordinator: `${guildTavernAssetPath}/guild-coordinator.png`,
+  tavern_keeper: `${guildTavernAssetPath}/tavern-keeper.png`,
   bank_chest: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
   dog: `${nowAssetPackPath}/dog.png`,
   dungeon_chest_closed: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
@@ -390,6 +391,8 @@ export const MAP_VISUAL_OBJECT_SRC: Record<MapVisualObjectId, string> = {
   hub_house: `${hubStructureAssetPath}/hub_house.png`,
   hub_cabin: `${hubStructureAssetPath}/hub_cabin.png`,
   hub_tent: `${hubStructureAssetPath}/hub_tent.png`,
+  guild_tavern_building: `${guildTavernAssetPath}/guild-tavern-building.png`,
+  guild_notice_board_new_quest_sign: `${guildTavernAssetPath}/notice-board-new-quest-sign.png`,
   hub_dock_shore_connector: `${hubStructureAssetPath}/hub_dock_shore_connector.png`,
   passage_gate_closed: `${passageBlockerAssetPath}/passage_gate_closed_edge_v2_100x350.png`,
   passage_gate_open: `${passageBlockerAssetPath}/passage_gate_open_faces_v2_100x350.png`,

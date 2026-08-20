@@ -43,6 +43,11 @@ export type DropRollResult = {
   entry?: DropTableEntry;
 };
 
+export type AggregateDropReward = {
+  itemId: ItemId;
+  quantity: number;
+};
+
 export const SUPPORTED_LOOT_TIERS: LootTier[] = [1, 2];
 
 export const ENEMY_DROP_TABLES: Partial<
@@ -344,6 +349,56 @@ export function rollEnemyDropTable(
   );
 }
 
+export function estimateEnemyDropTableRewards(
+  archetypeId: EnemyArchetypeId,
+  tier: LootTier,
+  kills: number,
+  random = Math.random,
+  enemyTypeId?: EnemyTypeId,
+  variant?: EnemyVariant,
+): AggregateDropReward[] {
+  if (kills <= 0) {
+    return [];
+  }
+
+  const archetypeTable = getEnemyDropTable(archetypeId, tier, variant);
+  const enemyTypeTable = getEnemyTypeDropTable(enemyTypeId, tier, variant);
+  const tables = [
+    enemyTypeTable?.overridesArchetypeDrops ? undefined : archetypeTable,
+    enemyTypeTable,
+  ].filter((table): table is EnemyDropTable => Boolean(table));
+  const rewards: AggregateDropReward[] = [];
+
+  for (const table of tables) {
+    for (const group of table.groups) {
+      const expectedQuantity = kills * group.chance;
+      const guaranteedQuantity = Math.floor(expectedQuantity);
+      const fractionalQuantity = random() < expectedQuantity - guaranteedQuantity
+        ? 1
+        : 0;
+      const quantity = guaranteedQuantity + fractionalQuantity;
+
+      if (quantity <= 0) {
+        continue;
+      }
+
+      const entryIndex = Math.floor(random() * group.entries.length);
+      const entry = group.entries[entryIndex] ?? group.entries[0];
+
+      if (!entry) {
+        continue;
+      }
+
+      rewards.push({
+        itemId: entry.itemId,
+        quantity: entry.quantity * quantity,
+      });
+    }
+  }
+
+  return mergeDropRewards(rewards);
+}
+
 function createArchetypeDropTable(
   archetypeId: EnemyArchetypeId,
   tier: LootTier,
@@ -436,4 +491,19 @@ function rollDropGroup(
       quantity: entry.quantity * quantity,
     },
   };
+}
+
+function mergeDropRewards(rewards: AggregateDropReward[]): AggregateDropReward[] {
+  const quantitiesByItemId = new Map<ItemId, number>();
+
+  for (const reward of rewards) {
+    quantitiesByItemId.set(
+      reward.itemId,
+      (quantitiesByItemId.get(reward.itemId) ?? 0) + reward.quantity,
+    );
+  }
+
+  return [...quantitiesByItemId.entries()]
+    .filter(([, quantity]) => quantity > 0)
+    .map(([itemId, quantity]) => ({ itemId, quantity }));
 }

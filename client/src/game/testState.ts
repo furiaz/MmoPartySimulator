@@ -1,4 +1,10 @@
 import { createEmptyPartyBank } from "./bank";
+import { createInitialGuildNoticeBoardState } from "./guildNoticeBoard";
+import { createInitialGuildRecruitState } from "./guildRecruit";
+import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import { createInitialGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { createInitialInnKitchenState } from "./innKitchen";
+import { createInitialInnUpgradesState } from "./innRoomUpgrades";
 import { createEmptyPartyInventory } from "./inventory";
 import { createInitialQuestStates } from "./questSystem";
 import type { GameState } from "./state";
@@ -9,6 +15,14 @@ export function createTestGameState(
 ): GameState {
   return {
     entities: {},
+    restingCompanionsById: {},
+    highestCharacterLevelEver: 1,
+    guildRecruit: createInitialGuildRecruitState(0),
+    guildUpgrades: createInitialGuildUpgradesState(),
+    guildNoticeBoard: createInitialGuildNoticeBoardState(0),
+    guildSecondaryParties: createInitialGuildSecondaryPartiesState(),
+    innUpgrades: createInitialInnUpgradesState(),
+    innKitchen: createInitialInnKitchenState(),
     inventory: createEmptyPartyInventory(),
     keyItemsById: {},
     bank: createEmptyPartyBank(),

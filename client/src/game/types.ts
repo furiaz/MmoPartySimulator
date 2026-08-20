@@ -296,7 +296,7 @@ export type CompanionDerivedStats = {
 
 export type CompanionEquipment = Record<EquipmentSlot, ItemId | null>;
 
-export type ConsumableKind = "flask" | "food";
+export type ConsumableKind = "flask";
 
 export type ConsumableUseSource = "manual" | "ai";
 
@@ -518,9 +518,7 @@ export type EquipmentItemId =
 
 export type ConsumableItemId =
   | "minor_recovery_flask"
-  | "soldiers_recovery_flask"
-  | "hearty_trail_rations"
-  | "skirmisher_rations";
+  | "soldiers_recovery_flask";
 
 export type SkillBookItemId =
   | "throw_rock_skill_book"
@@ -664,7 +662,6 @@ export type EquippedFlaskState = {
 
 export type CompanionConsumables = {
   flask: EquippedFlaskState | null;
-  foodItemId: ConsumableItemId | null;
 };
 
 export type ConsumableBuffState = {
@@ -677,7 +674,6 @@ export type ConsumableBuffState = {
 
 export type CompanionConsumableBuffs = {
   flask: ConsumableBuffState | null;
-  food: ConsumableBuffState | null;
 };
 
 export type CompanionConsumableBehavior = {
@@ -735,12 +731,6 @@ export type ConsumableUseState = {
   completesAt: number;
   durationMs: number;
   healthAtStart: number;
-};
-
-export type HubDepartureFoodWarningState = {
-  companionIds: string[];
-  createdAt: number;
-  expiresAt: number;
 };
 
 export type InventorySlot = {
@@ -832,6 +822,19 @@ export type SlimewardDungeonRuntimeState = {
   azureMass?: AzureMassRuntimeState;
 };
 
+export type OfflineFarmingPendingLootState = {
+  mapId?: DebugMapId;
+  subzoneId?: string;
+  subzoneName?: string;
+  creditedMs: number;
+  enemyKills: number;
+  xpGranted: number;
+  rolledLoot: InventorySlot[];
+  collectedLoot: InventorySlot[];
+  pendingLoot: InventorySlot[];
+  createdAtMs: number;
+};
+
 export type CurrencyId = "crowns";
 
 export type CurrencyDefinition = {
@@ -865,6 +868,9 @@ export type CurrencyMutationSource =
   | "crafting"
   | "merchant"
   | "chest"
+  | "guild_upgrade"
+  | "inn_upgrade"
+  | "inn_kitchen"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2338,6 +2344,8 @@ export type MapVisualObjectId =
   | "hub_house"
   | "hub_cabin"
   | "hub_tent"
+  | "guild_tavern_building"
+  | "guild_notice_board_new_quest_sign"
   | "hub_dock_shore_connector"
   | "passage_gate_closed"
   | "passage_gate_open"
@@ -2510,6 +2518,264 @@ export type Companion = LivingEntity & {
   roleBonus: RoleBonusState;
 };
 
+export type RestingCompanionsById = Record<string, Companion>;
+
+export type GuildSecondaryParty = {
+  id: string;
+  displayName: string;
+  companionIds: Array<string | null>;
+  assignment?: GuildSecondaryPartyAssignmentState | null;
+};
+
+export type GuildSecondaryPartiesState = {
+  parties: GuildSecondaryParty[];
+};
+
+export type GuildSecondaryPartyAssignmentStatus =
+  | "assigned"
+  | "capped"
+  | "pending_loot";
+
+export type GuildSecondaryPartyAssignmentLoot = {
+  itemId: ItemId;
+  quantity: number;
+};
+
+export type GuildSecondaryPartyAssignmentEnemyKill = {
+  enemyTypeId: EnemyTypeId;
+  enemyLevel: number;
+  quantity: number;
+};
+
+export type GuildSecondaryPartyAssignmentResult = {
+  enemyKills: number;
+  enemyKillsByType: GuildSecondaryPartyAssignmentEnemyKill[];
+  xpGranted: number;
+  loot: GuildSecondaryPartyAssignmentLoot[];
+  resources: GuildSecondaryPartyAssignmentLoot[];
+};
+
+export type GuildSecondaryPartyAssignmentSnapshot = {
+  rating: string;
+  killsPerHour: number;
+  experiencePerMinute: number;
+  survivabilityPercent: number;
+  expectedDropItemIds: ItemId[];
+  expectedResourceItemIds: ItemId[];
+  warnings: string[];
+};
+
+export type GuildSecondaryPartyAssignmentState = {
+  status: GuildSecondaryPartyAssignmentStatus;
+  mapId: DebugMapId;
+  mapName: string;
+  subzoneId: string;
+  subzoneName: string;
+  assignedAtMs: number;
+  lastSettledAtMs: number;
+  capsAtMs: number;
+  maxDurationMs: number;
+  rewardSeed: number;
+  experienceEfficiency: number;
+  dropEfficiency: number;
+  preview: GuildSecondaryPartyAssignmentSnapshot;
+  pendingResult: GuildSecondaryPartyAssignmentResult | null;
+  pendingElapsedMs: number;
+};
+
+export type GuildRosterSlotRef =
+  | {
+      area: "main_party";
+      slotIndex: number;
+    }
+  | {
+      area: "inn_reserve";
+      slotIndex: number;
+    }
+  | {
+      area: "secondary_party";
+      partyId: string;
+      slotIndex: number;
+    };
+
+export type GuildRecruitCandidate = {
+  id: string;
+  classId: ClassId;
+  characterLevel: number;
+  role: PartyMemberRole;
+  generatedAtMs: number;
+  sequence: number;
+  equipmentItemIds?: EquipmentItemId[];
+  startingSkillRanksBySkillId?: Partial<Record<SkillId, number>>;
+};
+
+export type GuildRecruitState = {
+  candidates: Array<GuildRecruitCandidate | null>;
+  nextRefreshAtMs: number;
+  recruitSequence: number;
+};
+
+export type GuildRecruitUpgradeId =
+  | "recruit_slots"
+  | "recruit_max_level"
+  | "recruit_min_level"
+  | "recruit_refresh_rate"
+  | "recruit_equipment_chance"
+  | "recruit_skill_chance";
+
+export type GuildRecruitUpgradeLevels = Record<GuildRecruitUpgradeId, number>;
+
+export type GuildNoticeBoardUpgradeId =
+  | "notice_board_slots"
+  | "notice_board_reward_quality"
+  | "notice_board_refresh_rate"
+  | "notice_board_scouts";
+
+export type GuildNoticeBoardUpgradeLevels = Record<
+  GuildNoticeBoardUpgradeId,
+  number
+>;
+
+export type GuildSecondaryPartyUpgradeId =
+  | "secondary_party_count"
+  | "secondary_party_members"
+  | "secondary_party_experience_efficiency"
+  | "secondary_party_drop_efficiency"
+  | "secondary_party_assignment_duration";
+
+export type GuildSecondaryPartyPerPartyUpgradeId = Exclude<
+  GuildSecondaryPartyUpgradeId,
+  "secondary_party_count"
+>;
+
+export type GuildSecondaryPartyUpgradeLevels = {
+  secondary_party_count: number;
+  parties: Record<
+    string,
+    Record<GuildSecondaryPartyPerPartyUpgradeId, number>
+  >;
+};
+
+export type GuildUpgradesState = {
+  recruit: GuildRecruitUpgradeLevels;
+  noticeBoard: GuildNoticeBoardUpgradeLevels;
+  secondaryParties: GuildSecondaryPartyUpgradeLevels;
+};
+
+export type InnRoomUpgradeId = "inn_room_count";
+
+export type InnKitchenUpgradeId =
+  | "hearth_capacity"
+  | "fire_generation"
+  | "hearth_tier"
+  | "efficient_cooking";
+
+export type InnRoomUpgradeLevels = {
+  inn_room_count: number;
+};
+
+export type InnKitchenUpgradeLevels = {
+  hearth_capacity: number;
+  fire_generation: number;
+  hearth_tier: number;
+  efficient_cooking: number;
+};
+
+export type InnUpgradesState = {
+  rooms: InnRoomUpgradeLevels;
+  kitchen: InnKitchenUpgradeLevels;
+};
+
+export type WorldDiscoveryState = {
+  visitedMapIds: DebugMapId[];
+  visitedSubzonesByMapId: Partial<Record<DebugMapId, string[]>>;
+};
+
+export type GuildNoticeBoardQuestStatus = "available" | "taken" | "done";
+
+export type GuildNoticeBoardQuestObjective = {
+  id: string;
+  enemyTypeId: EnemyTypeId;
+  requiredCount: number;
+  currentCount: number;
+};
+
+export type GuildNoticeBoardQuestReward = {
+  crowns: number;
+  skillBookItemId: SkillBookItemId;
+};
+
+export type GuildNoticeBoardQuest = {
+  id: string;
+  title: string;
+  sequence: number;
+  status: GuildNoticeBoardQuestStatus;
+  generatedAtMs: number;
+  takenAtMs: number | null;
+  levelAnchor: number | null;
+  levelRange: {
+    min: number;
+    max: number;
+  } | null;
+  objectives: GuildNoticeBoardQuestObjective[];
+  rewards: GuildNoticeBoardQuestReward;
+  rewardClaimedAtMs: number | null;
+};
+
+export type GuildNoticeBoardClaimedReward = {
+  questTitle: string;
+  crowns: number;
+  skillBookItemIds: SkillBookItemId[];
+};
+
+export type InnKitchenRecipeId = "house_bread";
+
+export type InnKitchenMealBuffState = {
+  recipeId: InnKitchenRecipeId;
+  cookedAtMs: number;
+  expiresAtMs: number;
+};
+
+export type InnKitchenCompanionPreferenceState = {
+  selectedRecipeId: InnKitchenRecipeId;
+  autoCookEnabled: boolean;
+  autoCookRenewThresholdPercent: number;
+};
+
+export type InnKitchenHearthFireState = {
+  current: number;
+  lastUpdatedAtMs: number;
+};
+
+export type InnKitchenPantryState = {
+  unlockedIngredientIds: string[];
+  ingredientQuantitiesById: Record<string, number>;
+};
+
+export type InnKitchenAutoCookFailureState = {
+  recipeId: InnKitchenRecipeId;
+  failedAtMs: number;
+  missingCrowns: number;
+  missingHearthFire: number;
+};
+
+export type InnKitchenState = {
+  activeMealBuffsByCompanionId: Record<string, InnKitchenMealBuffState>;
+  preferencesByCompanionId: Record<string, InnKitchenCompanionPreferenceState>;
+  hearthFire: InnKitchenHearthFireState;
+  pantry: InnKitchenPantryState;
+  autoCookFailuresByCompanionId: Record<string, InnKitchenAutoCookFailureState>;
+};
+
+export type GuildNoticeBoardState = {
+  slots: Array<GuildNoticeBoardQuest | null>;
+  nextRefreshAtMs: number;
+  questSequence: number;
+  hasSeenCurrentRefresh: boolean;
+  rerollsUsedToday: number;
+  rerollDayStartMs: number;
+};
+
 export type ResourceEntity = BaseEntity & {
   kind: "resource";
   resourceType: ResourceType;
@@ -2530,6 +2796,8 @@ export type NpcEntity = BaseEntity & {
     | "bounty_board"
     | "merchant"
     | "smith"
+    | "guild_coordinator"
+    | "tavern_keeper"
     | "bank_chest"
     | "dog"
     | "test_blade"
