@@ -693,27 +693,31 @@ The implementation category id for skill books is `skill_book`, but player-facin
 
 Current prototype consumable behavior:
 
-- consumables currently include flasks and food
 - companions may equip one flask from shared inventory
 - equipped flasks start with zero charges when equipped
-- companions may assign one food item from shared inventory
-- assigned food remains in inventory until a completed food use consumes one item
-- manual party consumable use can start flask or food use for eligible living companions
 - flasks have use duration, cooldown, charges, charge cost, healing, and optional temporary stat buffs
-- food has use duration, level requirements, temporary stat buffs, and can only be consumed in the hub while the party is safe
-- food use is canceled if the companion takes damage before completion
+- manual party consumable use can start flask use for eligible living companions
 - auto-flask behavior can start flask use when a companion reaches the configured HP threshold
 - equipped flasks can be refilled at the hub healing fountain
 - equipped flasks gain one charge after 20 counted enemy defeats
 - consumable buffs contribute to companion primary and derived stat calculations while active
-- leaving the hub may show a short non-blocking food warning when assigned food is available but the companion has no active food buff
+
+Food-style companion buffs are now handled by the Inn Kitchen, not by shared-inventory consumable assignment.
+
+Current Inn Kitchen meal behavior:
+
+- meals are cooked per companion through Guild & Inn -> Inn -> Kitchen
+- the current MVP recipe is House Bread
+- House Bread costs Crowns and Hearth's Fire
+- House Bread grants a temporary Max HP bonus to the selected companion
+- Inn Kitchen meals persist through save/load until they expire
+- selected recipes and auto-cook preferences are stored per companion
+- auto-cook may renew meals for hub-eligible companions when the configured threshold is reached and the Kitchen has enough Crowns and Hearth's Fire
 
 Current prototype consumable items:
 
 - Minor Recovery Flask
 - Soldier's Recovery Flask
-- Hearty Trail Rations
-- Skirmisher Rations
 
 The prototype wallet is shared by the party.
 
@@ -803,14 +807,14 @@ Current merchant behavior:
 - quick exchange removes eligible junk items from shared inventory
 - quick exchange adds Crowns to the shared wallet
 - the hub Merchant has a fixed prototype buy stock
-- Merchant Buy can purchase selected equipment, consumables, and skill books for Crowns
+- Merchant Buy can purchase selected equipment, flasks, and skill books for Crowns
 - current Merchant Buy skill book stock includes books for all current Beginner and first-class prototype skills
 - current prototype Merchant Buy pricing uses lower prices for Beginner skill books and higher prices for first-class skill books
 - Merchant Buy validates merchant identity, quest unlock state, stock membership, price, wallet balance, item category, and inventory capacity
 - purchased items are added to shared party inventory
 - Merchant Buy may filter stock by group, secondary item type or slot, minimum level requirement, maximum level requirement, and party equipment compatibility
-- party-compatible filtering applies to equipment compatibility and does not hide consumables or skill books
-- current Merchant Buy stock groups include flasks, food, books, weapons, offhands, cloth armor, leather armor, mail armor, plate armor, and accessories
+- party-compatible filtering applies to equipment compatibility and does not hide flasks or skill books
+- current Merchant Buy stock groups include flasks, books, weapons, offhands, cloth armor, leather armor, mail armor, plate armor, and accessories
 - current secondary Merchant Buy filters may separate weapons and offhands by equipment type, armor by slot, and accessories by charm type
 - the Sell panel may be visible as a placeholder only
 - full selling rules are not implemented
@@ -852,7 +856,7 @@ Do not implement these unless explicitly requested:
 - persistent ground loot
 - full selling flows
 - dynamic shop inventories or full shop economy beyond the fixed prototype Merchant buy stock
-- advanced consumable systems beyond current prototype flasks, food assignment, auto-flask behavior, hub food behavior, and temporary buffs
+- advanced consumable systems beyond current prototype flasks, auto-flask behavior, flask recharge, and Inn Kitchen meal buffs
 - full crafting chains, profession progression, upgrades, durability, or production crafting economy beyond the current prototype Smith crafting system
 - trading
 - backend persistence
@@ -1086,8 +1090,9 @@ Current intended main menu entries:
 - Party
 - Party Management
 - Inventory
-- Quests
-- World Travel
+- Atlas
+- World
+- Options
 
 The player is the party manager, not a physical character.
 
@@ -1138,10 +1143,9 @@ Current Equipment section may also show prototype consumable controls:
 
 - equipped flask
 - available flask choices from shared inventory
-- assigned food
-- available food choices from shared inventory
-- active food buff timing
 - basic consumable effect and requirement text
+
+Inn Kitchen meal buffs are managed through Guild & Inn -> Inn -> Kitchen, not through Party Equipment.
 
 Skills may show the selected companion's learned current-class skills.
 
@@ -1274,8 +1278,42 @@ It may show:
 - simple quest status labels
 - simple prototype reward text
 - inventory-full turn-in feedback when quest rewards cannot fit
+- category grouping for different quest sources, including main prototype quests and Guild Notice Board quests
 
 The Quests menu must not implement a full quest journal, branching dialogue, quest reward economy, reputation, cutscenes, or production quest content unless explicitly requested.
+
+### Atlas Menu
+
+The Atlas menu is the current prototype hub for reference and service pages.
+
+Current Atlas pages may include:
+
+- quest and objective reference
+- Smith crafting
+- Bank storage
+- AFK Estimate
+- Guild & Inn
+
+Atlas pages may be viewed remotely when supported.
+
+Service actions remain gated by their owning system:
+
+- Smith crafting requires Smith proximity
+- Bank transfers require Bank Chest proximity
+- Guild & Inn service actions require Guild & Inn proximity
+
+Guild & Inn remote viewing may show current state, upgrades, rooms, recipes, quests, recruits, Field Teams, and timers without allowing gated service actions.
+
+Current Guild & Inn behavior:
+
+- the shared service is opened through the Atlas or by interacting with the Guild Coordinator or Inn Keeper
+- Guild Recruit shows generated recruit candidates, refresh timing, recruitment upgrades, and destination preview
+- Guild Notice Board shows available, taken, and done board quests, quest refresh timing, Scout rerolls, rewards, and unseen update sign state
+- Guild Field Teams manage inactive companion assignment, roster movement, upgrades, AFK assignments, redeeming rewards, and return-to-hub behavior
+- Inn Rooms show every recruited companion as occupying a room slot, including active party, Inn reserve, and Field Team companions
+- Inn Kitchen cooks per-companion meals, manages selected recipes and auto-cook preferences, spends Hearth's Fire, and exposes Recipe Book, Pantry placeholder, and Kitchen upgrades
+
+Guild & Inn MVP systems are current prototype town services. They are not final interiors, full dialogue, final recruitment economy, production housing, full kitchen economy, or a completed town-management system.
 
 ### World Travel Menu
 
@@ -1380,7 +1418,7 @@ Current prototype quests:
 - Stolen Field Supplies
   - Quest id: stolen_field_supplies
   - Objectives: collect 10 Stolen Supply Bundle quest drops from Cave Bat-family enemies in Mossy Glade
-  - Rewards: 35 Crowns, 12 character XP, 1 Hearty Trail Rations
+  - Rewards: 45 Crowns, 12 character XP
   - Unlocks: Break the Lower Shore Blockage
 
 - Break the Lower Shore Blockage
@@ -1398,7 +1436,7 @@ Current prototype quests:
 - Rescue the Grove Runner
   - Quest id: rescue_the_grove_runner
   - Objectives: reach the Grove Runner, rescue the Grove Runner, and repair the Old Grove field cache
-  - Rewards: 55 Crowns, 22 character XP, 1 Skirmisher Rations
+  - Rewards: 65 Crowns, 22 character XP
   - Unlocks: Hold the Field Cache
 
 - Hold the Field Cache
@@ -1416,7 +1454,7 @@ Current prototype quests:
 - Broken Thicket Survey
   - Quest id: broken_thicket_survey
   - Objectives: inspect the Broken Thicket trail marker, collect 5 Crawler Shell Fragment quest drops in Broken Thicket, and gather 2 Herbs in Broken Thicket
-  - Rewards: 35 Crowns, 10 character XP, 1 Hearty Trail Rations
+  - Rewards: 45 Crowns, 10 character XP
   - Unlocks: Crawler Shelf Report
 
 - Crawler Shelf Report
@@ -2182,32 +2220,38 @@ Current Harbor Union Bastion prototype hub:
 
 - Harbor Union Bastion is the first prototype hub map.
 - It is a safe port/peninsula settlement.
-- It currently includes a minimal beach/dock entry area, small city square, placeholder NPCs, a healing fountain, decorative house/cabin/tent/dock-shore structure visuals, and a clear exit to the first wild zone.
-- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Dog, Test Blade, a hub target dummy, and a hub AoE target dummy.
+- It currently includes a minimal beach/dock entry area, small city square, placeholder NPCs, a Guild & Inn building, a healing fountain, decorative house/cabin/tent/dock-shore structure visuals, and a clear exit to the first wild zone.
+- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Guild Coordinator, Inn Keeper, Dog, Test Blade, a hub target dummy, and a hub AoE target dummy.
 - The Quest Giver supports the lightweight prototype quest chain only.
 - The Class Mentor supports prototype first-class selection for eligible Beginner companions.
-- The Merchant supports prototype quick exchange of eligible junk items for Crowns and a fixed prototype buy stock for selected equipment, consumables, and skill books.
+- The Merchant supports prototype quick exchange of eligible junk items for Crowns and a fixed prototype buy stock for selected equipment, flasks, and skill books.
 - The Smith supports current lightweight prototype crafting only.
 - The Bank Chest supports current lightweight prototype shared bank storage only.
+- The Guild Coordinator and Inn Keeper open the current Guild & Inn Atlas service page.
+- Guild & Inn service actions require the party leader to be near either Guild & Inn service NPC.
+- The Guild & Inn Notice Board sign may appear near the building when board work is unseen or claimable.
 - Hub target dummies are passive 100 HP debug enemies with no XP reward.
 - The standard hub target dummy can be manually attacked for combat testing, is not selected by autonomous POI behavior, and regenerates health over time.
 - The hub AoE target dummy is a debug combat-test enemy for prototype enemy AoE channel and telegraph behavior.
 - The healing fountain restores party member health and refills equipped flask charges when party members are in range.
 - The prototype hub should not spawn hostile enemies for now.
-- The prototype hub must not implement full town systems, interiors, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, full crafting or smithing beyond current prototype Smith crafting, recruitment, or NPC relationship systems unless explicitly requested.
+- The prototype hub must not implement full town systems, interiors, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, full crafting or smithing beyond current prototype Smith crafting, recruitment beyond current Guild Recruit behavior, or NPC relationship systems unless explicitly requested.
 
 Current Forward Bastion prototype hub:
 
 - Forward Bastion is the second prototype hub map.
 - It is a safe forward settlement connected between Azurefen Hollow and Ashwatch Approach.
-- It currently includes placeholder services, decorative structure visuals, a healing fountain, and physical route teleports.
-- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, and dog NPCs.
+- It currently includes placeholder services, a Guild & Inn building, decorative structure visuals, a healing fountain, and physical route teleports.
+- Current placeholders may include Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, Guild Coordinator, Inn Keeper, and dog NPCs.
 - The Class Mentor may appear in Forward Bastion through current quest-aware hub NPC data.
 - The Bounty Board remains a placeholder hub NPC unless explicitly expanded.
+- The Guild Coordinator and Inn Keeper open the current Guild & Inn Atlas service page.
+- Guild & Inn service actions require the party leader to be near either Guild & Inn service NPC.
+- The Guild & Inn Notice Board sign may appear near the building when board work is unseen or claimable.
 - The Smith supports current lightweight prototype crafting only.
 - The Bank Chest supports current lightweight prototype shared bank storage only.
 - Forward Bastion should not spawn hostile enemies for now.
-- Forward Bastion must not implement full town systems, interiors, bounty systems, full smithing or crafting beyond current prototype Smith crafting, recruitment, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, or NPC relationship systems unless explicitly requested.
+- Forward Bastion must not implement full town systems, interiors, bounty systems, full smithing or crafting beyond current prototype Smith crafting, recruitment beyond current Guild Recruit behavior, branching dialogue, full shops beyond the fixed prototype Merchant buy stock, or NPC relationship systems unless explicitly requested.
 
 The expedition expands outward into regions such as:
 
@@ -2449,7 +2493,7 @@ Current prototype save behavior:
 - save files use a prototype save version
 - invalid, unsupported, malformed, or incompatible saves are rejected with player-facing feedback
 - restored saves rebuild the current prototype map from saved quest state
-- restored saves preserve valid shared inventory, wallet, bank, key item, quest, companion, and teleport working state
+- restored saves preserve valid shared inventory, wallet, bank, key item, quest, companion, Guild & Inn, world discovery, pending offline loot, and teleport working state
 - restored saves clear transient runtime state such as active travel, direct commands, combat feedback, projectiles, cooldowns, movement caches, resurrection channels, recovery overlays, temporary visuals, consumable buffs, skill runtime state, status effects, companion AoE channels, enemy AoE channels, enemy AoE cooldowns, and debug telemetry
 - restored saves clear short-lived news broadcast feedback
 - restored saves sanitize companion skill progression and preserve valid learned skill rank data
@@ -2457,10 +2501,13 @@ Current prototype save behavior:
 Current prototype offline progress:
 
 - may apply when continuing a valid save
-- is capped to a short prototype duration
-- only applies in configured wild-map subzones
-- may grant estimated enemy kills, XP, and gathered resources
-- uses simple role-weighted combat, safety, and gathering efficiency
+- is capped to 30 minutes
+- uses the shared AFK combat estimator for the current party and current subzone
+- may grant deterministic estimated enemy kills, XP, gathered resources, and monster drops
+- caps kills by subzone enemy availability and respawn limits
+- includes access efficiency, combat capability, survivability, natural resources, and known enemy data in the estimate
+- grants XP immediately to eligible active companions
+- routes resource and monster-drop rewards through pending offline loot when inventory space is not available
 - can be skipped when the saved state was in active travel, recovery, resurrection, an open dungeon chest interaction, an unsupported map, an unsupported subzone, a defeated-party state, or another unsafe transient state
 - is a lightweight idle-progression approximation, not a full offline simulation
 
@@ -2503,7 +2550,9 @@ Temporary debug tools may include:
 - inspect key item unlock state and direct World Travel teleport options
 - inspect Smith crafting recipe status, crafting requirements, crafting results, and crafting telemetry
 - inspect equipment equip, unequip, validation, and stat contribution behavior
-- inspect consumable assignment, flask use, food use, auto-flask behavior, food warnings, and flask recharge behavior
+- inspect flask assignment, flask use, auto-flask behavior, and flask recharge behavior
+- inspect AFK estimate output, offline reward summaries, and pending offline loot
+- inspect Guild & Inn state, Guild Recruit, Notice Board, Field Teams, Inn Rooms, Inn Kitchen, Hearth's Fire, and related upgrade state
 - inspect healing fountain health restoration and flask refill behavior
 - inspect enemy archetype, combat style, target preference, attack range, and target decision behavior
 - inspect enemy scaling, respawn, subzone, and encounter area behavior
@@ -2511,7 +2560,7 @@ Temporary debug tools may include:
 - inspect interrupted POI restore behavior
 - inspect quest guide escort behavior
 - inspect PixiJS world rendering behavior
-- add prototype consumables to shared inventory
+- add prototype flasks to shared inventory
 - add prototype crafting materials and enemy drops to shared inventory
 
 Debug tools are not part of final gameplay.
@@ -2549,8 +2598,8 @@ Do not implement these unless explicitly requested:
 - final death penalty, checkpoint, resurrection economy, or recovery system beyond prototype resurrection and world-wipe recovery
 - production enemy respawn, encounter reset, or spawn scheduling beyond current prototype wild-map respawn behavior
 - production POI framework beyond current debug-map guidance
-- production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype
-- full town systems, interiors, production crafting, production smithing, recruitment, or NPC relationship systems
+- production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype and current Guild Recruit MVP
+- full town systems, interiors, production crafting, production smithing, recruitment beyond current Guild Recruit behavior, or NPC relationship systems
 
 ---
 

@@ -48,6 +48,7 @@ Current game-logic implementation files include:
 
 - `attackSlots.ts`
 - `attackSystem.ts`
+- `afkCombatEstimate.ts`
 - `bank.ts`
 - `classes.ts`
 - `classSelection.ts`
@@ -88,8 +89,17 @@ Current game-logic implementation files include:
 - `gameLoop.ts`
 - `gatherSystem.ts`
 - `gathererResourceReservation.ts`
+- `guildNoticeBoard.ts`
+- `guildRecruit.ts`
+- `guildRecruitUpgrades.ts`
+- `guildSecondaryParties.ts`
+- `guildSecondaryPartyAssignments.ts`
+- `guildTavern.ts`
 - `healingFountainSystem.ts`
 - `healthSystem.ts`
+- `innKitchen.ts`
+- `innKitchenUpgrades.ts`
+- `innRoomUpgrades.ts`
 - `index.ts`
 - `inventory.ts`
 - `interactionApproach.ts`
@@ -152,6 +162,7 @@ Current game-logic implementation files include:
 - `types.ts`
 - `updateGame.ts`
 - `wallet.ts`
+- `worldDiscovery.ts`
 - `worldTravelTeleports.ts`
 - `worldTravelRouting.ts`
 - `worldWipeRecovery.ts`
@@ -167,9 +178,12 @@ Current top-level React/UI implementation files include:
 - `CraftingPanel.tsx`
 - `GameMenu.tsx`
 - `gameMenuTypes.ts`
+- `GuildTavernPanel.tsx`
 - `GuidePopup.tsx`
 - `guidePopupDefinitions.ts`
 - `InventoryPanel.tsx`
+- `innKitchenPresentation.ts`
+- `innRoomsPresentation.ts`
 - `main.tsx`
 - `npcInteractionRange.ts`
 - `QuestPanels.tsx`
@@ -202,9 +216,9 @@ The player is not represented as a world entity.
 
 The player is the manager/controller issuing intent and commands to party members.
 
-NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, dungeon chest presentation, bank chest presentation, and non-interactive service placeholders.
+NPC entities are prototype placeholders for hub visuals, simple interactions, quest guide behavior, dungeon chest presentation, bank chest presentation, Guild & Inn service presentation, and non-interactive service placeholders.
 
-Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, Smith crafting interaction, Bank Chest storage interaction, placeholder hub NPC display, Bounty Board placeholder display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
+Current prototype NPC behavior is limited to Quest Giver quest interaction, Class Mentor first-class selection interaction, Merchant quick exchange, fixed Merchant Buy stock, Smith crafting interaction, Bank Chest storage interaction, Guild & Inn service opening/proximity anchors, placeholder hub NPC display, Bounty Board placeholder display, prototype quest NPC behavior for guide, rescue, repair, defend, route unlock, and elite-spawn objectives, and Slimeward dungeon chest closed/open presentation.
 
 Current NPC role values include:
 
@@ -216,6 +230,8 @@ type NpcRole =
   | "merchant"
   | "smith"
   | "bank_chest"
+  | "guild_coordinator"
+  | "tavern_keeper"
   | "dog"
   | "test_blade"
   | "quest_guide"
@@ -223,7 +239,7 @@ type NpcRole =
   | "dungeon_chest_open";
 ```
 
-NPCs do not implement dialogue, full shops beyond fixed prototype Merchant Buy stock, production crafting or smithing beyond current prototype Smith crafting, recruitment, relationship behavior, or general follower behavior.
+NPCs do not implement dialogue, full shops beyond fixed prototype Merchant Buy stock, production crafting or smithing beyond current prototype Smith crafting, recruitment beyond current Guild Recruit helpers, relationship behavior, or general follower behavior.
 
 Current execution states:
 
@@ -437,7 +453,7 @@ Current role priority:
 
 `GameState` is the central simulation container.
 
-Current responsibilities include storing entities, shared party prototype inventory, shared party bank, shared party key item state, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, autonomous target suppression state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, hub food warning state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, last companion damage timing, short-lived news broadcasts, debug options, and debug telemetry.
+Current responsibilities include storing entities, shared party prototype inventory, shared party bank, shared party key item state, shared party wallet, current debug map id, optional map data, active teleport state, teleport runtime state, auto-mode state, World Travel target state, POI preferences, simulation tick/frame/time values, party leader id, leader handoff timing, party intent, leader intent compatibility state, direct companion command state, prototype quest state, Guild & Inn state, world discovery state, pending offline farming loot, global/local POI intent, interrupted POI target state, explored positions, follow trails, movement planning, movement path cache, attack slot cache, enemy target reachability cache, defender wait/blocking state, party formation state, combat feedback, basic combat projectile runtime state, autonomous target suppression state, prototype skill runtime state, status-effect runtime state, prototype skill visual events, companion AoE runtime state, enemy AoE runtime state, prototype consumable use state, flask recharge state, prototype drop visual events, Slimeward dungeon runtime state, resurrection participant/progress state, world-wipe recovery state, passive health regeneration timing, target dummy regeneration timing, last companion damage timing, short-lived news broadcasts, debug options, and debug telemetry.
 
 Current movement planning fields include:
 
@@ -505,6 +521,19 @@ Current shared inventory, bank, key item, and wallet fields include:
 - `keyItemsById`
 - `wallet`
 
+Current Guild & Inn and discovery fields include:
+
+- `highestEverCompanionLevel`
+- `restingCompanionsById`
+- `guildRecruit`
+- `guildUpgrades`
+- `guildNoticeBoard`
+- `guildSecondaryParties`
+- `innUpgrades`
+- `innKitchen`
+- `worldDiscovery`
+- `pendingOfflineFarmingLoot`
+
 Current short-lived feedback fields include:
 
 - `newsBroadcasts`
@@ -512,7 +541,6 @@ Current short-lived feedback fields include:
 Current prototype consumable runtime fields include:
 
 - `consumableUsesByCompanionId`
-- `hubDepartureFoodWarning`
 - `flaskRechargeEnemyKillCounter`
 - `flaskRechargeCountedEnemyDefeats`
 
@@ -600,9 +628,10 @@ Current initial prototype state includes:
 - two starting companions
 - the starting leader as a Defender-role companion
 - the second starting companion as a Fighter-role companion
-- hub Quest Giver, Merchant, Smith, Bank Chest, Dog, and Test Blade NPCs
+- hub Quest Giver, Merchant, Smith, Bank Chest, Guild Coordinator, Inn Keeper, Dog, and Test Blade NPCs
 - hub target dummy and hub AoE target dummy
 - empty shared party inventory, bank, key item state, and wallet
+- initial Guild Recruit, Guild Notice Board, Guild Field Team, Inn Rooms, Inn Kitchen, Inn upgrade, and world discovery state
 - initial quest state
 - one Training Sword added to shared inventory as prototype/debug setup
 
@@ -622,7 +651,7 @@ Current save game behavior:
 - saved data includes `saveVersion`, `savedAtMs`, optional `offlineFarmingBlockedReason`, and sanitized `GameState`
 - validation rejects malformed saves, unsupported save versions, missing entities, invalid inventory, invalid bank, invalid key item state, invalid wallet, invalid quest state, invalid leader id, and invalid current map id
 - restore rebuilds the current debug map from saved quest state
-- save sanitization preserves valid shared inventory, bank, key item, wallet, quest, companion progression, companion equipment, companion consumable assignment, and teleport working state
+- save sanitization preserves valid shared inventory, bank, key item, wallet, quest, companion progression, companion equipment, companion flask assignment, Guild & Inn state, world discovery state, pending offline loot, and teleport working state
 - save sanitization resets transient runtime state such as active teleports, party intent, direct commands, interrupted POI state, movement caches, attack slots, combat feedback, combat projectiles, autonomous target suppressions, skill runtime, status-effect runtime, companion AoE runtime, enemy AoE runtime, consumable use runtime, drop visuals, resurrection runtime, world-wipe recovery, health timing, target dummy timing, companion damage timing, short-lived news broadcasts, and debug telemetry
 - companion save sanitization keeps dead companions dead, returns living companions to idle or follow state, clears temporary consumable buffs, and sanitizes skill progression data
 - enemy save sanitization keeps dead enemies dead and returns living enemies to idle state
@@ -642,10 +671,13 @@ Current offline farming behavior:
 - offline farming credit is capped by `MAX_OFFLINE_FARMING_MS`
 - current cap is 30 minutes
 - offline farming requires at least one minute offline
-- offline farming currently applies only to configured wild-map subzone profiles
-- offline farming estimates enemy kills, XP, and gathered resources from simple profile rates
-- role-weighted combat, safety, and gathering scores affect estimates
-- resource grants stop when inventory cannot accept more items
+- offline farming uses `afkCombatEstimate.ts` for the current party and current subzone
+- the shared AFK estimator returns combat rating, party damage, kill potential, spawn cap, final kills, XP, survivability, resources, enemy summary, access efficiency, estimated drops, and warnings
+- final offline kills are constrained by combat capability, movement/access downtime, survivability, and subzone spawn capacity
+- offline farming grants XP immediately to eligible living active party companions
+- offline farming routes gathered resources and monster drops through inventory helpers
+- inventory overflow keeps unclaimed resource/drop rewards in `pendingOfflineFarmingLoot`
+- pending offline loot can be claimed later and survives save/load until collected
 - offline farming can be skipped for active travel, active recovery, resurrection, open dungeon chest loot, unsupported maps, unsupported subzones, missing living leader, or defeated party state
 
 This is prototype browser-local persistence and lightweight offline reward approximation.
@@ -1642,13 +1674,13 @@ Current high-level order:
 4. Update rune skill runtime
 5. Clear expired skill runtime state
 6. Clear expired consumable buffs
-7. Clear expired hub departure food warnings
-8. Update role bonus assignments
+7. Update role bonus assignments
+8. Process Inn Kitchen auto-cook for eligible companions
 9. Synchronize derived max health
 10. Apply debug companion infinite health when enabled
 11. Update consumable behavior
 12. Update active consumable use
-13. Synchronize derived max health again after consumable changes
+13. Synchronize derived max health again after consumable and meal changes
 14. Apply debug companion infinite health again when enabled
 15. Update world-wipe recovery
 16. If world-wipe recovery is pending or changed maps, record telemetry and stop the tick early
@@ -1688,8 +1720,9 @@ Current high-level order:
 50. Update entity separation
 51. Update skill shield block positions
 52. Idle autonomous party members when no POI or leader intent is active
-53. Apply debug companion infinite health again when enabled
-54. Record debug telemetry
+53. Record current world discovery for supported wild subzones
+54. Apply debug companion infinite health again when enabled
+55. Record debug telemetry
 
 Movement conflicts are guarded with per-tick moved entity ids, movement intent records, path records, attack slot cache records, and reserved positions.
 
@@ -2427,20 +2460,28 @@ Prototype consumable logic lives in `consumables.ts`.
 Current consumable kinds are:
 
 - flask
-- food
 
 Current consumable behavior:
 
 - companions may equip one flask
-- companions may assign one food item
 - flasks use charges, cooldowns, use duration, healing, and optional temporary buffs
-- food uses inventory quantity only after completed use
-- food may only be used in the hub while the party is safe
-- food use is canceled if the companion takes damage before completion
 - auto-flask behavior can start flask use at or below a companion HP threshold
 - equipped flasks can be refilled by the hub healing fountain
 - equipped flasks gain one charge after 20 counted enemy defeats
 - consumable buffs feed into companion stat calculations
+
+Food-style buffs are owned by the Inn Kitchen, not by inventory consumable assignment.
+
+Inn Kitchen logic lives in `innKitchen.ts` and related upgrade/presentation helpers.
+
+Current Inn Kitchen behavior:
+
+- stores per-companion active meal buffs on `innKitchen`
+- stores per-companion selected recipe, auto-cook enabled state, and renewal threshold preferences
+- regenerates and spends Hearth's Fire
+- supports House Bread as the current MVP recipe
+- applies Inn meal stat effects through state-aware stat helpers
+- keeps Recipe Book, Pantry, salt booster placeholder, Hearth's Fire, and Kitchen upgrade data separate from shared inventory consumables
 
 Enemy drop logic lives in:
 
@@ -2520,18 +2561,17 @@ Current merchant behavior:
 - removes eligible quick-exchange junk items from shared inventory
 - adds Crowns to the shared wallet
 - exposes fixed prototype Merchant Buy stock
-- supports buying selected equipment, consumables, and skill books for Crowns
+- supports buying selected equipment, flasks, and skill books for Crowns
 - validates merchant identity, stock membership, item category, price, wallet balance, inventory capacity, and quest gating
 - adds purchased items to shared inventory
 - supports stock filtering by main group, secondary filter, minimum level requirement, maximum level requirement, and party equipment compatibility where implemented
-- always allows consumable and skill-book stock entries through stock compatibility filtering
-- treats party-compatible filtering as an equipment compatibility filter, not a consumable or skill-book visibility rule
+- always allows flask and skill-book stock entries through stock compatibility filtering
+- treats party-compatible filtering as an equipment compatibility filter, not a flask or skill-book visibility rule
 - records merchant buy, quick exchange, inventory, wallet, and quest-gating telemetry
 
 Current Merchant Buy stock groups are:
 
 - `flasks`
-- `food`
 - `books`
 - `weapons`
 - `offhands`
@@ -2565,7 +2605,55 @@ The Merchant Sell panel is currently a UI placeholder only.
 
 Full selling rules, dynamic shop inventory, shop restocking, price simulation, and a full shop economy are not implemented.
 
-This prototype inventory/wallet/key-item/bank/consumable/drop/merchant/crafting layer does not include persistent ground loot, full selling, dynamic shops, trading, backend persistence, cloud save, account save, cross-device persistence, full wallet UI, full equipment economy, full production bank rules, full production crafting chains, profession progression, recipe discovery, upgrades, rarity, affixes, durability, sockets, set bonuses, or item comparison.
+Guild & Inn service logic lives in:
+
+- `guildTavern.ts`
+- `guildRecruit.ts`
+- `guildRecruitUpgrades.ts`
+- `guildNoticeBoard.ts`
+- `guildSecondaryParties.ts`
+- `guildSecondaryPartyAssignments.ts`
+- `innRoomUpgrades.ts`
+- `innKitchen.ts`
+- `innKitchenUpgrades.ts`
+
+Current Guild & Inn behavior:
+
+- identifies Guild & Inn service anchors by `npcRole: "guild_coordinator"` or `npcRole: "tavern_keeper"`
+- uses the Guild & Inn proximity helper to gate service actions
+- allows Guild & Inn pages to be viewed remotely where UI supports reference-only access
+- keeps service action validation in game logic, not React
+- stores active party, resting reserve, Field Team, recruit, board, upgrade, room, Kitchen, Hearth's Fire, and world discovery state on `GameState`
+
+Current Guild Recruit behavior:
+
+- stores recruit candidates, refresh timing, generated candidate details, and sequence data
+- routes recruited companions to active party first, then Inn reserve when possible
+- uses Guild recruit upgrades for slots, level range, refresh speed, equipment chance, and skill chance
+
+Current Guild Notice Board behavior:
+
+- stores board slots, refresh timing, seen state, quest sequence, rerolls, and taken/done quest progress
+- records enemy-defeat progress only after board quests are taken
+- supports available, taken, and done board quest states
+- claims completed board rewards through board interaction
+- uses board upgrades for slot count, reward quality, refresh speed, and Scout rerolls
+
+Current Field Team behavior:
+
+- stores unlocked Field Teams, roster slot assignments, upgrade state, and assignment state
+- keeps assigned Field Teams invisible in the world renderer
+- uses shared AFK estimator output for assignment reward generation
+- blocks roster movement for assigned Field Teams until they are returned
+- lets redeemed assignment kills contribute to active Notice Board quests where allowed
+
+Current Inn behavior:
+
+- Rooms are a read-only companion overview using roster state and Inn room capacity upgrades
+- Kitchen owns per-companion meal buffs, selected recipes, auto-cook preferences, Hearth's Fire, Recipe Book, Pantry placeholder, and Kitchen upgrades
+- Inn meal effects are applied through state-aware stat helpers instead of prototype consumable equipment
+
+This prototype inventory/wallet/key-item/bank/consumable/drop/merchant/crafting layer does not include persistent ground loot, full selling, dynamic shops, trading, backend persistence, cloud save, account save, cross-device persistence, full wallet UI, full equipment economy, full production bank rules, full production crafting chains, profession progression, full recipe discovery, production upgrade economies beyond current Guild & Inn upgrades, rarity, affixes, durability, sockets, set bonuses, or item comparison.
 
 
 
@@ -3214,7 +3302,7 @@ Current resource visuals use generated image icons by resource type.
 
 Current NPC visuals:
 
-- Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, and Dog may use generated image icons
+- Quest Giver, Class Mentor, Merchant, Smith, Bank Chest, Bounty Board, Guild Coordinator, Inn Keeper, and Dog may use generated image icons
 - Test Blade may use Test-NPC image assets
 - quest guide NPCs may use temporary NPC visuals
 - dungeon chest NPCs may use temporary or placeholder presentation
@@ -3329,7 +3417,7 @@ Debug/testing helpers may exist for development:
 - map runtime cleanup testing
 - Slimeward dungeon runtime and chest testing
 - enemy AoE channel testing
-- add prototype consumables to shared inventory
+- add prototype flasks to shared inventory
 - add prototype crafting materials and enemy drops to shared inventory
 - bank storage, slot lock, transfer, and auto-routing testing
 - key item and direct World Travel teleport testing
@@ -3352,7 +3440,7 @@ These should remain isolated from core systems and must not define final gamepla
 
 ## Current UI Responsibilities
 
-The React UI currently may display and control map/debug map view through the PixiJS world renderer, generated terrain tiles, subzone name labels, party members, enemies, resources, NPCs, quest guide NPCs, healing fountains, hub target dummies, sprite animation, enemy and NPC name labels, Superior enemy name/aura presentation, enemy AoE danger circles and channel bars, companion AoE skill visuals, status-effect presentation where supported, basic combat projectile visuals, teleport working/broken presentation, camera follow behavior, combat feedback, skill visual feedback, news broadcast overlays, companion global cooldown display, direct command overlays and rejection feedback, drop visual feedback, resurrection progress, world-wipe rescue choice and rescue feedback overlays, party selection, role changes, role bonus status, class changes, first-class selection, party order changes, leader changes, Party Management leader status and leader switching controls, group/direct commands, inventory counters, wallet balance, inventory item details, key item display, skill book details, skill book reading actions, prototype equipment slot state, prototype equipment equip/unequip commands, prototype consumable equipment, food assignment, auto-flask settings, Beginner First Aid self-heal settings, Beginner First Aid ally-heal settings, Second Wind self-heal settings, Hold Fast use settings, Fake Death use settings, Blood Feast use settings, Light Mend ally-heal settings, Self Sacrifice safety-floor settings, Penitent's Gift ally/self-heal settings, Eternal Hope use settings, mobility skill use mode settings, defensive mobility threshold settings, Support Focus settings, Overcharge toggle settings, FireBurst target mode settings, Circle of Renewal target mode and HP-threshold settings, learned skill summaries, legacy skill toggles, hub food warnings, quest tracker, quest log, prototype quest reward text, quest objective text, quest turn-in error feedback, equipment tutorial quest state, Smithy quest state, guide popup overlays, merchant quick exchange UI, Merchant Buy UI, Merchant Sell placeholder UI, Bank Chest interaction UI, bank slot display, bank transfer controls, bank slot locking controls, bank auto-routing controls, Smith crafting UI, crafting filters, crafting recipe details, crafting result feedback, World Travel menu state, prototype destination selection, direct Teleportation Echo travel options, Options save controls, start screen save controls, offline progress summary, XP and level progress, party size limit, debug controls, performance/debug telemetry, and debug telemetry export.
+The React UI currently may display and control map/debug map view through the PixiJS world renderer, generated terrain tiles, subzone name labels, party members, enemies, resources, NPCs, quest guide NPCs, healing fountains, hub target dummies, Guild & Inn service NPCs, sprite animation, enemy and NPC name labels, Superior enemy name/aura presentation, enemy AoE danger circles and channel bars, companion AoE skill visuals, status-effect presentation where supported, basic combat projectile visuals, teleport working/broken presentation, camera follow behavior, combat feedback, skill visual feedback, news broadcast overlays, companion global cooldown display, direct command overlays and rejection feedback, drop visual feedback, resurrection progress, world-wipe rescue choice and rescue feedback overlays, party selection, role changes, role bonus status, class changes, first-class selection, party order changes, leader changes, Party Management leader status and leader switching controls, group/direct commands, inventory counters, wallet balance, inventory item details, key item display, skill book details, skill book reading actions, prototype equipment slot state, prototype equipment equip/unequip commands, prototype flask equipment, auto-flask settings, Beginner First Aid self-heal settings, Beginner First Aid ally-heal settings, Second Wind self-heal settings, Hold Fast use settings, Fake Death use settings, Blood Feast use settings, Light Mend ally-heal settings, Self Sacrifice safety-floor settings, Penitent's Gift ally/self-heal settings, Eternal Hope use settings, mobility skill use mode settings, defensive mobility threshold settings, Support Focus settings, Overcharge toggle settings, FireBurst target mode settings, Circle of Renewal target mode and HP-threshold settings, learned skill summaries, legacy skill toggles, quest tracker, quest log, Notice Board quest grouping, prototype quest reward text, quest objective text, quest turn-in error feedback, equipment tutorial quest state, Smithy quest state, guide popup overlays, merchant quick exchange UI, Merchant Buy UI, Merchant Sell placeholder UI, Bank Chest interaction UI, bank slot display, bank transfer controls, bank slot locking controls, bank auto-routing controls, Smith crafting UI, crafting filters, crafting recipe details, crafting result feedback, AFK Estimate UI, Guild & Inn UI, Guild Recruit UI, Notice Board UI, Field Team UI, Inn Rooms UI, Inn Kitchen UI, Hearth's Fire display, World Travel menu state, prototype destination selection, direct Teleportation Echo travel options, Options save controls, start screen save controls, offline progress summary, pending offline loot claiming, XP and level progress, party size limit, debug controls, performance/debug telemetry, and debug telemetry export.
 
 UI should remain a consumer/controller of game state, not the owner of simulation behavior.
 
@@ -3384,7 +3472,8 @@ React may:
 - call existing stat allocation helpers for supported stat allocation actions
 - call existing class selection helpers for supported first-class selection actions
 - call existing equipment helpers for supported equipment actions
-- call existing consumable helpers for supported flask, food, and auto-flask actions
+- call existing consumable helpers for supported flask and auto-flask actions
+- call existing Guild & Inn helpers for supported recruit, board, Field Team, room, Kitchen, Hearth's Fire, and upgrade actions
 - call existing skill behavior helpers for supported prototype skill behavior settings
 - call existing skill progression helpers for supported skill-book reading and legacy skill toggles
 - call existing merchant helpers for supported quick exchange and Merchant Buy actions
@@ -3450,7 +3539,7 @@ First-class selection UI must call game-logic class selection helpers and displa
 
 React must not duplicate first-class selection validation, class equipment compatibility rules, or skill progression initialization logic.
 
-The Atlas view may display prototype quest state, objective progress, Smith crafting state, and bank state from game state.
+The Atlas view may display prototype quest state, objective progress, Smith crafting state, bank state, AFK Estimate state, and Guild & Inn state from game state.
 
 The Inventory view may display wallet balance and key items, but wallet, key item, and inventory rules must remain in game logic.
 
@@ -3519,5 +3608,5 @@ Do not implement unless requested:
 - final death penalty, checkpoint, resurrection economy, or recovery system beyond prototype resurrection and world-wipe recovery
 - production enemy respawn, encounter reset, or spawn scheduling beyond current prototype wild-map respawn behavior
 - final POI/world-routing framework beyond debug-map POI guidance
-- production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype
-- full town systems, interiors, production crafting, production smithing, recruitment, or NPC relationship systems
+- production escort, follower, recruitment, or companion NPC systems beyond the current quest guide prototype and current Guild Recruit helpers
+- full town systems, interiors, production crafting, production smithing, recruitment beyond current Guild Recruit helpers, or NPC relationship systems
