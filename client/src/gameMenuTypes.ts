@@ -11,6 +11,7 @@ export type AtlasSubpage =
   | "crafts"
   | "bank"
   | "guildTavern"
+  | "farmLivestock"
   | "afkEstimate";
 
 export type PartyMenuSection =

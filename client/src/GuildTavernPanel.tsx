@@ -20,11 +20,13 @@ import {
   getGuildSecondaryPartyUpgradeStatuses,
   getGuildCompanionCapacity,
   getGuildSecondaryPartiesState,
+  getTownServicesLockedMessage,
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
   getInnKitchenUpgradeStatuses,
   getInnKitchenRecipes,
   getInnReserveCompanions,
   getItemDefinition,
+  isPartyLeaderNearGuildTavern,
   getPartySizeLimit,
   getPartySizeUnlockRequirement,
   getRestingCompanions,
@@ -84,7 +86,10 @@ type GuildView =
   | "kitchenUpgrades";
 
 const MAX_MAIN_PARTY_SLOTS = 5;
-const GUILD_INN_REQUIREMENT_MESSAGE = "Requires Guild & Inn";
+const GUILD_INN_PROXIMITY_MESSAGE =
+  "Stand near the Guild Coordinator or Inn Keeper to manage Guild & Inn services.";
+const GUILD_INN_BROWSE_MESSAGE =
+  `${GUILD_INN_PROXIMITY_MESSAGE} You can browse from afar, but actions require proximity.`;
 
 export type GuildSecondaryPartyRedeemSummary = {
   partyName: string;
@@ -186,14 +191,17 @@ export function GuildTavernPanel({
   const rosterCapacity = getGuildCompanionCapacity(state);
   const rosterCount = getTotalRosterCompanionCount(state);
   const totalRosterLevel = getTotalRosterCompanionLevel(state);
-  const actionStatus = canUse ? "Coming soon" : GUILD_INN_REQUIREMENT_MESSAGE;
+  const lockedMessage = getTownServicesLockedMessage(state);
+  const isNearGuildInn = isPartyLeaderNearGuildTavern(state);
+  const proximityMessage =
+    !lockedMessage && !isNearGuildInn ? GUILD_INN_BROWSE_MESSAGE : null;
   const guildRecruit = getGuildRecruitState(state, currentTime);
   const readyRecruitCount = guildRecruit.candidates.filter(Boolean).length;
-  const recruitButtonStatus = canUse
-    ? readyRecruitCount > 0
+  const recruitButtonStatus = lockedMessage
+    ? "Locked"
+    : readyRecruitCount > 0
       ? "Ready"
-      : "Waiting"
-    : GUILD_INN_REQUIREMENT_MESSAGE;
+      : "Waiting";
   const recruitButtonCountdown = formatRecruitButtonCountdown(
     guildRecruit.nextRefreshAtMs,
     currentTime,
@@ -204,9 +212,10 @@ export function GuildTavernPanel({
     noticeBoard.nextRefreshAtMs,
     currentTime,
   );
-  const noticeBoardButtonStatus = canUse
-    ? getNoticeBoardButtonStatus(noticeBoardQuest)
-    : GUILD_INN_REQUIREMENT_MESSAGE;
+  const noticeBoardButtonStatus = lockedMessage
+    ? "Locked"
+    : getNoticeBoardButtonStatus(noticeBoardQuest);
+  const serviceButtonStatus = lockedMessage ? "Locked" : "Ready";
   const innRoomOverview = getInnRoomOverview(state);
   const kitchenRows = getInnKitchenCompanionRows(state, currentTime);
   const kitchenBulkCookGroups = getInnKitchenBulkCookGroups(state);
@@ -232,13 +241,8 @@ export function GuildTavernPanel({
     }
   }, [kitchenRows, selectedKitchenCompanionId]);
 
-  function showPreviousSection() {
-    setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
-    setGuildView("hall");
-  }
-
-  function showNextSection() {
-    setActiveSection((section) => (section === "guild" ? "inn" : "guild"));
+  function showSection(section: GuildTavernSection) {
+    setActiveSection(section);
     setGuildView("hall");
   }
 
@@ -247,7 +251,9 @@ export function GuildTavernPanel({
       <div className="guild-tavern-header">
         <div>
           <h2>Guild & Inn</h2>
-          <span>{canUse ? "Nearby" : "Reference only"}</span>
+          <span>
+            {lockedMessage ? "Locked" : canUse ? "Nearby" : "Browsing"}
+          </span>
         </div>
         <dl>
           <div>
@@ -271,21 +277,36 @@ export function GuildTavernPanel({
         </dl>
       </div>
 
-      <div className="guild-tavern-section-nav">
+      {lockedMessage ? (
+        <p className="guild-requires-service">{lockedMessage}</p>
+      ) : proximityMessage ? (
+        <p className="guild-requires-service">{proximityMessage}</p>
+      ) : null}
+
+      <div className="guild-tavern-section-nav" role="tablist" aria-label="Guild and Inn sections">
         <button
-          aria-label="Previous Guild or Inn section"
-          onClick={showPreviousSection}
+          aria-selected={activeSection === "guild"}
+          className={activeSection === "guild" ? "active" : ""}
+          onClick={() => showSection("guild")}
+          role="tab"
           type="button"
         >
-          &lt;
+          <strong>Guild</strong>
+          <small>
+            {readyRecruitCount > 0 ? `${readyRecruitCount} recruit` : "Recruiting"}
+          </small>
         </button>
-        <strong>{activeSection === "guild" ? "Guild" : "Inn"}</strong>
         <button
-          aria-label="Next Guild or Inn section"
-          onClick={showNextSection}
+          aria-selected={activeSection === "inn"}
+          className={activeSection === "inn" ? "active" : ""}
+          onClick={() => showSection("inn")}
+          role="tab"
           type="button"
         >
-          &gt;
+          <strong>Inn</strong>
+          <small>
+            {innRoomOverview.occupiedRooms}/{innRoomOverview.capacity} rooms
+          </small>
         </button>
       </div>
 
@@ -462,9 +483,7 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {recruitButtonCountdown}
                     </span>
-                    <small className={getRequirementStatusClassName(recruitButtonStatus)}>
-                      {recruitButtonStatus}
-                    </small>
+                    <small>{recruitButtonStatus}</small>
                   </button>
                   <button
                     onClick={() => {
@@ -479,18 +498,14 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {noticeBoardButtonCountdown}
                     </span>
-                    <small className={getRequirementStatusClassName(noticeBoardButtonStatus)}>
-                      {noticeBoardButtonStatus}
-                    </small>
+                    <small>{noticeBoardButtonStatus}</small>
                   </button>
                   <button
                     onClick={() => setGuildView("secondaryParties")}
                     type="button"
                   >
                     <span>Field Teams</span>
-                    <small className={getRequirementStatusClassName(actionStatus)}>
-                      {canUse ? "Ready" : actionStatus}
-                    </small>
+                    <small>{serviceButtonStatus}</small>
                   </button>
                 </>
               ) : (
@@ -503,18 +518,14 @@ export function GuildTavernPanel({
                     <span className="guild-recruit-button-timer">
                       {innRoomOverview.occupiedRooms}/{innRoomOverview.capacity}
                     </span>
-                    <small className={getRequirementStatusClassName(actionStatus)}>
-                      {canUse ? "Ready" : actionStatus}
-                    </small>
+                    <small>{serviceButtonStatus}</small>
                   </button>
                   <button
                     onClick={() => setGuildView("kitchen")}
                     type="button"
                   >
                     <span>Kitchen</span>
-                    <small className={getRequirementStatusClassName(actionStatus)}>
-                      {canUse ? "Ready" : actionStatus}
-                    </small>
+                    <small>{serviceButtonStatus}</small>
                   </button>
                 </>
               )}
@@ -529,23 +540,24 @@ export function GuildTavernPanel({
 function GuildInnRequirementMessage() {
   return (
     <p className="guild-recruit-message guild-requires-service">
-      {GUILD_INN_REQUIREMENT_MESSAGE}
+      {GUILD_INN_PROXIMITY_MESSAGE}
     </p>
   );
 }
 
 function getGuildMessageClassName(message: string | null | undefined): string {
-  return message === GUILD_INN_REQUIREMENT_MESSAGE
+  return isGuildRequirementMessage(message)
     ? "guild-recruit-message guild-requires-service"
     : "guild-recruit-message";
 }
 
-function getRequirementStatusClassName(
-  message: string | null | undefined,
-): string | undefined {
-  return message === GUILD_INN_REQUIREMENT_MESSAGE
-    ? "guild-requires-service"
-    : undefined;
+function isGuildRequirementMessage(message: string | null | undefined): boolean {
+  return Boolean(
+    message &&
+      (message === GUILD_INN_PROXIMITY_MESSAGE ||
+        message === GUILD_INN_BROWSE_MESSAGE ||
+        message.startsWith("Complete The Azure Trial")),
+  );
 }
 
 function InnRoomsView({
@@ -1380,7 +1392,7 @@ function GuildRecruitView({
     : null;
   const recruitDisabled = !canUse || !candidate || destination === "blocked_full";
   const blockedText = !canUse
-    ? GUILD_INN_REQUIREMENT_MESSAGE
+    ? GUILD_INN_PROXIMITY_MESSAGE
     : !candidate
       ? `Next recruit in ${formatRecruitCountdown(
           guildRecruit.nextRefreshAtMs,
@@ -1542,7 +1554,7 @@ function GuildNoticeBoardView({
       ? getNoticeBoardQuestStatusLabel(quest)
       : "Take Quest";
   const statusText = !canUse
-    ? GUILD_INN_REQUIREMENT_MESSAGE
+    ? GUILD_INN_PROXIMITY_MESSAGE
     : quest
       ? getNoticeBoardQuestStatusLabel(quest)
       : `Next posting in ${formatRecruitCountdown(
@@ -1591,6 +1603,10 @@ function GuildNoticeBoardView({
           <p className="guild-recruit-message">
             Rerolls reset at {new Date(rerollState.nextResetAtMs).toLocaleTimeString()}.
           </p>
+        ) : null}
+
+        {!canUse ? (
+          <GuildInnRequirementMessage />
         ) : null}
 
         <div className="guild-notice-board-slots" aria-label="Notice Board postings">

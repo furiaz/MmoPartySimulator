@@ -15,9 +15,16 @@ import {
 } from "./dungeonSystem";
 import { applyEnemyVariantStats, isSuperiorEnemy } from "./enemyVariants";
 import {
+  HUB_MAP_ID,
+  HUB_TWO_MAP_ID,
   SLIMEWARD_CAMP_ID,
   companionIds,
   createDebugMap,
+  createDebugMapForQuestState,
+  getHubNpcStartDataForQuestState,
+  getHubTwoNpcStartDataForQuestState,
+  hubCompanionStartPositions,
+  hubTwoCompanionStartPositions,
   slimewardCampArrivalPositions,
   slimewardCampNpcStartData,
 } from "./debugMap";
@@ -773,6 +780,88 @@ export function debugResetSlimewardDungeon(state: GameState): GameState {
       skippedTargetIds: [],
     },
   };
+}
+
+export function debugTeleportToHub(
+  state: GameState,
+  targetMapId: typeof HUB_MAP_ID | typeof HUB_TWO_MAP_ID,
+): GameState {
+  const map = createDebugMapForQuestState(targetMapId, state.quests);
+  const startPositions =
+    targetMapId === HUB_TWO_MAP_ID
+      ? hubTwoCompanionStartPositions
+      : hubCompanionStartPositions;
+  const npcStartData =
+    targetMapId === HUB_TWO_MAP_ID
+      ? getHubTwoNpcStartDataForQuestState(state.quests)
+      : getHubNpcStartDataForQuestState(state.quests);
+  const entities: Record<string, GameEntity> = {};
+
+  for (const companionId of companionIds) {
+    const companion = state.entities[companionId];
+
+    if (companion?.kind !== "companion") {
+      continue;
+    }
+
+    const position = startPositions[companionIds.indexOf(companionId)] ??
+      startPositions[0];
+
+    entities[companion.id] = {
+      ...moveEntityTo(companion, position),
+      state: companion.id === state.partyLeaderId ? "idle" : "follow",
+      currentTargetId:
+        companion.id === state.partyLeaderId ? null : state.partyLeaderId,
+      commandPriority: "autonomous",
+      defendPosition: null,
+    };
+  }
+
+  for (const npc of npcStartData) {
+    entities[npc.id] = createNpc(npc.id, npc.position, npc.displayName, npc.npcRole);
+  }
+
+  return pruneMissingEntityRuntimeState({
+    ...clearSlimewardDungeonRuntime(state),
+    currentMapId: targetMapId,
+    map,
+    entities,
+    activeTeleport: null,
+    leaderIntent: null,
+    partyIntent: null,
+    localPoiTarget: null,
+    globalPoiIntent: null,
+    worldTravelTargetMapId: null,
+    lastPoiDecision: undefined,
+    directCompanionCommandsById: {},
+    directCommandGraceUntilByCompanionId: {},
+    interruptedPoiTarget: null,
+    exploredTiles: {},
+    followTrailsByEntityId: Object.fromEntries(
+      Object.keys(entities).map((entityId) => [entityId, []]),
+    ),
+    combatFeedbackEvents: [],
+    combatProjectiles: [],
+    failedMoveByEntityId: {},
+    movementFailuresByEntityId: {},
+    moveIntentsByEntityId: {},
+    reservedPositionsByEntityId: {},
+    movementPathsByEntityId: {},
+    movementDecisionsByEntityId: {},
+    lastPositionsByEntityId: {},
+    defenderWaitTicksByLeaderId: {},
+    defenderBlockedTicksByEntityId: {},
+    defenderWaitMsByLeaderId: {},
+    defenderBlockedMsByEntityId: {},
+    skillVisualEvents: [],
+    companionAoeChannelsByCasterId: {},
+    enemyAoeChannelsByCasterId: {},
+    enemyAoeCooldownsByCasterId: {},
+    dropVisualEvents: [],
+    resurrectionProgressByCompanionId: {},
+    resurrectionChannelsByHelperId: {},
+    worldWipeRecovery: undefined,
+  });
 }
 
 export function debugRefreshResources(state: GameState): GameState {

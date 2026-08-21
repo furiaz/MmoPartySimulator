@@ -1301,24 +1301,36 @@
 
 .guild-tavern-section-nav {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
 }
 
 .guild-tavern-section-nav button {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
   min-width: 0;
-  width: 38px;
-  height: 34px;
-  padding: 0;
-  font-size: 18px;
+  width: 100%;
+  height: 46px;
+  padding: 6px 8px;
+}
+
+.guild-tavern-section-nav button.active {
+  border-color: #65aac0;
+  background: rgba(23, 55, 66, 0.78);
 }
 
 .guild-tavern-section-nav strong {
-  justify-self: center;
   color: #ffffff;
   font-size: 14px;
   font-weight: 900;
+}
+
+.guild-tavern-section-nav small {
+  color: #92a8ad;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .guild-tavern-section {
@@ -1535,6 +1547,87 @@
 
 .guild-requires-service {
   color: #d9827d !important;
+}
+
+.farm-field-card {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.farm-crop-heading {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.farm-crop-heading span {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.farm-crop-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.farm-field-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.farm-field-stats div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-field-stats dt {
+  color: #92a8ad;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.farm-field-stats dd {
+  min-width: 0;
+  margin: 0;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.farm-actions button {
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 132px);
+}
+
+.farm-actions button small {
+  grid-column: 2;
+}
+
+.farm-livestock-placeholder {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 10px 12px;
+  border: 1px dashed #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.36);
+}
+
+.farm-livestock-placeholder p {
+  margin: 0;
+  color: #92a8ad;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .guild-recruit-details > button {

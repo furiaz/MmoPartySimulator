@@ -871,6 +871,7 @@ export type CurrencyMutationSource =
   | "guild_upgrade"
   | "inn_upgrade"
   | "inn_kitchen"
+  | "farm_upgrade"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2015,7 +2016,15 @@ export type DebugTelemetryEventType =
   | "flask_fountain_refilled"
   | "flask_recharge_kill_progress"
   | "flask_charge_gained"
-  | "flask_recharge_noop_capped";
+  | "flask_recharge_noop_capped"
+  | "farm_upgrade_attempt"
+  | "farm_upgrade_succeeded"
+  | "farm_upgrade_failed"
+  | "farm_crop_generated"
+  | "farm_generation_blocked_cap"
+  | "farm_harvest_all_succeeded"
+  | "farm_harvest_all_failed"
+  | "farm_pantry_transfer";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2259,6 +2268,13 @@ export type DebugTelemetryEvent = {
   craftingRequirements?: DebugCraftingRequirementTelemetryRow[];
   consumedCraftingItems?: DebugCraftingConsumedItemTelemetryRow[];
   crownCost?: number;
+  farmFieldId?: FarmFieldId;
+  farmCropId?: FarmCropId;
+  cropQuantityBefore?: number;
+  cropQuantityAfter?: number;
+  cropCapacity?: number;
+  previousFarmFieldLevel?: number;
+  nextFarmFieldLevel?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2345,6 +2361,8 @@ export type MapVisualObjectId =
   | "hub_cabin"
   | "hub_tent"
   | "guild_tavern_building"
+  | "farm_building"
+  | "livestock_building"
   | "guild_notice_board_new_quest_sign"
   | "hub_dock_shore_connector"
   | "passage_gate_closed"
@@ -2767,6 +2785,22 @@ export type InnKitchenState = {
   autoCookFailuresByCompanionId: Record<string, InnKitchenAutoCookFailureState>;
 };
 
+export type FarmCropId = "carrot";
+
+export type FarmFieldId = "carrot_field";
+
+export type FarmFieldState = {
+  id: FarmFieldId;
+  cropId: FarmCropId;
+  level: number;
+  heldQuantity: number;
+  lastGeneratedAtMs: number;
+};
+
+export type FarmState = {
+  fieldsById: Record<FarmFieldId, FarmFieldState>;
+};
+
 export type GuildNoticeBoardState = {
   slots: Array<GuildNoticeBoardQuest | null>;
   nextRefreshAtMs: number;
@@ -2798,6 +2832,8 @@ export type NpcEntity = BaseEntity & {
     | "smith"
     | "guild_coordinator"
     | "tavern_keeper"
+    | "farmer"
+    | "livestock_keeper"
     | "bank_chest"
     | "dog"
     | "test_blade"

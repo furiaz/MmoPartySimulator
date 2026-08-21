@@ -18,6 +18,7 @@ import type {
   GameMap,
   GameEntity,
   Enemy,
+  FarmState,
   GuildSecondaryPartiesState,
   GuildNoticeBoardState,
   GuildRecruitState,
@@ -171,6 +172,7 @@ export type GameState = {
   guildSecondaryParties?: GuildSecondaryPartiesState;
   innUpgrades?: InnUpgradesState;
   innKitchen?: InnKitchenState;
+  farm?: FarmState;
   worldDiscovery?: WorldDiscoveryState;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;

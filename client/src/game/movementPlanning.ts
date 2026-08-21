@@ -1356,6 +1356,8 @@ function isStaticPassiveNpcRole(npcRole: string): boolean {
     npcRole === "bounty_board" ||
     npcRole === "merchant" ||
     npcRole === "smith" ||
+    npcRole === "farmer" ||
+    npcRole === "livestock_keeper" ||
     npcRole === "dog" ||
     npcRole === "test_blade"
   );

@@ -375,6 +375,18 @@ export const hubNpcStartData = [
     displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
   },
+  {
+    id: "hub-farmer",
+    position: { x: 18, y: 46 },
+    displayName: "Farmer",
+    npcRole: "farmer",
+  },
+  {
+    id: "hub-livestock-keeper",
+    position: { x: 18, y: 27 },
+    displayName: "Livestock",
+    npcRole: "livestock_keeper",
+  },
 ] as const;
 
 export const classMentorNpcStartData = {
@@ -438,6 +450,18 @@ export const hubTwoNpcStartData = [
     position: { x: 117, y: 60 },
     displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
+  },
+  {
+    id: "hub-2-farmer",
+    position: { x: 18, y: 43 },
+    displayName: "Farmer",
+    npcRole: "farmer",
+  },
+  {
+    id: "hub-2-livestock-keeper",
+    position: { x: 119, y: 43 },
+    displayName: "Livestock",
+    npcRole: "livestock_keeper",
   },
 ] as const;
 
@@ -1633,6 +1657,22 @@ const HUB_VISUAL_OBJECTS: MapVisualObject[] = [
     heightCells: 13,
     anchorY: 1,
   },
+  {
+    id: "hub-farm",
+    visualId: "farm_building",
+    position: { x: 18, y: 44 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
+  {
+    id: "hub-livestock",
+    visualId: "livestock_building",
+    position: { x: 18, y: 25 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
 ];
 
 const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
@@ -1708,6 +1748,22 @@ const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
     heightCells: 13,
     anchorY: 1,
   },
+  {
+    id: "hub-2-farm",
+    visualId: "farm_building",
+    position: { x: 18, y: 42 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
+  {
+    id: "hub-2-livestock",
+    visualId: "livestock_building",
+    position: { x: 119, y: 42 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
 ];
 
 const HUB_WALLS = dedupeWalls([
@@ -1732,6 +1788,9 @@ const HUB_TWO_STRUCTURE_COLLISION_WALLS = dedupeWalls([
   ...createBottomCenteredWallOutline({ x: 90, y: 41 }, 7, 6),
   ...createBottomCenteredWallOutline({ x: 54, y: 58 }, 7, 6),
   ...createBottomCenteredWallOutline({ x: 83, y: 58 }, 7, 6),
+  ...createBottomCenteredWallOutline({ x: 112, y: 58 }, 10, 7),
+  ...createBottomCenteredWallOutline({ x: 18, y: 42 }, 8, 6),
+  ...createBottomCenteredWallOutline({ x: 119, y: 42 }, 8, 6),
 ]);
 
 const MAP_ONE_WALLS = dedupeWalls([

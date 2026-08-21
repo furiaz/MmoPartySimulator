@@ -49,6 +49,10 @@ export type {
   EnemyScalingBand,
   EnemyTypeId,
   EnemyVariant,
+  FarmCropId,
+  FarmFieldId,
+  FarmFieldState,
+  FarmState,
   EncounterArea,
   EntityKind,
   EntityState,
@@ -943,6 +947,7 @@ export {
   debugToggleCompanionOneHunterClass,
   debugToggleSuperExp,
   debugToggleSuperSpeed,
+  debugTeleportToHub,
   debugTurnInCurrentQuest,
 } from "./debugTools";
 export {
@@ -959,6 +964,34 @@ export {
   isGuildTavernNpc,
   isPartyLeaderNearGuildTavern,
 } from "./guildTavern";
+export {
+  FARM_CARROT_CROP_ID,
+  FARM_CARROT_FIELD_ID,
+  FARM_CARROT_GROWTH_MS,
+  FARM_CARROT_HOLD_CAP,
+  FARM_CARROT_LEVEL_ONE_COST_CROWNS,
+  FARM_CARROT_MAX_MVP_LEVEL,
+  FARM_CARROT_YIELD,
+  FARM_INTERACTION_RANGE,
+  createInitialFarmState,
+  getFarmState,
+  harvestAllFarmCrops,
+  isFarmerNpc,
+  isLivestockKeeperNpc,
+  isPartyLeaderNearFarmer,
+  isPartyLeaderNearLivestockKeeper,
+  sanitizeFarmState,
+  settleFarmState,
+  upgradeFarmFieldToLevelOne,
+  type FarmCommandFailureReason,
+  type FarmHarvestAllResult,
+  type FarmUpgradeResult,
+} from "./farm";
+export {
+  TOWN_SERVICES_UNLOCK_QUEST_ID,
+  getTownServicesLockedMessage,
+  isTownServicesUnlocked,
+} from "./townServices";
 export {
   GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
   GUILD_NOTICE_BOARD_REWARD_CROWNS,

@@ -252,6 +252,9 @@ describe("debug maps", () => {
       "hub_house",
       "hub_cabin",
       "hub_tent",
+      "guild_tavern_building",
+      "farm_building",
+      "livestock_building",
     ]);
     expect(
       hub.visualObjects?.find(
@@ -341,6 +344,10 @@ describe("debug maps", () => {
       "bounty_board",
       "dog",
       "dog",
+      "guild_coordinator",
+      "tavern_keeper",
+      "farmer",
+      "livestock_keeper",
     ]);
 
     assertMapPlacements(HUB_TWO_MAP_ID, [
@@ -387,7 +394,7 @@ describe("debug maps", () => {
       visualObject.id.startsWith("hub-2-"),
     ) ?? [];
 
-    expect(structureVisuals).toHaveLength(8);
+    expect(structureVisuals).toHaveLength(11);
 
     for (const visualObject of structureVisuals) {
       const upperLeftVisualArea = {

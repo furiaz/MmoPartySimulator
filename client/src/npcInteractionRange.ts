@@ -1,10 +1,12 @@
 import type { NpcEntity } from "./game/types";
+import { FARM_INTERACTION_RANGE } from "./game/farm";
 import { GUILD_TAVERN_INTERACTION_RANGE } from "./game/guildTavern";
 
 export const questGiverInteractionRange = 2;
 export const merchantInteractionRange = 2;
 export const bankInteractionRange = 2;
 export const guildTavernInteractionRange = GUILD_TAVERN_INTERACTION_RANGE;
+export const farmInteractionRange = FARM_INTERACTION_RANGE;
 export const defaultNpcInteractionRange = 1.5;
 
 export function getNpcInteractionRange(
@@ -27,6 +29,10 @@ export function getNpcInteractionRange(
     npc.npcRole === "tavern_keeper"
   ) {
     return guildTavernInteractionRange;
+  }
+
+  if (npc.npcRole === "farmer" || npc.npcRole === "livestock_keeper") {
+    return farmInteractionRange;
   }
 
   return defaultNpcInteractionRange;

@@ -25,6 +25,7 @@ import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { sanitizeFarmState, settleFarmState } from "./farm";
 import { sanitizeInnKitchenState } from "./innKitchen";
 import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
 import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
@@ -190,14 +191,16 @@ export function restoreGameStateFromSave(value: unknown): RestoreSaveResult {
   const currentMapId = validation.save.state.currentMapId ?? "hub";
   const map = createDebugMapForQuestState(currentMapId, validation.save.state.quests);
 
+  const sanitizedState = sanitizeGameStateForSave({
+    ...validation.save.state,
+    currentMapId,
+    map,
+  });
+
   return {
     ok: true,
     savedAtMs: validation.save.savedAtMs,
-    state: sanitizeGameStateForSave({
-      ...validation.save.state,
-      currentMapId,
-      map,
-    }),
+    state: settleFarmState(sanitizedState, Date.now()),
   };
 }
 
@@ -479,6 +482,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     entities,
     restingCompanionsById,
   }, undefined, { settleHearthFire: false });
+  const farm = sanitizeFarmState(state.farm);
   const worldDiscovery = sanitizeWorldDiscoveryState(
     state.worldDiscovery,
     {
@@ -500,6 +504,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     guildSecondaryParties,
     innUpgrades,
     innKitchen,
+    farm,
     worldDiscovery,
     inventory: sanitizeObsoleteFoodFromInventory(
       sanitizePartyInventory(state.inventory),

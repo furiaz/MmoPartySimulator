@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDebugMap,
   HUB_MAP_ID,
@@ -21,6 +21,11 @@ import {
   createInitialGuildSecondaryPartiesState,
 } from "./guildSecondaryParties";
 import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
+import {
+  FARM_CARROT_GROWTH_MS,
+  FARM_CARROT_HOLD_CAP,
+  createInitialFarmState,
+} from "./farm";
 import {
   INN_KITCHEN_HOUSE_BREAD_RECIPE_ID,
   cookInnMealForCompanion,
@@ -50,6 +55,10 @@ import { addCurrencyToWalletState } from "./wallet";
 const NOW_MS = 1_000_000;
 
 describe("save game serialization", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("validates v1 saves and rejects malformed saves", () => {
     const state = createWildState("fighter");
     const save = createSavedGame(state, NOW_MS);
@@ -641,6 +650,7 @@ describe("save game serialization", () => {
     delete (save.state as Partial<GameState>).guildSecondaryParties;
     delete (save.state as Partial<GameState>).innUpgrades;
     delete (save.state as Partial<GameState>).innKitchen;
+    delete (save.state as Partial<GameState>).farm;
     delete (save.state as Partial<GameState>).worldDiscovery;
 
     const restored = restoreGameStateFromSave(save);
@@ -685,6 +695,7 @@ describe("save game serialization", () => {
       },
       autoCookFailuresByCompanionId: {},
     });
+    expect(restored.state.farm).toEqual(createInitialFarmState());
     expect(restored.state.worldDiscovery).toEqual({
       visitedMapIds: [],
       visitedSubzonesByMapId: {},
@@ -754,6 +765,41 @@ describe("save game serialization", () => {
         ingredientQuantitiesById: {},
       },
       autoCookFailuresByCompanionId: {},
+    });
+  });
+
+  it("persists Farm state and applies restore catch-up to the holding cap", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW_MS + FARM_CARROT_GROWTH_MS * 30);
+    const save = createSavedGame(
+      createTestGameState({
+        currentMapId: HUB_MAP_ID,
+        map: createDebugMap(HUB_MAP_ID),
+        farm: {
+          fieldsById: {
+            carrot_field: {
+              id: "carrot_field",
+              cropId: "carrot",
+              level: 1,
+              heldQuantity: 2,
+              lastGeneratedAtMs: NOW_MS,
+            },
+          },
+        },
+      }),
+      NOW_MS,
+    );
+
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.farm?.fieldsById.carrot_field).toMatchObject({
+      level: 1,
+      heldQuantity: FARM_CARROT_HOLD_CAP,
     });
   });
 });

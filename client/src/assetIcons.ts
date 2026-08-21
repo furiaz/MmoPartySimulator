@@ -16,6 +16,7 @@ const hubFloorAssetPath = "/assets/Generated/hub-floors";
 const hubCastleWallAssetPath = "/assets/Generated/hub-castle-walls";
 const hubStructureAssetPath = "/assets/Generated/hub-structures/256";
 const guildTavernAssetPath = "/assets/Generated/guild-tavern";
+const farmLivestockAssetPath = "/assets/Generated/farm-livestock";
 const teleportAssetPath = "/assets/Generated/teleports";
 const passageBlockerAssetPath = "/assets/Generated/passage-blockers";
 const slimewardDungeonAssetPath = "/assets/Generated/Dungeon Generation";
@@ -357,6 +358,8 @@ export const NPC_ICON_SRC: Partial<Record<NpcEntity["npcRole"], string>> = {
   smith: `${nowAssetPackPath}/smith.png`,
   guild_coordinator: `${guildTavernAssetPath}/guild-coordinator.png`,
   tavern_keeper: `${guildTavernAssetPath}/tavern-keeper.png`,
+  farmer: `${farmLivestockAssetPath}/farmer.png`,
+  livestock_keeper: `${farmLivestockAssetPath}/livestock-keeper.png`,
   bank_chest: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
   dog: `${nowAssetPackPath}/dog.png`,
   dungeon_chest_closed: `${slimewardDungeonAssetPath}/dungeon-chest-closed-64.png`,
@@ -392,6 +395,8 @@ export const MAP_VISUAL_OBJECT_SRC: Record<MapVisualObjectId, string> = {
   hub_cabin: `${hubStructureAssetPath}/hub_cabin.png`,
   hub_tent: `${hubStructureAssetPath}/hub_tent.png`,
   guild_tavern_building: `${guildTavernAssetPath}/guild-tavern-building.png`,
+  farm_building: `${farmLivestockAssetPath}/farm-building.png`,
+  livestock_building: `${farmLivestockAssetPath}/livestock-building.png`,
   guild_notice_board_new_quest_sign: `${guildTavernAssetPath}/notice-board-new-quest-sign.png`,
   hub_dock_shore_connector: `${hubStructureAssetPath}/hub_dock_shore_connector.png`,
   passage_gate_closed: `${passageBlockerAssetPath}/passage_gate_closed_edge_v2_100x350.png`,
@@ -400,6 +405,10 @@ export const MAP_VISUAL_OBJECT_SRC: Record<MapVisualObjectId, string> = {
   passage_blocker_repaired_column: `${passageBlockerAssetPath}/passage_blocker_repaired_column_100x350.png`,
   slime_covered_stone: `${slimewardDungeonAssetPath}/slime-covered-stone-64.png`,
   azure_slime_rock_cluster: `${slimewardDungeonAssetPath}/azure-slime-rock-cluster-128.png`,
+};
+
+export const FARM_CROP_ICON_SRC: Record<string, string> = {
+  carrot: `${farmLivestockAssetPath}/carrot.png`,
 };
 
 export const SKILL_VISUAL_ICON_SRC: Partial<Record<SkillId, string>> = {

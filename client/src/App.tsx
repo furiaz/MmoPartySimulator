@@ -64,6 +64,7 @@ import {
   debugResetSlimewardDungeon,
   debugResurrectEnemy,
   debugRestorePartyHealth,
+  debugTeleportToHub,
   debugToggleCompanionInfiniteHealth,
   debugToggleCompanionOneHunterClass,
   debugToggleSuperExp,
@@ -124,7 +125,10 @@ import {
   isBankChestNpc,
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
+  isTownServicesUnlocked,
   isCompanionHubEligibleForInnKitchen,
+  FARM_CARROT_FIELD_ID,
+  harvestAllFarmCrops,
   openGuildNoticeBoard,
   bulkCookInnMealsForCompanions,
   cookInnMealForCompanion,
@@ -141,6 +145,7 @@ import {
   purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
   purchaseGuildSecondaryPartyUpgrade,
+  upgradeFarmFieldToLevelOne,
   recruitGuildCandidate,
   rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
@@ -372,7 +377,8 @@ type NpcInteractionKind =
   | "quest_giver"
   | "smith"
   | "bank_chest"
-  | "guild_tavern";
+  | "guild_tavern"
+  | "farm_livestock";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -496,6 +502,8 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   smith: "Smith",
   guild_coordinator: "Guild Coordinator",
   tavern_keeper: "Inn Keeper",
+  farmer: "Farmer",
+  livestock_keeper: "Livestock",
   bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
@@ -616,6 +624,24 @@ function getGuildSecondaryPartyAssignmentFailureMessage(reason: string): string 
 }
 
 type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
+
+function getFarmFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_service":
+      return "Complete The Azure Trial to unlock town services.";
+    case "not_near_farmer":
+      return "Stand near the Farmer.";
+    case "insufficient_crowns":
+      return "Not enough Crowns.";
+    case "max_level":
+      return "Field is already maxed.";
+    case "nothing_to_harvest":
+      return "No crops to harvest.";
+    case "invalid_field":
+    default:
+      return "Farm action unavailable.";
+  }
+}
 
 function getWorldTravelTeleportFailureMessage(
   reason: WorldTravelTeleportFailureReason,
@@ -804,6 +830,10 @@ function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
     npc.npcRole === "tavern_keeper"
   ) {
     return "guild_tavern";
+  }
+
+  if (npc.npcRole === "farmer" || npc.npcRole === "livestock_keeper") {
+    return "farm_livestock";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -2667,6 +2697,8 @@ function App() {
     useState<string | null>(null);
   const [innKitchenResultMessage, setInnKitchenResultMessage] =
     useState<string | null>(null);
+  const [farmResultMessage, setFarmResultMessage] =
+    useState<string | null>(null);
   const [
     guildSecondaryPartyRedeemSummary,
     setGuildSecondaryPartyRedeemSummary,
@@ -3074,7 +3106,9 @@ function App() {
       : null;
   const activeBankCanManage =
     Boolean(activeBankChest) && isPartyLeaderNearBankChest(gameState);
-  const canUseGuildTavern = isPartyLeaderNearGuildTavern(gameState);
+  const canUseGuildTavern =
+    isTownServicesUnlocked(gameState) &&
+    isPartyLeaderNearGuildTavern(gameState);
   const activeMerchantLocked =
     Boolean(activeMerchant) && !isMerchantUnlockedForQuests(gameState);
   const activeQuestGiver =
@@ -3251,6 +3285,33 @@ function App() {
     void npc;
   }, []);
 
+  const openFarmLivestockInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setFarmResultMessage(null);
+    setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
+    setGuildSecondaryPartyResultMessage(null);
+    setInnKitchenResultMessage(null);
+    setFarmResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("farmLivestock");
+    void npc;
+  }, []);
+
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
     const interactionKind = getNpcInteractionKind(npc);
 
@@ -3276,9 +3337,15 @@ function App() {
 
     if (interactionKind === "guild_tavern") {
       openGuildTavernInteraction(npc);
+      return;
+    }
+
+    if (interactionKind === "farm_livestock") {
+      openFarmLivestockInteraction(npc);
     }
   }, [
     openBankChestInteraction,
+    openFarmLivestockInteraction,
     openGuildTavernInteraction,
     openMerchantInteraction,
     openQuestGiverInteraction,
@@ -4408,6 +4475,9 @@ function App() {
       setInnKitchenResultMessage(null);
       setGuildSecondaryPartyRedeemSummary(null);
     }
+    if (subpage !== "farmLivestock") {
+      setFarmResultMessage(null);
+    }
   }
 
   function recruitGuildCompanion(candidateId?: string) {
@@ -4921,6 +4991,40 @@ function App() {
     setGameState(cooked.state);
   }
 
+  function upgradeFarmCarrotFieldFromMenu() {
+    const upgraded = upgradeFarmFieldToLevelOne(
+      gameState,
+      FARM_CARROT_FIELD_ID,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Farm upgrade saved");
+      setFarmResultMessage("Carrot Field upgraded to Lv 1.");
+    } else {
+      setFarmResultMessage(getFarmFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
+  function harvestAllFarmCropsFromMenu() {
+    const harvested = harvestAllFarmCrops(gameState, currentTime);
+
+    if (harvested.ok) {
+      queueSaveAfterStateChange("Farm harvest saved");
+      setFarmResultMessage(
+        `Harvested ${harvested.harvestedByCropId.carrot} carrot${
+          harvested.harvestedByCropId.carrot === 1 ? "" : "s"
+        } to Pantry.`,
+      );
+    } else {
+      setFarmResultMessage(getFarmFailureMessage(harvested.reason));
+    }
+
+    setGameState(harvested.state);
+  }
+
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
     const crafting = craftRecipe(gameState, recipeId);
 
@@ -4965,6 +5069,18 @@ function App() {
     setSaveStatusMessage(
       getWorldTravelTeleportFailureMessage(teleport.result.reason),
     );
+  }
+
+  function debugTeleportToHubOne() {
+    queueSaveAfterStateChange("Debug hub teleport saved");
+    setSaveStatusMessage("Debug teleported to Harbor Union Bastion.");
+    setGameState((state) => debugTeleportToHub(state, HUB_MAP_ID));
+  }
+
+  function debugTeleportToHubTwo() {
+    queueSaveAfterStateChange("Debug hub teleport saved");
+    setSaveStatusMessage("Debug teleported to Forward Bastion.");
+    setGameState((state) => debugTeleportToHub(state, HUB_TWO_MAP_ID));
   }
 
   function openEquipmentManagementFromInventory() {
@@ -6062,6 +6178,7 @@ function App() {
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
               innKitchenResultMessage={innKitchenResultMessage}
+              farmResultMessage={farmResultMessage}
               guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
@@ -6108,6 +6225,8 @@ function App() {
               onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
               onCycleInnKitchenAutoCook={cycleInnKitchenAutoCookFromMenu}
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
+              onHarvestAllFarmCrops={harvestAllFarmCropsFromMenu}
+              onUpgradeFarmCarrotField={upgradeFarmCarrotFieldFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }
@@ -6210,6 +6329,12 @@ function App() {
                   </button>
                   <button onClick={turnInCurrentQuestForDebug}>
                     Turn In Current Quest
+                  </button>
+                  <button onClick={debugTeleportToHubOne}>
+                    Teleport Hub 1
+                  </button>
+                  <button onClick={debugTeleportToHubTwo}>
+                    Teleport Hub 2
                   </button>
                   <button onClick={killOneCompanion}>Kill One Companion</button>
                   <button onClick={forceSuperiorEnemy}>

@@ -3,6 +3,7 @@ import { QuestsPanel } from "./QuestPanels";
 import { WorldPanel } from "./WorldPanel";
 import { BankPanel } from "./BankPanel";
 import { GuildTavernPanel } from "./GuildTavernPanel";
+import { FarmLivestockPanel } from "./FarmLivestockPanel";
 import type {
   AtlasSubpage,
   GameMenuTab,
@@ -66,6 +67,7 @@ export function GameMenu({
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   innKitchenResultMessage,
+  farmResultMessage,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   highestCharacterLevelEver,
@@ -104,6 +106,8 @@ export function GameMenu({
   onSelectInnKitchenRecipe,
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
+  onHarvestAllFarmCrops,
+  onUpgradeFarmCarrotField,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -138,6 +142,7 @@ export function GameMenu({
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   innKitchenResultMessage?: string | null;
+  farmResultMessage?: string | null;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
@@ -205,6 +210,8 @@ export function GameMenu({
   ) => void;
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
+  onHarvestAllFarmCrops: () => void;
+  onUpgradeFarmCarrotField: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -225,6 +232,10 @@ export function GameMenu({
           : ""
       }${
         activeTab === "atlas" && activeAtlasSubpage === "guildTavern"
+          ? " guild-tavern-menu-panel"
+          : ""
+      }${
+        activeTab === "atlas" && activeAtlasSubpage === "farmLivestock"
           ? " guild-tavern-menu-panel"
           : ""
       }`}
@@ -331,6 +342,7 @@ export function GameMenu({
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
                   innKitchenResultMessage={innKitchenResultMessage}
+                  farmResultMessage={farmResultMessage}
                   guildSecondaryPartyRedeemSummary={
                     guildSecondaryPartyRedeemSummary
                   }
@@ -365,6 +377,8 @@ export function GameMenu({
                   onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
                   onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
                   onBulkCookInnMeals={onBulkCookInnMeals}
+                  onHarvestAllFarmCrops={onHarvestAllFarmCrops}
+                  onUpgradeFarmCarrotField={onUpgradeFarmCarrotField}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
                   }
@@ -403,6 +417,7 @@ function AtlasPanel({
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   innKitchenResultMessage,
+  farmResultMessage,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   gameState,
@@ -427,6 +442,8 @@ function AtlasPanel({
   onSelectInnKitchenRecipe,
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
+  onHarvestAllFarmCrops,
+  onUpgradeFarmCarrotField,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -439,6 +456,7 @@ function AtlasPanel({
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   innKitchenResultMessage?: string | null;
+  farmResultMessage?: string | null;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
@@ -478,6 +496,8 @@ function AtlasPanel({
   ) => void;
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
+  onHarvestAllFarmCrops: () => void;
+  onUpgradeFarmCarrotField: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
@@ -512,6 +532,13 @@ function AtlasPanel({
           type="button"
         >
           Guild & Inn
+        </button>
+        <button
+          className={activeSubpage === "farmLivestock" ? "active" : ""}
+          onClick={() => onSelectSubpage("farmLivestock")}
+          type="button"
+        >
+          Farm & Livestock
         </button>
         <button
           className={activeSubpage === "afkEstimate" ? "active" : ""}
@@ -574,6 +601,14 @@ function AtlasPanel({
           onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
           onBulkCookInnMeals={onBulkCookInnMeals}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
+        />
+      ) : activeSubpage === "farmLivestock" ? (
+        <FarmLivestockPanel
+          currentTime={currentTime}
+          farmResultMessage={farmResultMessage}
+          state={gameState}
+          onHarvestAll={onHarvestAllFarmCrops}
+          onUpgradeCarrotField={onUpgradeFarmCarrotField}
         />
       ) : (
         <AfkEstimatePanel state={gameState} />

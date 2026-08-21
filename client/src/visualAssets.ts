@@ -529,6 +529,22 @@ export const entityVisualAssets = {
       height: 132,
     },
   },
+  farmer: {
+    kind: "image",
+    src: NPC_ICON_SRC.farmer ?? "",
+    naturalSize: {
+      width: 88,
+      height: 132,
+    },
+  },
+  livestockKeeper: {
+    kind: "image",
+    src: NPC_ICON_SRC.livestock_keeper ?? "",
+    naturalSize: {
+      width: 77,
+      height: 132,
+    },
+  },
 } satisfies {
   beginnerCharacter: SpriteVisualAsset;
   testCharacter: SpriteVisualAsset;
@@ -543,6 +559,8 @@ export const entityVisualAssets = {
   classMentor: ImageVisualAsset;
   guildCoordinator: ImageVisualAsset;
   tavernKeeper: ImageVisualAsset;
+  farmer: ImageVisualAsset;
+  livestockKeeper: ImageVisualAsset;
 };
 
 export const mapTileVisualAssets = {
@@ -586,6 +604,14 @@ export function getEntityVisualAsset(
 
     if (entity.npcRole === "tavern_keeper") {
       return entityVisualAssets.tavernKeeper;
+    }
+
+    if (entity.npcRole === "farmer") {
+      return entityVisualAssets.farmer;
+    }
+
+    if (entity.npcRole === "livestock_keeper") {
+      return entityVisualAssets.livestockKeeper;
     }
 
     const npcIconSrc = NPC_ICON_SRC[entity.npcRole];

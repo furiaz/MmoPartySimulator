@@ -343,6 +343,13 @@ function getTelemetryEventKey(event: DebugTelemetryEvent): string {
       ? JSON.stringify(event.consumedCraftingItems)
       : "",
     event.crownCost ?? "",
+    event.farmFieldId ?? "",
+    event.farmCropId ?? "",
+    event.cropQuantityBefore ?? "",
+    event.cropQuantityAfter ?? "",
+    event.cropCapacity ?? "",
+    event.previousFarmFieldLevel ?? "",
+    event.nextFarmFieldLevel ?? "",
     event.inventoryFreeSlotsBefore ?? "",
     event.inventoryFreeSlotsAfter ?? "",
     event.eligibleItemCount ?? "",
