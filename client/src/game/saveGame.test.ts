@@ -22,8 +22,8 @@ import {
 } from "./guildSecondaryParties";
 import { createInitialGuildUpgradesState } from "./guildRecruitUpgrades";
 import {
+  FARM_CARROT_BASE_HOLD_CAP,
   FARM_CARROT_GROWTH_MS,
-  FARM_CARROT_HOLD_CAP,
   createInitialFarmState,
 } from "./farm";
 import {
@@ -780,7 +780,11 @@ describe("save game serialization", () => {
             carrot_field: {
               id: "carrot_field",
               cropId: "carrot",
-              level: 1,
+              upgradeLevels: {
+                speed: 1,
+                cap: 1,
+                fertilizer: 0,
+              },
               heldQuantity: 2,
               lastGeneratedAtMs: NOW_MS,
             },
@@ -798,8 +802,12 @@ describe("save game serialization", () => {
     }
 
     expect(restored.state.farm?.fieldsById.carrot_field).toMatchObject({
-      level: 1,
-      heldQuantity: FARM_CARROT_HOLD_CAP,
+      upgradeLevels: {
+        speed: 1,
+        cap: 1,
+        fertilizer: 0,
+      },
+      heldQuantity: FARM_CARROT_BASE_HOLD_CAP,
     });
   });
 });

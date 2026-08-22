@@ -39,6 +39,7 @@ import type {
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
+  FarmFieldUpgradeId,
   InnRoomUpgradeId,
 } from "./game";
 
@@ -107,7 +108,7 @@ export function GameMenu({
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
   onHarvestAllFarmCrops,
-  onUpgradeFarmCarrotField,
+  onPurchaseFarmUpgrade,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -211,7 +212,7 @@ export function GameMenu({
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onHarvestAllFarmCrops: () => void;
-  onUpgradeFarmCarrotField: () => void;
+  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -378,7 +379,7 @@ export function GameMenu({
                   onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
                   onBulkCookInnMeals={onBulkCookInnMeals}
                   onHarvestAllFarmCrops={onHarvestAllFarmCrops}
-                  onUpgradeFarmCarrotField={onUpgradeFarmCarrotField}
+                  onPurchaseFarmUpgrade={onPurchaseFarmUpgrade}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
                   }
@@ -443,7 +444,7 @@ function AtlasPanel({
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
   onHarvestAllFarmCrops,
-  onUpgradeFarmCarrotField,
+  onPurchaseFarmUpgrade,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -497,7 +498,7 @@ function AtlasPanel({
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onHarvestAllFarmCrops: () => void;
-  onUpgradeFarmCarrotField: () => void;
+  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
@@ -608,7 +609,7 @@ function AtlasPanel({
           farmResultMessage={farmResultMessage}
           state={gameState}
           onHarvestAll={onHarvestAllFarmCrops}
-          onUpgradeCarrotField={onUpgradeFarmCarrotField}
+          onPurchaseFarmUpgrade={onPurchaseFarmUpgrade}
         />
       ) : (
         <AfkEstimatePanel state={gameState} />

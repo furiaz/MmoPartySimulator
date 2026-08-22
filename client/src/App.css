@@ -1557,11 +1557,41 @@
   background: rgba(9, 19, 24, 0.56);
 }
 
+.farm-crop-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.farm-crop-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-crop-row-main,
+.farm-crop-row-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 160px);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
 .farm-crop-heading {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
+  min-width: 0;
+}
+
+.farm-crop-heading h3 {
+  margin: 0;
 }
 
 .farm-crop-heading span {
@@ -1576,35 +1606,30 @@
   object-fit: contain;
 }
 
-.farm-field-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.farm-crop-metrics {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 0;
+  min-width: 0;
 }
 
-.farm-field-stats div {
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid #334a50;
+.farm-crop-metrics span,
+.farm-crop-row-stats strong {
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  padding: 6px 8px;
+  border: 1px solid #263c42;
   border-radius: 6px;
-  background: rgba(5, 11, 14, 0.42);
+  background: rgba(8, 16, 20, 0.58);
+  color: #dcebed;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
 }
 
-.farm-field-stats dt {
-  color: #92a8ad;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.farm-field-stats dd {
-  min-width: 0;
-  margin: 0;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-  overflow-wrap: anywhere;
+.farm-crop-row-stats strong {
+  justify-self: stretch;
 }
 
 .farm-actions button {
@@ -1628,6 +1653,94 @@
   color: #92a8ad;
   font-size: 12px;
   font-weight: 800;
+}
+
+.overlay-panel-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.overlay-panel {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 520px);
+  max-height: min(86vh, 720px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid #3e5f66;
+  border-radius: 6px;
+  background: #0b171c;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+.farm-upgrade-overlay-heading {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.farm-upgrade-overlay-heading h3 {
+  margin: 0;
+}
+
+.farm-upgrade-row-list {
+  display: grid;
+  gap: 8px;
+}
+
+.farm-upgrade-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(138px, 170px);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-upgrade-row > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.farm-upgrade-row strong,
+.farm-upgrade-row span,
+.farm-upgrade-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.farm-upgrade-row strong {
+  color: #f3df93;
+}
+
+.farm-upgrade-row span,
+.farm-upgrade-row small {
+  color: #9fb6bb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.farm-upgrade-row small {
+  grid-column: 1 / -1;
+}
+
+.farm-upgrade-row button {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.farm-upgrade-overlay-footer {
+  display: flex;
+  justify-content: center;
 }
 
 .guild-recruit-details > button {

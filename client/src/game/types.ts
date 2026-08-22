@@ -2270,11 +2270,18 @@ export type DebugTelemetryEvent = {
   crownCost?: number;
   farmFieldId?: FarmFieldId;
   farmCropId?: FarmCropId;
+  farmUpgradeId?: FarmFieldUpgradeId;
   cropQuantityBefore?: number;
   cropQuantityAfter?: number;
   cropCapacity?: number;
   previousFarmFieldLevel?: number;
   nextFarmFieldLevel?: number;
+  previousFarmUpgradeLevel?: number;
+  nextFarmUpgradeLevel?: number;
+  farmSpeedMultiplier?: number;
+  farmFertilizerDoubleCropChancePercent?: number;
+  farmGeneratedQuantity?: number;
+  farmDoubleCropRolls?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2789,10 +2796,14 @@ export type FarmCropId = "carrot";
 
 export type FarmFieldId = "carrot_field";
 
+export type FarmFieldUpgradeId = "speed" | "cap" | "fertilizer";
+
+export type FarmFieldUpgradeLevels = Record<FarmFieldUpgradeId, number>;
+
 export type FarmFieldState = {
   id: FarmFieldId;
   cropId: FarmCropId;
-  level: number;
+  upgradeLevels: FarmFieldUpgradeLevels;
   heldQuantity: number;
   lastGeneratedAtMs: number;
 };

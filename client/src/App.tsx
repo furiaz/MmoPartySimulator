@@ -145,7 +145,7 @@ import {
   purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
   purchaseGuildSecondaryPartyUpgrade,
-  upgradeFarmFieldToLevelOne,
+  purchaseFarmFieldUpgrade,
   recruitGuildCandidate,
   rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
@@ -187,6 +187,7 @@ import {
   type CompanionAoeChannelState,
   type CraftingFailureReason,
   type CraftingRecipeId,
+  type FarmFieldUpgradeId,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
   type ConsumableBehaviorUpdate,
@@ -625,6 +626,19 @@ function getGuildSecondaryPartyAssignmentFailureMessage(reason: string): string 
 
 type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
 
+function getFarmUpgradeResultLabel(upgradeId: FarmFieldUpgradeId): string {
+  switch (upgradeId) {
+    case "speed":
+      return "Faster Generation";
+    case "cap":
+      return "Harvest Cap";
+    case "fertilizer":
+      return "Fertilizer";
+    default:
+      return "Upgrade";
+  }
+}
+
 function getFarmFailureMessage(reason: string): string {
   switch (reason) {
     case "locked_service":
@@ -637,6 +651,8 @@ function getFarmFailureMessage(reason: string): string {
       return "Field is already maxed.";
     case "nothing_to_harvest":
       return "No crops to harvest.";
+    case "invalid_upgrade":
+      return "Farm upgrade unavailable.";
     case "invalid_field":
     default:
       return "Farm action unavailable.";
@@ -4991,16 +5007,19 @@ function App() {
     setGameState(cooked.state);
   }
 
-  function upgradeFarmCarrotFieldFromMenu() {
-    const upgraded = upgradeFarmFieldToLevelOne(
+  function purchaseFarmUpgradeFromMenu(upgradeId: FarmFieldUpgradeId) {
+    const upgraded = purchaseFarmFieldUpgrade(
       gameState,
       FARM_CARROT_FIELD_ID,
+      upgradeId,
       currentTime,
     );
 
     if (upgraded.ok) {
       queueSaveAfterStateChange("Farm upgrade saved");
-      setFarmResultMessage("Carrot Field upgraded to Lv 1.");
+      setFarmResultMessage(
+        `Carrots ${getFarmUpgradeResultLabel(upgraded.upgradeId)} upgraded to Lv ${upgraded.nextLevel}.`,
+      );
     } else {
       setFarmResultMessage(getFarmFailureMessage(upgraded.reason));
     }
@@ -6226,7 +6245,7 @@ function App() {
               onCycleInnKitchenAutoCook={cycleInnKitchenAutoCookFromMenu}
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
               onHarvestAllFarmCrops={harvestAllFarmCropsFromMenu}
-              onUpgradeFarmCarrotField={upgradeFarmCarrotFieldFromMenu}
+              onPurchaseFarmUpgrade={purchaseFarmUpgradeFromMenu}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }

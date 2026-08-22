@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { FARM_CROP_ICON_SRC } from "./assetIcons";
 import {
-  FARM_CARROT_FIELD_ID,
   getTownServicesLockedMessage,
+  type FarmFieldUpgradeId,
   type GameState,
 } from "./game";
-import { getFarmDisplay } from "./farmPresentation";
+import { getFarmDisplay, type FarmFieldDisplay } from "./farmPresentation";
+import { OverlayPanel } from "./OverlayPanel";
 
 type FarmLivestockPanelProps = {
   currentTime: number;
   farmResultMessage?: string | null;
   state: GameState;
   onHarvestAll: () => void;
-  onUpgradeCarrotField: () => void;
+  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
 };
 
 type FarmLivestockSection = "farm" | "livestock";
@@ -22,16 +23,25 @@ export function FarmLivestockPanel({
   farmResultMessage,
   state,
   onHarvestAll,
-  onUpgradeCarrotField,
+  onPurchaseFarmUpgrade,
 }: FarmLivestockPanelProps) {
   const display = getFarmDisplay(state, currentTime);
   const lockedMessage = getTownServicesLockedMessage(state);
   const field = display.field;
   const [activeSection, setActiveSection] =
     useState<FarmLivestockSection>("farm");
+  const [selectedUpgradeFieldId, setSelectedUpgradeFieldId] = useState<
+    FarmFieldDisplay["fieldId"] | null
+  >(null);
+  const selectedUpgradeField =
+    display.fields.find((farmField) => farmField.fieldId === selectedUpgradeFieldId) ??
+    null;
 
   return (
-    <section className="guild-tavern-panel farm-livestock-panel" aria-label="Farm and Livestock">
+    <section
+      aria-label="Farm and Livestock"
+      className="guild-tavern-panel farm-livestock-panel"
+    >
       <div className="guild-tavern-header">
         <div>
           <h2>Farm & Livestock</h2>
@@ -43,12 +53,12 @@ export function FarmLivestockPanel({
             <dd>{display.crownBalance.toLocaleString()}</dd>
           </div>
           <div>
-            <dt>Farm</dt>
-            <dd>{display.isNearFarmer ? "Near" : "Away"}</dd>
+            <dt>Crops/hr</dt>
+            <dd>{display.totalCropsPerHourText}</dd>
           </div>
           <div>
-            <dt>Livestock</dt>
-            <dd>{display.isNearLivestockKeeper ? "Near" : "Away"}</dd>
+            <dt>Livestock/hr</dt>
+            <dd>{display.livestockProductionPerHourText}</dd>
           </div>
         </dl>
       </div>
@@ -61,7 +71,11 @@ export function FarmLivestockPanel({
         <p className="guild-result-message">{farmResultMessage}</p>
       ) : null}
 
-      <div className="guild-tavern-section-nav" role="tablist" aria-label="Farm and Livestock sections">
+      <div
+        aria-label="Farm and Livestock sections"
+        className="guild-tavern-section-nav"
+        role="tablist"
+      >
         <button
           aria-selected={activeSection === "farm"}
           className={activeSection === "farm" ? "active" : ""}
@@ -85,102 +99,187 @@ export function FarmLivestockPanel({
       </div>
 
       {activeSection === "farm" ? (
-        <div className="guild-tavern-service-actions farm-actions">
-          <button
-            disabled={!field.canHarvest}
-            onClick={onHarvestAll}
-            type="button"
-          >
-            <span>Harvest All</span>
-            <small>{getFarmHarvestButtonStatusText(field)}</small>
-          </button>
-        </div>
-      ) : null}
-
-      {activeSection === "farm" ? (
-        <section className="guild-tavern-section farm-field-card">
-          <div className="guild-roster-topline">
-            <div>
-              <span className="guild-recruit-kicker">Farm</span>
-              <h3>Fields</h3>
-            </div>
-          </div>
-          {!lockedMessage && !display.isNearFarmer ? (
-            <p className="guild-requires-service">
-              Stand near the Farmer to upgrade fields or harvest crops. You can
-              browse from afar, but actions require proximity.
-            </p>
-          ) : null}
-          <div className="farm-crop-heading">
-            <img
-              alt=""
-              className="farm-crop-icon"
-              src={FARM_CROP_ICON_SRC[field.cropId]}
-            />
-            <div>
-              <h3>{field.cropName}</h3>
-              <span>{field.productionText}</span>
-            </div>
-          </div>
-
-          <dl className="farm-field-stats">
-            <div>
-              <dt>Field</dt>
-              <dd>{FARM_CARROT_FIELD_ID}</dd>
-            </div>
-            <div>
-              <dt>Level</dt>
-              <dd>
-                {field.level}/{field.maxLevel}
-              </dd>
-            </div>
-            <div>
-              <dt>Holding</dt>
-              <dd>{field.holdText}</dd>
-            </div>
-            <div>
-              <dt>Yield</dt>
-              <dd>1 / 20m</dd>
-            </div>
-          </dl>
-
+        <>
           <div className="guild-tavern-service-actions farm-actions">
-            <button
-              disabled={!field.canUpgrade}
-              onClick={onUpgradeCarrotField}
-              type="button"
-            >
-              <span>Upgrade</span>
-              <small>{getFarmUpgradeButtonStatusText(field)}</small>
+            <button disabled={!field.canHarvest} onClick={onHarvestAll} type="button">
+              <span>Harvest All</span>
+              <small>{getFarmHarvestButtonStatusText(field)}</small>
+            </button>
+            <button disabled type="button">
+              <span>Upgrade Building</span>
+              <small>Coming soon</small>
             </button>
           </div>
-        </section>
+
+          <section className="guild-tavern-section farm-field-card">
+            <div className="guild-roster-topline">
+              <div>
+                <span className="guild-recruit-kicker">Farm</span>
+                <h3>Fields</h3>
+              </div>
+            </div>
+            {!lockedMessage && !display.isNearFarmer ? (
+              <p className="guild-requires-service">
+                Stand near the Farmer to upgrade fields or harvest crops. You
+                can browse from afar, but actions require proximity.
+              </p>
+            ) : null}
+            <div className="farm-crop-list">
+              {display.fields.map((farmField) => (
+                <FarmCropRow
+                  key={farmField.fieldId}
+                  field={farmField}
+                  onOpenUpgrades={() => setSelectedUpgradeFieldId(farmField.fieldId)}
+                />
+              ))}
+            </div>
+          </section>
+        </>
       ) : (
         <section className="guild-tavern-section farm-livestock-placeholder">
+          {!lockedMessage && !display.isNearLivestockKeeper ? (
+            <p className="guild-requires-service">
+              Stand near Livestock to manage future Livestock actions. You can
+              browse from afar, but actions will require proximity.
+            </p>
+          ) : null}
           <h3>Livestock</h3>
           <p>Locked for a later work order.</p>
         </section>
       )}
+
+      {selectedUpgradeField ? (
+        <OverlayPanel
+          ariaLabel={`${selectedUpgradeField.cropName} upgrades`}
+          className="farm-upgrade-overlay"
+          onClose={() => setSelectedUpgradeFieldId(null)}
+        >
+          <FarmUpgradeOverlayContent
+            field={selectedUpgradeField}
+            isNearFarmer={display.isNearFarmer}
+            isUnlocked={display.isUnlocked}
+            lockedMessage={lockedMessage}
+            onClose={() => setSelectedUpgradeFieldId(null)}
+            onPurchase={onPurchaseFarmUpgrade}
+          />
+        </OverlayPanel>
+      ) : null}
     </section>
   );
 }
 
-function getFarmHarvestButtonStatusText(
-  field: ReturnType<typeof getFarmDisplay>["field"],
-): string {
+function FarmCropRow({
+  field,
+  onOpenUpgrades,
+}: {
+  field: FarmFieldDisplay;
+  onOpenUpgrades: () => void;
+}) {
+  return (
+    <article className="farm-crop-row">
+      <div className="farm-crop-row-main">
+        <div className="farm-crop-heading">
+          <img
+            alt=""
+            className="farm-crop-icon"
+            src={FARM_CROP_ICON_SRC[field.cropId]}
+          />
+          <div>
+            <h3>{field.cropName}</h3>
+            <span>{field.productionText}</span>
+          </div>
+        </div>
+        <button onClick={onOpenUpgrades} type="button">
+          Upgrades
+        </button>
+      </div>
+      <div className="farm-crop-row-stats">
+        <div className="farm-crop-metrics">
+          <span title={field.speedTooltip}>Speed {field.speedText}</span>
+          <span title={field.multiCropTooltip}>
+            Multi crop {field.multiCropText}
+          </span>
+          <span title={field.generationPerHourTooltip}>
+            Gen/hr {field.generationPerHourText}
+          </span>
+        </div>
+        <strong title={field.holdingTooltip}>{field.holdText}</strong>
+      </div>
+    </article>
+  );
+}
+
+function FarmUpgradeOverlayContent({
+  field,
+  isNearFarmer,
+  isUnlocked,
+  lockedMessage,
+  onClose,
+  onPurchase,
+}: {
+  field: FarmFieldDisplay;
+  isNearFarmer: boolean;
+  isUnlocked: boolean;
+  lockedMessage: string | null;
+  onClose: () => void;
+  onPurchase: (upgradeId: FarmFieldUpgradeId) => void;
+}) {
+  return (
+    <>
+      <div className="farm-upgrade-overlay-heading">
+        <img
+          alt=""
+          className="farm-crop-icon"
+          src={FARM_CROP_ICON_SRC[field.cropId]}
+        />
+        <h3>{field.cropName}</h3>
+      </div>
+
+      {lockedMessage ? (
+        <p className="guild-requires-service">{lockedMessage}</p>
+      ) : !isNearFarmer && isUnlocked ? (
+        <p className="guild-requires-service">
+          Stand near the Farmer to purchase upgrades.
+        </p>
+      ) : null}
+
+      <div className="farm-upgrade-row-list">
+        {field.upgrades.map((upgrade) => (
+          <div className="farm-upgrade-row" key={upgrade.id}>
+            <div>
+              <strong>{upgrade.displayName}</strong>
+              <span>
+                Lv {upgrade.level}/{upgrade.maxLevel}
+              </span>
+            </div>
+            <small>
+              {upgrade.currentEffectText}
+              {upgrade.nextEffectText ? ` -> ${upgrade.nextEffectText}` : ""}
+            </small>
+            <button
+              disabled={!upgrade.canPurchase}
+              onClick={() => onPurchase(upgrade.id)}
+              type="button"
+            >
+              {upgrade.actionText}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="farm-upgrade-overlay-footer">
+        <button onClick={onClose} type="button">
+          Close
+        </button>
+      </div>
+    </>
+  );
+}
+
+function getFarmHarvestButtonStatusText(field: FarmFieldDisplay): string {
   return field.harvestActionText === "Requires proximity"
     ? field.heldQuantity > 0
       ? field.holdText
       : "Nothing held"
     : field.harvestActionText;
-}
-
-function getFarmUpgradeButtonStatusText(
-  field: ReturnType<typeof getFarmDisplay>["field"],
-): string {
-  return field.upgradeActionText === "Requires proximity"
-    ? field.level >= field.maxLevel
-      ? "Max level"
-      : `${field.upgradeCostCrowns} Crowns`
-    : field.upgradeActionText;
 }
