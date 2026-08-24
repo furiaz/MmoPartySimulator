@@ -37,6 +37,27 @@ describe("farm presentation", () => {
     });
   });
 
+  it("shows locked crop rows only when the All filter is selected", () => {
+    const unlocked = getFarmDisplay(createTestGameState(), 1_000, "unlocked");
+    const all = getFarmDisplay(createTestGameState(), 1_000, "all");
+
+    expect(unlocked.fields.map((field) => field.cropId)).toEqual(["carrot"]);
+    expect(all.fields.map((field) => field.cropId)).toEqual([
+      "carrot",
+      "potato",
+      "moonleaf",
+      "bittercap_mushroom",
+      "ashpepper",
+    ]);
+    expect(all.fields[1]).toMatchObject({
+      cropId: "potato",
+      isUnlocked: false,
+      productionText: "Undiscovered",
+      sourceHint: "Merchant seed purchase",
+      upgrades: [],
+    });
+  });
+
   it("shows active crop production, cap, and expected crop rate", () => {
     const state = createTestGameState({
       farm: {

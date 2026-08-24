@@ -1563,6 +1563,28 @@
   min-width: 0;
 }
 
+.farm-crop-filter {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  gap: 4px;
+  align-items: center;
+}
+
+.farm-crop-filter button {
+  min-height: 28px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.72);
+  color: #dcebed;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.farm-crop-filter button.active {
+  border-color: #b7944b;
+  color: #ffe3a0;
+}
+
 .farm-crop-row {
   display: grid;
   gap: 8px;
@@ -1571,6 +1593,10 @@
   border: 1px solid #334a50;
   border-radius: 6px;
   background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-crop-row.locked {
+  opacity: 0.78;
 }
 
 .farm-crop-row-main,
@@ -1604,6 +1630,10 @@
   width: 56px;
   height: 56px;
   object-fit: contain;
+}
+
+.farm-crop-icon.locked {
+  filter: grayscale(1) brightness(0.72);
 }
 
 .farm-crop-metrics {

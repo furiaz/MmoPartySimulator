@@ -2,10 +2,15 @@ import { useState } from "react";
 import { FARM_CROP_ICON_SRC } from "./assetIcons";
 import {
   getTownServicesLockedMessage,
+  type FarmFieldId,
   type FarmFieldUpgradeId,
   type GameState,
 } from "./game";
-import { getFarmDisplay, type FarmFieldDisplay } from "./farmPresentation";
+import {
+  getFarmDisplay,
+  type FarmCropFilter,
+  type FarmFieldDisplay,
+} from "./farmPresentation";
 import { OverlayPanel } from "./OverlayPanel";
 
 type FarmLivestockPanelProps = {
@@ -13,7 +18,10 @@ type FarmLivestockPanelProps = {
   farmResultMessage?: string | null;
   state: GameState;
   onHarvestAll: () => void;
-  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
+  onPurchaseFarmUpgrade: (
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) => void;
 };
 
 type FarmLivestockSection = "farm" | "livestock";
@@ -25,7 +33,8 @@ export function FarmLivestockPanel({
   onHarvestAll,
   onPurchaseFarmUpgrade,
 }: FarmLivestockPanelProps) {
-  const display = getFarmDisplay(state, currentTime);
+  const [cropFilter, setCropFilter] = useState<FarmCropFilter>("unlocked");
+  const display = getFarmDisplay(state, currentTime, cropFilter);
   const lockedMessage = getTownServicesLockedMessage(state);
   const field = display.field;
   const [activeSection, setActiveSection] =
@@ -84,7 +93,9 @@ export function FarmLivestockPanel({
           type="button"
         >
           <strong>Farm</strong>
-          <small>{field.holdText}</small>
+          <small>
+            Crops {display.totalHeldQuantity}/{display.totalHoldCap}
+          </small>
         </button>
         <button
           aria-selected={activeSection === "livestock"}
@@ -116,6 +127,22 @@ export function FarmLivestockPanel({
               <div>
                 <span className="guild-recruit-kicker">Farm</span>
                 <h3>Fields</h3>
+              </div>
+              <div className="farm-crop-filter" aria-label="Farm crop filter">
+                <button
+                  className={cropFilter === "unlocked" ? "active" : ""}
+                  onClick={() => setCropFilter("unlocked")}
+                  type="button"
+                >
+                  Unlocked
+                </button>
+                <button
+                  className={cropFilter === "all" ? "active" : ""}
+                  onClick={() => setCropFilter("all")}
+                  type="button"
+                >
+                  All
+                </button>
               </div>
             </div>
             {!lockedMessage && !display.isNearFarmer ? (
@@ -175,6 +202,31 @@ function FarmCropRow({
   field: FarmFieldDisplay;
   onOpenUpgrades: () => void;
 }) {
+  if (!field.isUnlocked) {
+    return (
+      <article className="farm-crop-row locked">
+        <div className="farm-crop-row-main">
+          <div className="farm-crop-heading">
+            <img
+              alt=""
+              className="farm-crop-icon locked"
+              src={FARM_CROP_ICON_SRC.locked}
+            />
+            <div>
+              <h3>{field.cropName}</h3>
+              <span>{field.productionText}</span>
+            </div>
+          </div>
+        </div>
+        <div className="farm-crop-row-stats">
+          <div className="farm-crop-metrics">
+            <span>{field.sourceHint}</span>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article className="farm-crop-row">
       <div className="farm-crop-row-main">
@@ -182,7 +234,7 @@ function FarmCropRow({
           <img
             alt=""
             className="farm-crop-icon"
-            src={FARM_CROP_ICON_SRC[field.cropId]}
+            src={FARM_CROP_ICON_SRC[field.cropId] ?? FARM_CROP_ICON_SRC.locked}
           />
           <div>
             <h3>{field.cropName}</h3>
@@ -222,15 +274,15 @@ function FarmUpgradeOverlayContent({
   isUnlocked: boolean;
   lockedMessage: string | null;
   onClose: () => void;
-  onPurchase: (upgradeId: FarmFieldUpgradeId) => void;
+  onPurchase: (fieldId: FarmFieldId, upgradeId: FarmFieldUpgradeId) => void;
 }) {
   return (
     <>
       <div className="farm-upgrade-overlay-heading">
-        <img
+          <img
           alt=""
           className="farm-crop-icon"
-          src={FARM_CROP_ICON_SRC[field.cropId]}
+          src={FARM_CROP_ICON_SRC[field.cropId] ?? FARM_CROP_ICON_SRC.locked}
         />
         <h3>{field.cropName}</h3>
       </div>
@@ -258,7 +310,7 @@ function FarmUpgradeOverlayContent({
             </small>
             <button
               disabled={!upgrade.canPurchase}
-              onClick={() => onPurchase(upgrade.id)}
+              onClick={() => onPurchase(field.fieldId, upgrade.id)}
               type="button"
             >
               {upgrade.actionText}

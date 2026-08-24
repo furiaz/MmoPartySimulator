@@ -1,16 +1,28 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { sanitizeInnKitchenState } from "./innKitchen";
+import {
+  awardKeyItemIfMissing,
+  getKeyItemDefinition,
+  FARM_ASHPEPPER_SEED_KEY_ITEM_ID,
+  FARM_BITTERCAP_MUSHROOM_SEED_KEY_ITEM_ID,
+  FARM_MOONLEAF_SEED_KEY_ITEM_ID,
+  FARM_POTATO_SEED_KEY_ITEM_ID,
+} from "./keyItems";
+import { queueUnlockNewsBroadcast } from "./newsBroadcast";
 import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
 import type { GameState } from "./state";
 import type {
+  Enemy,
   FarmCropId,
   FarmFieldId,
   FarmFieldState,
   FarmFieldUpgradeId,
   FarmFieldUpgradeLevels,
   FarmState,
+  KeyItemId,
   NpcEntity,
+  ResourceEntity,
 } from "./types";
 import { isTownServicesUnlocked } from "./townServices";
 import {
@@ -20,10 +32,22 @@ import {
 
 export const FARM_INTERACTION_RANGE = 4;
 export const FARM_CARROT_CROP_ID: FarmCropId = "carrot";
+export const FARM_POTATO_CROP_ID: FarmCropId = "potato";
+export const FARM_MOONLEAF_CROP_ID: FarmCropId = "moonleaf";
+export const FARM_BITTERCAP_MUSHROOM_CROP_ID: FarmCropId =
+  "bittercap_mushroom";
+export const FARM_ASHPEPPER_CROP_ID: FarmCropId = "ashpepper";
 export const FARM_CARROT_FIELD_ID: FarmFieldId = "carrot_field";
+export const FARM_POTATO_FIELD_ID: FarmFieldId = "potato_field";
+export const FARM_MOONLEAF_FIELD_ID: FarmFieldId = "moonleaf_field";
+export const FARM_BITTERCAP_MUSHROOM_FIELD_ID: FarmFieldId =
+  "bittercap_mushroom_field";
+export const FARM_ASHPEPPER_FIELD_ID: FarmFieldId = "ashpepper_field";
 export const FARM_CARROT_GROWTH_MS = 20 * 60 * 1000;
 export const FARM_CARROT_YIELD = 1;
 export const FARM_CARROT_BASE_HOLD_CAP = 20;
+export const FARM_SEED_UNLOCK_CHANCE = 0.1;
+export const FARM_POTATO_SEED_PRICE_CROWNS = 100;
 export const FARM_FIELD_UPGRADE_IDS: FarmFieldUpgradeId[] = [
   "speed",
   "cap",
@@ -35,6 +59,89 @@ export const FARM_FERTILIZER_MAX_LEVEL = 3;
 export const FARM_SPEED_BONUS_PER_LEVEL_AFTER_BASE = 0.05;
 export const FARM_CAP_BONUS_PER_LEVEL_AFTER_BASE = 0.2;
 export const FARM_FERTILIZER_DOUBLE_CROP_CHANCE_PERCENT_PER_LEVEL = 1;
+
+export type FarmCropUnlockSource =
+  | "base"
+  | "merchant"
+  | "herb_gathering"
+  | "wood_gathering"
+  | "ash_wisp_defeat";
+
+export type FarmCropDefinition = {
+  id: FarmCropId;
+  fieldId: FarmFieldId;
+  displayName: string;
+  singularName: string;
+  seedKeyItemId: KeyItemId | null;
+  sourceHint: string;
+  unlockSource: FarmCropUnlockSource;
+  growthMs: number;
+  yieldQuantity: number;
+  baseHoldCap: number;
+};
+
+export const FARM_CROP_DEFINITIONS: FarmCropDefinition[] = [
+  {
+    id: FARM_CARROT_CROP_ID,
+    fieldId: FARM_CARROT_FIELD_ID,
+    displayName: "Carrots",
+    singularName: "Carrot",
+    seedKeyItemId: null,
+    sourceHint: "Base crop",
+    unlockSource: "base",
+    growthMs: FARM_CARROT_GROWTH_MS,
+    yieldQuantity: FARM_CARROT_YIELD,
+    baseHoldCap: FARM_CARROT_BASE_HOLD_CAP,
+  },
+  {
+    id: FARM_POTATO_CROP_ID,
+    fieldId: FARM_POTATO_FIELD_ID,
+    displayName: "Potatoes",
+    singularName: "Potato",
+    seedKeyItemId: FARM_POTATO_SEED_KEY_ITEM_ID,
+    sourceHint: "Merchant seed purchase",
+    unlockSource: "merchant",
+    growthMs: FARM_CARROT_GROWTH_MS,
+    yieldQuantity: FARM_CARROT_YIELD,
+    baseHoldCap: FARM_CARROT_BASE_HOLD_CAP,
+  },
+  {
+    id: FARM_MOONLEAF_CROP_ID,
+    fieldId: FARM_MOONLEAF_FIELD_ID,
+    displayName: "Moonleaf",
+    singularName: "Moonleaf",
+    seedKeyItemId: FARM_MOONLEAF_SEED_KEY_ITEM_ID,
+    sourceHint: "Rare find from T1 herb gathering",
+    unlockSource: "herb_gathering",
+    growthMs: FARM_CARROT_GROWTH_MS,
+    yieldQuantity: FARM_CARROT_YIELD,
+    baseHoldCap: FARM_CARROT_BASE_HOLD_CAP,
+  },
+  {
+    id: FARM_BITTERCAP_MUSHROOM_CROP_ID,
+    fieldId: FARM_BITTERCAP_MUSHROOM_FIELD_ID,
+    displayName: "Bittercap Mushrooms",
+    singularName: "Bittercap Mushroom",
+    seedKeyItemId: FARM_BITTERCAP_MUSHROOM_SEED_KEY_ITEM_ID,
+    sourceHint: "Rare find from T1 wood gathering",
+    unlockSource: "wood_gathering",
+    growthMs: FARM_CARROT_GROWTH_MS,
+    yieldQuantity: FARM_CARROT_YIELD,
+    baseHoldCap: FARM_CARROT_BASE_HOLD_CAP,
+  },
+  {
+    id: FARM_ASHPEPPER_CROP_ID,
+    fieldId: FARM_ASHPEPPER_FIELD_ID,
+    displayName: "Ashpeppers",
+    singularName: "Ashpepper",
+    seedKeyItemId: FARM_ASHPEPPER_SEED_KEY_ITEM_ID,
+    sourceHint: "Rare find from Ash Wisp defeats",
+    unlockSource: "ash_wisp_defeat",
+    growthMs: FARM_CARROT_GROWTH_MS,
+    yieldQuantity: FARM_CARROT_YIELD,
+    baseHoldCap: FARM_CARROT_BASE_HOLD_CAP,
+  },
+];
 
 export type FarmCommandFailureReason =
   | "locked_service"
@@ -66,12 +173,29 @@ export type FarmHarvestAllResult =
   | {
       ok: true;
       state: GameState;
-      harvestedByCropId: Record<FarmCropId, number>;
+      harvestedByCropId: Partial<Record<FarmCropId, number>>;
     }
   | {
       ok: false;
       state: GameState;
       reason: FarmCommandFailureReason;
+    };
+
+export type FarmCropUnlockResult =
+  | {
+      ok: true;
+      state: GameState;
+      crop: FarmCropDefinition;
+      field: FarmFieldState;
+      seedKeyItemId: KeyItemId | null;
+      source: FarmCropUnlockSource;
+    }
+  | {
+      ok: false;
+      state: GameState;
+      crop: FarmCropDefinition;
+      reason: "already_unlocked";
+      source: FarmCropUnlockSource;
     };
 
 type FarmUpgradeDefinition = {
@@ -101,10 +225,35 @@ export const FARM_FIELD_UPGRADE_DEFINITIONS: Record<
   },
 };
 
+export function getFarmCropDefinitions(): FarmCropDefinition[] {
+  return FARM_CROP_DEFINITIONS;
+}
+
+export function getFarmCropDefinition(
+  cropId: FarmCropId,
+): FarmCropDefinition {
+  return (
+    FARM_CROP_DEFINITIONS.find((definition) => definition.id === cropId) ??
+    FARM_CROP_DEFINITIONS[0]
+  );
+}
+
+export function getFarmCropDefinitionByFieldId(
+  fieldId: FarmFieldId,
+): FarmCropDefinition | null {
+  return (
+    FARM_CROP_DEFINITIONS.find((definition) => definition.fieldId === fieldId) ??
+    null
+  );
+}
+
 export function createInitialFarmState(nowMs = 0): FarmState {
   return {
     fieldsById: {
-      [FARM_CARROT_FIELD_ID]: createInitialCarrotField(nowMs),
+      carrot_field: createInitialFarmField(
+        getFarmCropDefinition(FARM_CARROT_CROP_ID),
+        nowMs,
+      ),
     },
   };
 }
@@ -118,13 +267,173 @@ export function sanitizeFarmState(farm: unknown): FarmState {
     return createInitialFarmState();
   }
 
-  return {
-    fieldsById: {
-      [FARM_CARROT_FIELD_ID]: sanitizeCarrotField(
-        farm.fieldsById[FARM_CARROT_FIELD_ID],
-      ),
+  const fieldsById: FarmState["fieldsById"] = {
+    carrot_field: sanitizeFarmField(
+      farm.fieldsById[FARM_CARROT_FIELD_ID],
+      getFarmCropDefinition(FARM_CARROT_CROP_ID),
+    ),
+  };
+
+  for (const definition of FARM_CROP_DEFINITIONS) {
+    if (definition.id === FARM_CARROT_CROP_ID) {
+      continue;
+    }
+
+    const rawField = farm.fieldsById[definition.fieldId];
+
+    if (!isRecord(rawField)) {
+      continue;
+    }
+
+    fieldsById[definition.fieldId] = sanitizeFarmField(rawField, definition);
+  }
+
+  return { fieldsById };
+}
+
+export function isFarmCropUnlocked(
+  state: Pick<GameState, "farm">,
+  cropId: FarmCropId,
+): boolean {
+  const definition = getFarmCropDefinition(cropId);
+
+  return Boolean(sanitizeFarmState(state.farm).fieldsById[definition.fieldId]);
+}
+
+export function unlockFarmCrop(
+  state: GameState,
+  cropId: FarmCropId,
+  source: FarmCropUnlockSource,
+  nowMs = Date.now(),
+): FarmCropUnlockResult {
+  const definition = getFarmCropDefinition(cropId);
+  const farm = sanitizeFarmState(state.farm);
+
+  if (farm.fieldsById[definition.fieldId]) {
+    return {
+      ok: false,
+      state: appendFarmUnlockTelemetry(state, "farm_crop_unlock_duplicate", {
+        crop: definition,
+        source,
+        result: "duplicate",
+        reason: "already_unlocked",
+      }),
+      crop: definition,
+      reason: "already_unlocked",
+      source,
+    };
+  }
+
+  const field = createInitialFarmField(definition, nowMs);
+  let nextState: GameState = {
+    ...state,
+    farm: {
+      fieldsById: {
+        ...farm.fieldsById,
+        [definition.fieldId]: field,
+      },
     },
   };
+
+  if (definition.seedKeyItemId) {
+    const award = awardKeyItemIfMissing(nextState, definition.seedKeyItemId);
+    nextState = award.state;
+
+    if (award.awardedQuantity > 0) {
+      nextState = queueUnlockNewsBroadcast(
+        nextState,
+        getKeyItemDefinition(definition.seedKeyItemId).displayName,
+        nowMs,
+      );
+    }
+  }
+
+  return {
+    ok: true,
+    state: appendFarmUnlockTelemetry(nextState, "farm_crop_unlocked", {
+      crop: definition,
+      field,
+      source,
+      result: "success",
+    }),
+    crop: definition,
+    field,
+    seedKeyItemId: definition.seedKeyItemId,
+    source,
+  };
+}
+
+export function tryUnlockFarmCropFromGathering(
+  state: GameState,
+  resource: ResourceEntity,
+  nowMs = Date.now(),
+  random = Math.random,
+): GameState {
+  const cropId =
+    resource.tier === 1 && resource.resourceType === "herb"
+      ? FARM_MOONLEAF_CROP_ID
+      : resource.tier === 1 && resource.resourceType === "wood"
+        ? FARM_BITTERCAP_MUSHROOM_CROP_ID
+        : null;
+
+  if (!cropId || isFarmCropUnlocked(state, cropId)) {
+    return state;
+  }
+
+  const source =
+    resource.resourceType === "herb" ? "herb_gathering" : "wood_gathering";
+  const roll = random();
+  const crop = getFarmCropDefinition(cropId);
+  const rolledState = appendFarmUnlockTelemetry(state, "farm_crop_unlock_roll", {
+    crop,
+    source,
+    chance: FARM_SEED_UNLOCK_CHANCE,
+    roll,
+    result: roll < FARM_SEED_UNLOCK_CHANCE ? "success" : "failed",
+    reason: roll < FARM_SEED_UNLOCK_CHANCE ? undefined : "roll_failed",
+  });
+
+  if (roll >= FARM_SEED_UNLOCK_CHANCE) {
+    return rolledState;
+  }
+
+  return unlockFarmCrop(rolledState, cropId, source, nowMs).state;
+}
+
+export function tryUnlockFarmCropFromEnemyDefeat(
+  state: GameState,
+  enemy: Enemy,
+  nowMs = Date.now(),
+  random = Math.random,
+): GameState {
+  if (
+    enemy.enemyTypeId !== "ash_wisp" ||
+    isFarmCropUnlocked(state, FARM_ASHPEPPER_CROP_ID)
+  ) {
+    return state;
+  }
+
+  const roll = random();
+  const crop = getFarmCropDefinition(FARM_ASHPEPPER_CROP_ID);
+  const rolledState = appendFarmUnlockTelemetry(state, "farm_crop_unlock_roll", {
+    crop,
+    source: "ash_wisp_defeat",
+    chance: FARM_SEED_UNLOCK_CHANCE,
+    roll,
+    result: roll < FARM_SEED_UNLOCK_CHANCE ? "success" : "failed",
+    reason: roll < FARM_SEED_UNLOCK_CHANCE ? undefined : "roll_failed",
+  });
+
+  if (roll >= FARM_SEED_UNLOCK_CHANCE) {
+    return rolledState;
+  }
+
+  return unlockFarmCrop(
+    rolledState,
+    FARM_ASHPEPPER_CROP_ID,
+    "ash_wisp_defeat",
+    nowMs,
+  ).state;
 }
 
 export function settleFarmState(
@@ -132,117 +441,130 @@ export function settleFarmState(
   nowMs = Date.now(),
   random = Math.random,
 ): GameState {
-  const farm = sanitizeFarmState(state.farm);
-  const field = farm.fieldsById[FARM_CARROT_FIELD_ID];
+  let farm = sanitizeFarmState(state.farm);
+  let nextState = setFarmStateIfChanged(state, farm);
 
-  if (field.upgradeLevels.speed < 1) {
-    return setFarmStateIfChanged(state, farm);
-  }
+  for (const definition of FARM_CROP_DEFINITIONS) {
+    const field = farm.fieldsById[definition.fieldId];
 
-  const holdCap = getFarmFieldHoldCap(field);
-  const generationIntervalMs = getFarmFieldGenerationIntervalMs(field);
-  const elapsedMs = Math.max(0, nowMs - field.lastGeneratedAtMs);
-
-  if (field.heldQuantity >= holdCap) {
-    if (elapsedMs < generationIntervalMs) {
-      return setFarmStateIfChanged(state, farm);
+    if (!field || field.upgradeLevels.speed < 1) {
+      continue;
     }
 
-    const blockedField = {
+    const holdCap = getFarmFieldHoldCap(field);
+    const generationIntervalMs = getFarmFieldGenerationIntervalMs(field);
+    const elapsedMs = Math.max(0, nowMs - field.lastGeneratedAtMs);
+
+    if (field.heldQuantity >= holdCap) {
+      if (elapsedMs < generationIntervalMs) {
+        continue;
+      }
+
+      const blockedField = {
+        ...field,
+        heldQuantity: holdCap,
+        lastGeneratedAtMs: nowMs,
+      };
+      farm = {
+        fieldsById: {
+          ...farm.fieldsById,
+          [definition.fieldId]: blockedField,
+        },
+      };
+      nextState = appendFarmTelemetry(
+        setFarmStateIfChanged(nextState, farm),
+        "farm_generation_blocked_cap",
+        {
+          field,
+          nextField: blockedField,
+          quantityBefore: field.heldQuantity,
+          quantityAfter: blockedField.heldQuantity,
+          generatedQuantity: 0,
+          doubleCropRolls: 0,
+          result: "blocked_cap",
+          reason: "cap_full",
+        },
+      );
+      continue;
+    }
+
+    const completedCycles = Math.floor(elapsedMs / generationIntervalMs);
+
+    if (completedCycles <= 0) {
+      continue;
+    }
+
+    const availableSpace = holdCap - field.heldQuantity;
+    const fertilizerChance =
+      getFarmFertilizerDoubleCropChancePercent(field) / 100;
+    let generatedQuantity = 0;
+    let completedGeneratedCycles = 0;
+    let doubleCropRolls = 0;
+
+    for (
+      let cycle = 0;
+      cycle < completedCycles && generatedQuantity < availableSpace;
+      cycle += 1
+    ) {
+      let cycleQuantity = definition.yieldQuantity;
+
+      if (fertilizerChance > 0 && random() < fertilizerChance) {
+        cycleQuantity += definition.yieldQuantity;
+        doubleCropRolls += 1;
+      }
+
+      generatedQuantity += Math.min(
+        cycleQuantity,
+        availableSpace - generatedQuantity,
+      );
+      completedGeneratedCycles += 1;
+    }
+
+    const reachedCap = generatedQuantity >= availableSpace;
+    const nextField = {
       ...field,
-      heldQuantity: holdCap,
-      lastGeneratedAtMs: nowMs,
+      heldQuantity: Math.min(holdCap, field.heldQuantity + generatedQuantity),
+      lastGeneratedAtMs: reachedCap
+        ? nowMs
+        : field.lastGeneratedAtMs +
+          completedGeneratedCycles * generationIntervalMs,
     };
-    const nextState = setFarmStateIfChanged(state, {
+    farm = {
       fieldsById: {
         ...farm.fieldsById,
-        [FARM_CARROT_FIELD_ID]: blockedField,
+        [definition.fieldId]: nextField,
       },
-    });
+    };
+    nextState = setFarmStateIfChanged(nextState, farm);
 
-    return appendFarmTelemetry(nextState, "farm_generation_blocked_cap", {
-      field,
-      nextField: blockedField,
-      quantityBefore: field.heldQuantity,
-      quantityAfter: blockedField.heldQuantity,
-      generatedQuantity: 0,
-      doubleCropRolls: 0,
-      result: "blocked_cap",
-      reason: "cap_full",
-    });
-  }
-
-  const completedCycles = Math.floor(elapsedMs / generationIntervalMs);
-
-  if (completedCycles <= 0) {
-    return setFarmStateIfChanged(state, farm);
-  }
-
-  const availableSpace = holdCap - field.heldQuantity;
-  const fertilizerChance =
-    getFarmFertilizerDoubleCropChancePercent(field) / 100;
-  let generatedQuantity = 0;
-  let completedGeneratedCycles = 0;
-  let doubleCropRolls = 0;
-
-  for (
-    let cycle = 0;
-    cycle < completedCycles && generatedQuantity < availableSpace;
-    cycle += 1
-  ) {
-    let cycleQuantity = FARM_CARROT_YIELD;
-
-    if (fertilizerChance > 0 && random() < fertilizerChance) {
-      cycleQuantity += FARM_CARROT_YIELD;
-      doubleCropRolls += 1;
+    if (generatedQuantity > 0) {
+      nextState = appendFarmTelemetry(nextState, "farm_crop_generated", {
+        field,
+        nextField,
+        quantityBefore: field.heldQuantity,
+        quantityAfter: nextField.heldQuantity,
+        generatedQuantity,
+        doubleCropRolls,
+        result: "success",
+      });
     }
 
-    generatedQuantity += Math.min(
-      cycleQuantity,
-      availableSpace - generatedQuantity,
-    );
-    completedGeneratedCycles += 1;
-  }
-
-  const reachedCap = generatedQuantity >= availableSpace;
-  const nextField = {
-    ...field,
-    heldQuantity: Math.min(holdCap, field.heldQuantity + generatedQuantity),
-    lastGeneratedAtMs: reachedCap
-      ? nowMs
-      : field.lastGeneratedAtMs +
-        completedGeneratedCycles * generationIntervalMs,
-  };
-  let nextState = setFarmStateIfChanged(state, {
-    fieldsById: {
-      ...farm.fieldsById,
-      [FARM_CARROT_FIELD_ID]: nextField,
-    },
-  });
-
-  if (generatedQuantity > 0) {
-    nextState = appendFarmTelemetry(nextState, "farm_crop_generated", {
-      field,
-      nextField,
-      quantityBefore: field.heldQuantity,
-      quantityAfter: nextField.heldQuantity,
-      generatedQuantity,
-      doubleCropRolls,
-      result: "success",
-    });
-  }
-
-  if (reachedCap && completedCycles > completedGeneratedCycles) {
-    nextState = appendFarmTelemetry(nextState, "farm_generation_blocked_cap", {
-      field,
-      nextField,
-      quantityBefore: field.heldQuantity,
-      quantityAfter: nextField.heldQuantity,
-      generatedQuantity,
-      doubleCropRolls,
-      result: "blocked_cap",
-      reason: "cap_full",
-    });
+    if (reachedCap && completedCycles > completedGeneratedCycles) {
+      nextState = appendFarmTelemetry(
+        nextState,
+        "farm_generation_blocked_cap",
+        {
+          field,
+          nextField,
+          quantityBefore: field.heldQuantity,
+          quantityAfter: nextField.heldQuantity,
+          generatedQuantity,
+          doubleCropRolls,
+          result: "blocked_cap",
+          reason: "cap_full",
+        },
+      );
+    }
   }
 
   return nextState;
@@ -262,7 +584,7 @@ export function purchaseFarmFieldUpgrade(
   const costCrowns = getFarmUpgradeCostCrowns(currentLevel);
 
   settledState = appendFarmTelemetry(settledState, "farm_upgrade_attempt", {
-    field: field ?? createInitialCarrotField(nowMs),
+    field: field ?? createInitialFarmField(FARM_CROP_DEFINITIONS[0], nowMs),
     upgradeId,
     quantityBefore: field?.heldQuantity ?? 0,
     quantityAfter: field?.heldQuantity ?? 0,
@@ -278,6 +600,16 @@ export function purchaseFarmFieldUpgrade(
 
   if (failure) {
     return failUpgrade(settledState, field, upgradeId, failure, costCrowns);
+  }
+
+  if (!field) {
+    return failUpgrade(
+      settledState,
+      field,
+      upgradeId,
+      "invalid_field",
+      costCrowns,
+    );
   }
 
   if (!upgradeDefinition) {
@@ -363,88 +695,100 @@ export function harvestAllFarmCrops(
   state: GameState,
   nowMs = Date.now(),
 ): FarmHarvestAllResult {
-  const settledState = settleFarmState(state, nowMs);
-  const farm = sanitizeFarmState(settledState.farm);
-  const field = farm.fieldsById[FARM_CARROT_FIELD_ID];
-  const failure = getFarmCommandFailure(settledState, field);
+  const farm = sanitizeFarmState(state.farm);
+  const harvestState = setFarmStateIfChanged(state, farm);
+  const firstField = getFirstFarmField(farm);
+  const failure = getFarmCommandFailure(harvestState, firstField);
 
   if (failure) {
-    return failHarvest(settledState, field, failure);
+    return failHarvest(harvestState, firstField, failure);
   }
 
-  if (field.heldQuantity <= 0) {
-    return failHarvest(settledState, field, "nothing_to_harvest");
+  const fieldsToHarvest = FARM_CROP_DEFINITIONS.map((definition) => ({
+    definition,
+    field: farm.fieldsById[definition.fieldId],
+  })).filter(
+    (entry): entry is { definition: FarmCropDefinition; field: FarmFieldState } =>
+      Boolean(entry.field && entry.field.heldQuantity > 0),
+  );
+
+  if (fieldsToHarvest.length === 0) {
+    return failHarvest(harvestState, firstField, "nothing_to_harvest");
   }
 
-  const quantity = field.heldQuantity;
-  const nextField = {
-    ...field,
-    heldQuantity: 0,
-    lastGeneratedAtMs: nowMs,
-  };
-  const nextFarm = {
-    fieldsById: {
-      ...farm.fieldsById,
-      [FARM_CARROT_FIELD_ID]: nextField,
-    },
-  };
-  const kitchen = sanitizeInnKitchenState(
-    settledState.innKitchen,
-    settledState,
+  const nextFarmFields = { ...farm.fieldsById };
+  const harvestedByCropId: Partial<Record<FarmCropId, number>> = {};
+  let nextState: GameState = harvestState;
+  let kitchen = sanitizeInnKitchenState(
+    harvestState.innKitchen,
+    harvestState,
     nowMs,
     { settleHearthFire: false },
   );
-  const nextPantryQuantity =
-    (kitchen.pantry.ingredientQuantitiesById[FARM_CARROT_CROP_ID] ?? 0) +
-    quantity;
-  const unlockedIngredientIds = kitchen.pantry.unlockedIngredientIds.includes(
-    FARM_CARROT_CROP_ID,
-  )
-    ? kitchen.pantry.unlockedIngredientIds
-    : [...kitchen.pantry.unlockedIngredientIds, FARM_CARROT_CROP_ID];
-  let nextState: GameState = {
-    ...settledState,
-    farm: nextFarm,
-    innKitchen: {
+
+  for (const { definition, field } of fieldsToHarvest) {
+    const quantity = field.heldQuantity;
+    const nextField = {
+      ...field,
+      heldQuantity: 0,
+    };
+    nextFarmFields[definition.fieldId] = nextField;
+    harvestedByCropId[definition.id] = quantity;
+
+    const previousPantryQuantity =
+      kitchen.pantry.ingredientQuantitiesById[definition.id] ?? 0;
+    const nextPantryQuantity = previousPantryQuantity + quantity;
+    const unlockedIngredientIds =
+      kitchen.pantry.unlockedIngredientIds.includes(definition.id)
+        ? kitchen.pantry.unlockedIngredientIds
+        : [...kitchen.pantry.unlockedIngredientIds, definition.id];
+
+    kitchen = {
       ...kitchen,
       pantry: {
         unlockedIngredientIds,
         ingredientQuantitiesById: {
           ...kitchen.pantry.ingredientQuantitiesById,
-          [FARM_CARROT_CROP_ID]: nextPantryQuantity,
+          [definition.id]: nextPantryQuantity,
         },
       },
-    },
-  };
+    };
+    nextState = appendFarmTelemetry(nextState, "farm_harvest_all_succeeded", {
+      field,
+      nextField,
+      quantityBefore: field.heldQuantity,
+      quantityAfter: nextField.heldQuantity,
+      result: "success",
+    });
+    nextState = appendFarmTelemetry(nextState, "farm_pantry_transfer", {
+      field,
+      nextField,
+      quantityBefore: previousPantryQuantity,
+      quantityAfter: nextPantryQuantity,
+      result: "success",
+    });
+  }
 
-  nextState = appendFarmTelemetry(nextState, "farm_harvest_all_succeeded", {
-    field,
-    nextField,
-    quantityBefore: field.heldQuantity,
-    quantityAfter: nextField.heldQuantity,
-    result: "success",
-  });
-  nextState = appendFarmTelemetry(nextState, "farm_pantry_transfer", {
-    field,
-    nextField,
-    quantityBefore:
-      kitchen.pantry.ingredientQuantitiesById[FARM_CARROT_CROP_ID] ?? 0,
-    quantityAfter: nextPantryQuantity,
-    result: "success",
-  });
+  nextState = {
+    ...nextState,
+    farm: {
+      fieldsById: nextFarmFields,
+    },
+    innKitchen: kitchen,
+  };
 
   return {
     ok: true,
     state: nextState,
-    harvestedByCropId: {
-      [FARM_CARROT_CROP_ID]: quantity,
-    },
+    harvestedByCropId,
   };
 }
 
 export function getFarmFieldHoldCap(field: FarmFieldState): number {
+  const definition = getFarmCropDefinition(field.cropId);
+
   return Math.round(
-    FARM_CARROT_BASE_HOLD_CAP *
+    definition.baseHoldCap *
       (1 +
         Math.max(0, field.upgradeLevels.cap - 1) *
           FARM_CAP_BONUS_PER_LEVEL_AFTER_BASE),
@@ -454,14 +798,18 @@ export function getFarmFieldHoldCap(field: FarmFieldState): number {
 export function getFarmFieldGenerationIntervalMs(
   field: FarmFieldState,
 ): number {
+  const definition = getFarmCropDefinition(field.cropId);
+
   if (field.upgradeLevels.speed <= 0) {
-    return FARM_CARROT_GROWTH_MS;
+    return definition.growthMs;
   }
 
-  return Math.round(FARM_CARROT_GROWTH_MS / getFarmSpeedMultiplier(field));
+  return Math.round(definition.growthMs / getFarmSpeedMultiplier(field));
 }
 
 export function getFarmExpectedCropsPerHour(field: FarmFieldState): number {
+  const definition = getFarmCropDefinition(field.cropId);
+
   if (field.upgradeLevels.speed <= 0) {
     return 0;
   }
@@ -469,7 +817,7 @@ export function getFarmExpectedCropsPerHour(field: FarmFieldState): number {
   const baseCyclesPerHour =
     (60 * 60 * 1000) / getFarmFieldGenerationIntervalMs(field);
   const expectedYield =
-    FARM_CARROT_YIELD *
+    definition.yieldQuantity *
     (1 + getFarmFertilizerDoubleCropChancePercent(field) / 100);
 
   return baseCyclesPerHour * expectedYield;
@@ -556,10 +904,13 @@ export function isPartyLeaderNearLivestockKeeper(state: GameState): boolean {
   );
 }
 
-function createInitialCarrotField(nowMs: number): FarmFieldState {
+function createInitialFarmField(
+  definition: FarmCropDefinition,
+  nowMs: number,
+): FarmFieldState {
   return {
-    id: FARM_CARROT_FIELD_ID,
-    cropId: FARM_CARROT_CROP_ID,
+    id: definition.fieldId,
+    cropId: definition.id,
     upgradeLevels: createInitialFarmFieldUpgradeLevels(),
     heldQuantity: 0,
     lastGeneratedAtMs: nowMs,
@@ -574,9 +925,12 @@ function createInitialFarmFieldUpgradeLevels(): FarmFieldUpgradeLevels {
   };
 }
 
-function sanitizeCarrotField(rawField: unknown): FarmFieldState {
+function sanitizeFarmField(
+  rawField: unknown,
+  definition: FarmCropDefinition,
+): FarmFieldState {
   if (!isRecord(rawField)) {
-    return createInitialCarrotField(0);
+    return createInitialFarmField(definition, 0);
   }
 
   const legacyLevel = sanitizeNonNegativeInteger(rawField.level);
@@ -601,8 +955,8 @@ function sanitizeCarrotField(rawField: unknown): FarmFieldState {
     ),
   };
   const field: FarmFieldState = {
-    id: FARM_CARROT_FIELD_ID,
-    cropId: FARM_CARROT_CROP_ID,
+    id: definition.fieldId,
+    cropId: definition.id,
     upgradeLevels,
     heldQuantity: sanitizeNonNegativeInteger(rawField.heldQuantity),
     lastGeneratedAtMs: sanitizeNonNegativeInteger(rawField.lastGeneratedAtMs),
@@ -615,19 +969,9 @@ function sanitizeCarrotField(rawField: unknown): FarmFieldState {
 }
 
 function setFarmStateIfChanged(state: GameState, farm: FarmState): GameState {
-  const currentField = state.farm?.fieldsById?.[FARM_CARROT_FIELD_ID];
-  const nextField = farm.fieldsById[FARM_CARROT_FIELD_ID];
+  const currentFarm = sanitizeFarmState(state.farm);
 
-  if (
-    currentField?.id === nextField.id &&
-    currentField.cropId === nextField.cropId &&
-    currentField.upgradeLevels?.speed === nextField.upgradeLevels.speed &&
-    currentField.upgradeLevels?.cap === nextField.upgradeLevels.cap &&
-    currentField.upgradeLevels?.fertilizer ===
-      nextField.upgradeLevels.fertilizer &&
-    currentField.heldQuantity === nextField.heldQuantity &&
-    currentField.lastGeneratedAtMs === nextField.lastGeneratedAtMs
-  ) {
+  if (areFarmStatesEqual(currentFarm, farm)) {
     return state;
   }
 
@@ -637,11 +981,48 @@ function setFarmStateIfChanged(state: GameState, farm: FarmState): GameState {
   };
 }
 
+function areFarmStatesEqual(first: FarmState, second: FarmState): boolean {
+  return FARM_CROP_DEFINITIONS.every((definition) =>
+    areFarmFieldsEqual(
+      first.fieldsById[definition.fieldId],
+      second.fieldsById[definition.fieldId],
+    ),
+  );
+}
+
+function areFarmFieldsEqual(
+  first: FarmFieldState | undefined,
+  second: FarmFieldState | undefined,
+): boolean {
+  if (!first || !second) {
+    return first === second;
+  }
+
+  return (
+    first.id === second.id &&
+    first.cropId === second.cropId &&
+    first.upgradeLevels.speed === second.upgradeLevels.speed &&
+    first.upgradeLevels.cap === second.upgradeLevels.cap &&
+    first.upgradeLevels.fertilizer === second.upgradeLevels.fertilizer &&
+    first.heldQuantity === second.heldQuantity &&
+    first.lastGeneratedAtMs === second.lastGeneratedAtMs
+  );
+}
+
+function getFirstFarmField(farm: FarmState): FarmFieldState {
+  return (
+    FARM_CROP_DEFINITIONS.map(
+      (definition) => farm.fieldsById[definition.fieldId],
+    ).find((field): field is FarmFieldState => Boolean(field)) ??
+    createInitialFarmField(FARM_CROP_DEFINITIONS[0], 0)
+  );
+}
+
 function getFarmCommandFailure(
   state: GameState,
   field: FarmFieldState | undefined,
 ): FarmCommandFailureReason | null {
-  if (!field || field.id !== FARM_CARROT_FIELD_ID) {
+  if (!field || !getFarmCropDefinitionByFieldId(field.id)) {
     return "invalid_field";
   }
 
@@ -664,7 +1045,7 @@ function failUpgrade(
   costCrowns: number,
   extra: { missingCrowns?: number } = {},
 ): FarmUpgradeResult {
-  const fallbackField = field ?? createInitialCarrotField(0);
+  const fallbackField = field ?? createInitialFarmField(FARM_CROP_DEFINITIONS[0], 0);
   const currentLevel = fallbackField.upgradeLevels[upgradeId] ?? 0;
 
   return {
@@ -750,6 +1131,39 @@ function appendFarmTelemetry(
     farmGeneratedQuantity: event.generatedQuantity,
     farmDoubleCropRolls: event.doubleCropRolls,
     crownCost: event.costCrowns,
+    result: event.result,
+    reason: event.reason,
+  });
+}
+
+function appendFarmUnlockTelemetry(
+  state: GameState,
+  type:
+    | "farm_crop_unlock_roll"
+    | "farm_crop_unlocked"
+    | "farm_crop_unlock_duplicate",
+  event: {
+    crop: FarmCropDefinition;
+    field?: FarmFieldState;
+    source: FarmCropUnlockSource;
+    chance?: number;
+    roll?: number;
+    result: string;
+    reason?: string;
+  },
+): GameState {
+  return appendDebugTelemetryEvent(state, {
+    type,
+    entityId: "__farm__",
+    farmFieldId: event.field?.id ?? event.crop.fieldId,
+    farmCropId: event.crop.id,
+    keyItemId: event.crop.seedKeyItemId ?? undefined,
+    keyItemDisplayName: event.crop.seedKeyItemId
+      ? getKeyItemDefinition(event.crop.seedKeyItemId).displayName
+      : undefined,
+    farmUnlockSource: event.source,
+    farmUnlockChance: event.chance,
+    farmUnlockRoll: event.roll,
     result: event.result,
     reason: event.reason,
   });

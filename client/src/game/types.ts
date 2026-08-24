@@ -604,7 +604,11 @@ export type ItemId =
 
 export type KeyItemId =
   | "teleport_echo_harbor_union_bastion"
-  | "teleport_echo_slimeward_camp";
+  | "teleport_echo_slimeward_camp"
+  | "farm_seed_potato"
+  | "farm_seed_moonleaf"
+  | "farm_seed_bittercap_mushroom"
+  | "farm_seed_ashpepper";
 
 export type KeyItemDefinition = {
   id: KeyItemId;
@@ -2024,7 +2028,13 @@ export type DebugTelemetryEventType =
   | "farm_generation_blocked_cap"
   | "farm_harvest_all_succeeded"
   | "farm_harvest_all_failed"
-  | "farm_pantry_transfer";
+  | "farm_pantry_transfer"
+  | "farm_crop_unlock_roll"
+  | "farm_crop_unlocked"
+  | "farm_crop_unlock_duplicate"
+  | "farm_seed_purchase_attempt"
+  | "farm_seed_purchase_succeeded"
+  | "farm_seed_purchase_failed";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2217,6 +2227,8 @@ export type DebugTelemetryEvent = {
   itemId?: ItemId;
   itemDisplayName?: string;
   itemCategory?: ItemCategory;
+  keyItemId?: KeyItemId;
+  keyItemDisplayName?: string;
   flaskChargesBefore?: number;
   flaskChargesAfter?: number;
   flaskMaxCharges?: number;
@@ -2282,6 +2294,14 @@ export type DebugTelemetryEvent = {
   farmFertilizerDoubleCropChancePercent?: number;
   farmGeneratedQuantity?: number;
   farmDoubleCropRolls?: number;
+  farmUnlockSource?:
+    | "base"
+    | "merchant"
+    | "herb_gathering"
+    | "wood_gathering"
+    | "ash_wisp_defeat";
+  farmUnlockChance?: number;
+  farmUnlockRoll?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2792,9 +2812,19 @@ export type InnKitchenState = {
   autoCookFailuresByCompanionId: Record<string, InnKitchenAutoCookFailureState>;
 };
 
-export type FarmCropId = "carrot";
+export type FarmCropId =
+  | "carrot"
+  | "potato"
+  | "moonleaf"
+  | "bittercap_mushroom"
+  | "ashpepper";
 
-export type FarmFieldId = "carrot_field";
+export type FarmFieldId =
+  | "carrot_field"
+  | "potato_field"
+  | "moonleaf_field"
+  | "bittercap_mushroom_field"
+  | "ashpepper_field";
 
 export type FarmFieldUpgradeId = "speed" | "cap" | "fertilizer";
 
@@ -2809,7 +2839,9 @@ export type FarmFieldState = {
 };
 
 export type FarmState = {
-  fieldsById: Record<FarmFieldId, FarmFieldState>;
+  fieldsById: {
+    carrot_field: FarmFieldState;
+  } & Partial<Record<FarmFieldId, FarmFieldState>>;
 };
 
 export type GuildNoticeBoardState = {

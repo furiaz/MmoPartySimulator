@@ -39,6 +39,7 @@ import type {
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
+  FarmFieldId,
   FarmFieldUpgradeId,
   InnRoomUpgradeId,
 } from "./game";
@@ -212,7 +213,10 @@ export function GameMenu({
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onHarvestAllFarmCrops: () => void;
-  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
+  onPurchaseFarmUpgrade: (
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -498,7 +502,10 @@ function AtlasPanel({
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
   onHarvestAllFarmCrops: () => void;
-  onPurchaseFarmUpgrade: (upgradeId: FarmFieldUpgradeId) => void;
+  onPurchaseFarmUpgrade: (
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;

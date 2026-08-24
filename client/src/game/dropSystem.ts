@@ -1,6 +1,7 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { getLootTierForLevel, rollEnemyDropTable } from "./dropTables";
 import { getEnemyDropArchetypeId } from "./enemyArchetypes";
+import { tryUnlockFarmCropFromEnemyDefeat } from "./farm";
 import { addItemToInventoryState } from "./inventory";
 import { getItemDefinition, getItemDisplayName } from "./items";
 import {
@@ -105,7 +106,7 @@ export function handleEnemyDefeatedDrops(
     });
   }
 
-  return nextState;
+  return tryUnlockFarmCropFromEnemyDefeat(nextState, enemy, now, random);
 }
 
 function awardAzureMassTeleportEchoIfMissing(

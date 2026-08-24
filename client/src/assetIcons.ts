@@ -1,5 +1,6 @@
 import type {
   EquipmentSlot,
+  FarmCropId,
   ItemId,
   MapVisualObjectId,
   NpcEntity,
@@ -407,8 +408,13 @@ export const MAP_VISUAL_OBJECT_SRC: Record<MapVisualObjectId, string> = {
   azure_slime_rock_cluster: `${slimewardDungeonAssetPath}/azure-slime-rock-cluster-128.png`,
 };
 
-export const FARM_CROP_ICON_SRC: Record<string, string> = {
+export const FARM_CROP_ICON_SRC: Record<FarmCropId | "locked", string> = {
   carrot: `${farmLivestockAssetPath}/carrot.png`,
+  potato: `${farmLivestockAssetPath}/potato.png`,
+  moonleaf: `${farmLivestockAssetPath}/moonleaf.png`,
+  bittercap_mushroom: `${farmLivestockAssetPath}/bittercap-mushroom.png`,
+  ashpepper: `${farmLivestockAssetPath}/ashpepper.png`,
+  locked: `${farmLivestockAssetPath}/locked-crop.png`,
 };
 
 export const SKILL_VISUAL_ICON_SRC: Partial<Record<SkillId, string>> = {

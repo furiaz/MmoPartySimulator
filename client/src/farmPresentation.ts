@@ -1,11 +1,10 @@
 import {
   FARM_CAP_BONUS_PER_LEVEL_AFTER_BASE,
   FARM_CARROT_BASE_HOLD_CAP,
-  FARM_CARROT_CROP_ID,
-  FARM_CARROT_FIELD_ID,
   FARM_FIELD_UPGRADE_DEFINITIONS,
   FARM_SPEED_BONUS_PER_LEVEL_AFTER_BASE,
   getCurrencyBalance,
+  getFarmCropDefinitions,
   getFarmExpectedCropsPerHour,
   getFarmFertilizerDoubleCropChancePercent,
   getFarmFieldGenerationIntervalMs,
@@ -17,9 +16,13 @@ import {
   isPartyLeaderNearLivestockKeeper,
   isTownServicesUnlocked,
   type FarmCropId,
+  type FarmFieldId,
+  type FarmFieldState,
   type FarmFieldUpgradeId,
   type GameState,
 } from "./game";
+
+export type FarmCropFilter = "unlocked" | "all";
 
 export type FarmFieldUpgradeDisplay = {
   id: FarmFieldUpgradeId;
@@ -34,9 +37,12 @@ export type FarmFieldUpgradeDisplay = {
 };
 
 export type FarmFieldDisplay = {
-  fieldId: typeof FARM_CARROT_FIELD_ID;
+  fieldId: FarmFieldId;
   cropId: FarmCropId;
   cropName: string;
+  singularName: string;
+  isUnlocked: boolean;
+  sourceHint: string;
   heldQuantity: number;
   holdCap: number;
   canHarvest: boolean;
@@ -62,20 +68,93 @@ export type FarmDisplay = {
   isNearLivestockKeeper: boolean;
   crownBalance: number;
   totalCropsPerHourText: string;
+  totalHeldQuantity: number;
+  totalHoldCap: number;
   livestockProductionPerHourText: string;
   fields: FarmFieldDisplay[];
+  allFields: FarmFieldDisplay[];
   field: FarmFieldDisplay;
 };
 
 export function getFarmDisplay(
   state: GameState,
   nowMs = Date.now(),
+  cropFilter: FarmCropFilter = "unlocked",
 ): FarmDisplay {
   const farm = getFarmState(state);
-  const field = farm.fieldsById[FARM_CARROT_FIELD_ID];
   const isUnlocked = isTownServicesUnlocked(state);
   const isNearFarmer = isPartyLeaderNearFarmer(state);
   const isNearLivestockKeeper = isPartyLeaderNearLivestockKeeper(state);
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+  const allFields = getFarmCropDefinitions().map((definition) => {
+    const field = farm.fieldsById[definition.fieldId];
+
+    return field
+        ? getUnlockedFieldDisplay({
+            crownBalance,
+            definition,
+            field,
+            isNearFarmer,
+          isUnlocked,
+          nowMs,
+        })
+      : getLockedFieldDisplay(definition);
+  });
+  const unlockedFields = allFields.filter((field) => field.isUnlocked);
+  const visibleFields =
+    cropFilter === "all" ? allFields : unlockedFields;
+  const totalCropsPerHour = unlockedFields.reduce(
+    (total, field) => total + Number(field.generationPerHourValue ?? 0),
+    0,
+  );
+  const totalHeldQuantity = unlockedFields.reduce(
+    (total, field) => total + field.heldQuantity,
+    0,
+  );
+  const totalHoldCap = unlockedFields.reduce(
+    (total, field) => total + field.holdCap,
+    0,
+  );
+  const firstField = unlockedFields[0] ?? allFields[0];
+
+  return {
+    isUnlocked,
+    isNearFarmer,
+    isNearLivestockKeeper,
+    crownBalance,
+    totalCropsPerHourText: formatRate(totalCropsPerHour),
+    totalHeldQuantity,
+    totalHoldCap,
+    livestockProductionPerHourText: "0",
+    fields: visibleFields,
+    allFields,
+    field: firstField,
+  };
+}
+
+export function formatFarmDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function getUnlockedFieldDisplay({
+  crownBalance,
+  definition,
+  field,
+  isNearFarmer,
+  isUnlocked,
+  nowMs,
+}: {
+  crownBalance: number;
+  definition: ReturnType<typeof getFarmCropDefinitions>[number];
+  field: FarmFieldState;
+  isNearFarmer: boolean;
+  isUnlocked: boolean;
+  nowMs: number;
+}): FarmFieldDisplay & { generationPerHourValue: number } {
   const holdCap = getFarmFieldHoldCap(field);
   const isAtCap = field.heldQuantity >= holdCap;
   const isProducing = field.upgradeLevels.speed >= 1 && !isAtCap;
@@ -83,14 +162,17 @@ export function getFarmDisplay(
   const elapsedMs = Math.max(0, nowMs - field.lastGeneratedAtMs);
   const timeRemainingMs =
     isProducing ? Math.max(0, generationIntervalMs - elapsedMs) : null;
-  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
   const cropsPerHour = getFarmExpectedCropsPerHour(field);
   const speedMultiplier = getFarmSpeedMultiplier(field);
   const fertilizerChance = getFarmFertilizerDoubleCropChancePercent(field);
-  const fieldDisplay: FarmFieldDisplay = {
-    fieldId: FARM_CARROT_FIELD_ID,
-    cropId: FARM_CARROT_CROP_ID,
-    cropName: "Carrots",
+
+  return {
+    fieldId: definition.fieldId,
+    cropId: definition.id,
+    cropName: definition.displayName,
+    singularName: definition.singularName,
+    isUnlocked: true,
+    sourceHint: definition.sourceHint,
     heldQuantity: field.heldQuantity,
     holdCap,
     canHarvest: isUnlocked && isNearFarmer && field.heldQuantity > 0,
@@ -99,11 +181,13 @@ export function getFarmDisplay(
     timeRemainingMs,
     productionText: getProductionText(
       field.upgradeLevels.speed,
+      definition.singularName.toLowerCase(),
       isAtCap,
       timeRemainingMs,
     ),
-    holdText: `Carrots ${field.heldQuantity}/${holdCap}`,
+    holdText: `${definition.displayName} ${field.heldQuantity}/${holdCap}`,
     harvestActionText: getFarmHarvestActionText({
+      displayName: definition.displayName,
       heldQuantity: field.heldQuantity,
       holdCap,
       isNearFarmer,
@@ -126,26 +210,39 @@ export function getFarmDisplay(
           upgradeLevel: field.upgradeLevels[upgradeId],
         }),
     ),
-  };
-
-  return {
-    isUnlocked,
-    isNearFarmer,
-    isNearLivestockKeeper,
-    crownBalance,
-    totalCropsPerHourText: formatRate(cropsPerHour),
-    livestockProductionPerHourText: "0",
-    fields: [fieldDisplay],
-    field: fieldDisplay,
+    generationPerHourValue: cropsPerHour,
   };
 }
 
-export function formatFarmDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+function getLockedFieldDisplay(
+  definition: ReturnType<typeof getFarmCropDefinitions>[number],
+): FarmFieldDisplay & { generationPerHourValue: number } {
+  return {
+    fieldId: definition.fieldId,
+    cropId: definition.id,
+    cropName: definition.displayName,
+    singularName: definition.singularName,
+    isUnlocked: false,
+    sourceHint: definition.sourceHint,
+    heldQuantity: 0,
+    holdCap: 0,
+    canHarvest: false,
+    isProducing: false,
+    isAtCap: false,
+    timeRemainingMs: null,
+    productionText: "Undiscovered",
+    holdText: "",
+    harvestActionText: "Undiscovered",
+    speedText: "0%",
+    speedTooltip: "Unlock this crop to view Speed levels.",
+    multiCropText: "0%",
+    multiCropTooltip: "Unlock this crop to view Fertilizer levels.",
+    generationPerHourText: "0",
+    generationPerHourTooltip: "Unlock this crop to view generation.",
+    holdingTooltip: "Unlock this crop to view Harvest Cap levels.",
+    upgrades: [],
+    generationPerHourValue: 0,
+  };
 }
 
 function getUpgradeDisplay({
@@ -186,12 +283,15 @@ function getUpgradeDisplay({
       isUnlocked,
     }),
     currentEffectText: getUpgradeEffectText(upgradeId, upgradeLevel),
-    nextEffectText: isMax ? null : getUpgradeEffectText(upgradeId, upgradeLevel + 1),
+    nextEffectText: isMax
+      ? null
+      : getUpgradeEffectText(upgradeId, upgradeLevel + 1),
   };
 }
 
 function getProductionText(
   speedLevel: number,
+  cropName: string,
   isAtCap: boolean,
   timeRemainingMs: number | null,
 ): string {
@@ -205,7 +305,7 @@ function getProductionText(
 
   return timeRemainingMs === null
     ? "Production inactive"
-    : `Next carrot in ${formatFarmDuration(timeRemainingMs)}`;
+    : `Next ${cropName} in ${formatFarmDuration(timeRemainingMs)}`;
 }
 
 function getFarmUpgradeActionText({
@@ -237,11 +337,13 @@ function getFarmUpgradeActionText({
 }
 
 function getFarmHarvestActionText({
+  displayName,
   heldQuantity,
   holdCap,
   isNearFarmer,
   isUnlocked,
 }: {
+  displayName: string;
   heldQuantity: number;
   holdCap: number;
   isNearFarmer: boolean;
@@ -255,7 +357,7 @@ function getFarmHarvestActionText({
     return "Nothing held";
   }
 
-  return `Carrots ${heldQuantity}/${holdCap}`;
+  return `${displayName} ${heldQuantity}/${holdCap}`;
 }
 
 function getUpgradeEffectText(

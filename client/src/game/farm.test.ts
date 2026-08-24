@@ -1,19 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { startDebugTelemetryRecording } from "./debugTelemetry";
-import { createCompanion, createNpc } from "./entities";
+import { createCompanion, createEnemy, createNpc, createResource } from "./entities";
 import {
+  FARM_ASHPEPPER_CROP_ID,
+  FARM_BITTERCAP_MUSHROOM_CROP_ID,
   FARM_CARROT_BASE_HOLD_CAP,
   FARM_CARROT_FIELD_ID,
   FARM_CARROT_GROWTH_MS,
+  FARM_CROP_DEFINITIONS,
+  FARM_MOONLEAF_CROP_ID,
+  FARM_POTATO_CROP_ID,
   getFarmFieldGenerationIntervalMs,
   getFarmFieldHoldCap,
   getFarmUpgradeCostCrowns,
   createInitialFarmState,
   harvestAllFarmCrops,
+  isFarmCropUnlocked,
   purchaseFarmFieldUpgrade,
   sanitizeFarmState,
   settleFarmState,
+  tryUnlockFarmCropFromEnemyDefeat,
+  tryUnlockFarmCropFromGathering,
+  unlockFarmCrop,
 } from "./farm";
+import { buyMerchantFarmSeed, getMerchantFarmSeedStock } from "./merchant";
+import { EQUIPMENT_TUTORIAL_QUEST_ID } from "./questSystem";
 import { createTestGameState } from "./testState";
 import type { GameState } from "./state";
 import type { FarmFieldUpgradeId, FarmFieldUpgradeLevels } from "./types";
@@ -22,6 +33,21 @@ import { addCurrencyToWalletState } from "./wallet";
 const NOW_MS = 1_000_000;
 
 describe("Farm upgrades", () => {
+  it("keeps crop definitions in fixed display order with only Carrots unlocked initially", () => {
+    const state = createFarmState();
+
+    expect(FARM_CROP_DEFINITIONS.map((crop) => crop.id)).toEqual([
+      "carrot",
+      "potato",
+      "moonleaf",
+      "bittercap_mushroom",
+      "ashpepper",
+    ]);
+    expect(Object.keys(state.farm?.fieldsById ?? {})).toEqual([
+      "carrot_field",
+    ]);
+  });
+
   it("initializes and migrates old level saves into upgrade tracks", () => {
     const initial = createInitialFarmState();
     const sanitized = sanitizeFarmState({
@@ -57,6 +83,42 @@ describe("Farm upgrades", () => {
     });
   });
 
+  it("unlocks new plots at level 0 and ignores duplicate seed rewards", () => {
+    const unlocked = unlockFarmCrop(
+      createFarmState(),
+      FARM_MOONLEAF_CROP_ID,
+      "herb_gathering",
+      NOW_MS,
+    );
+
+    expect(unlocked.ok).toBe(true);
+    if (!unlocked.ok) {
+      return;
+    }
+
+    expect(unlocked.field).toMatchObject({
+      id: "moonleaf_field",
+      cropId: "moonleaf",
+      upgradeLevels: { speed: 0, cap: 1, fertilizer: 0 },
+      heldQuantity: 0,
+      lastGeneratedAtMs: NOW_MS,
+    });
+    expect(unlocked.state.keyItemsById?.farm_seed_moonleaf).toBe(1);
+
+    const duplicate = unlockFarmCrop(
+      unlocked.state,
+      FARM_MOONLEAF_CROP_ID,
+      "herb_gathering",
+      NOW_MS + 1,
+    );
+
+    expect(duplicate).toMatchObject({
+      ok: false,
+      reason: "already_unlocked",
+    });
+    expect(duplicate.state.keyItemsById?.farm_seed_moonleaf).toBe(1);
+  });
+
   it("does not produce while speed is level 0", () => {
     const state = createFarmState({
       farm: createInitialFarmState(0),
@@ -65,6 +127,51 @@ describe("Farm upgrades", () => {
     const settled = settleFarmState(state, FARM_CARROT_GROWTH_MS * 3);
 
     expect(settled.farm?.fieldsById.carrot_field.heldQuantity).toBe(0);
+  });
+
+  it("upgrades, generates, and harvests non-Carrot crops into the Pantry", () => {
+    const unlocked = unlockFarmCrop(
+      createFarmState({ azureTrialCompleted: true, crowns: 200 }),
+      FARM_POTATO_CROP_ID,
+      "merchant",
+      0,
+    );
+    expect(unlocked.ok).toBe(true);
+    if (!unlocked.ok) {
+      return;
+    }
+
+    const upgraded = purchaseFarmFieldUpgrade(
+      unlocked.state,
+      "potato_field",
+      "speed",
+      0,
+    );
+    expect(upgraded.ok).toBe(true);
+    if (!upgraded.ok) {
+      return;
+    }
+
+    const settled = settleFarmState(upgraded.state, FARM_CARROT_GROWTH_MS);
+    const harvested = harvestAllFarmCrops(settled, FARM_CARROT_GROWTH_MS);
+
+    expect(harvested.ok).toBe(true);
+    if (!harvested.ok) {
+      return;
+    }
+
+    expect(harvested.harvestedByCropId.potato).toBe(1);
+    expect(
+      harvested.state.innKitchen?.pantry.unlockedIngredientIds,
+    ).toContain("potato");
+    expect(
+      harvested.state.innKitchen?.pantry.ingredientQuantitiesById.potato,
+    ).toBe(1);
+    expect(
+      harvested.state.inventory.slots.some(
+        (slot) => String(slot.itemId) === "potato",
+      ),
+    ).toBe(false);
   });
 
   it("keeps speed level 1 at the 20 minute baseline", () => {
@@ -282,6 +389,169 @@ describe("Farm upgrades", () => {
         (slot) => String(slot.itemId) === "carrot",
       ),
     ).toBe(false);
+  });
+
+  it("harvests all held crops into the Inn Kitchen Pantry together", () => {
+    const state = createFarmState({
+      azureTrialCompleted: true,
+      farm: {
+        fieldsById: {
+          carrot_field: createFarmField({
+            heldQuantity: 2,
+            lastGeneratedAtMs: 111,
+            upgradeLevels: { speed: 1, cap: 1, fertilizer: 0 },
+          }),
+          potato_field: {
+            id: "potato_field",
+            cropId: "potato",
+            heldQuantity: 3,
+            lastGeneratedAtMs: 222,
+            upgradeLevels: { speed: 1, cap: 1, fertilizer: 0 },
+          },
+        },
+      },
+    });
+
+    const harvested = harvestAllFarmCrops(state, NOW_MS);
+
+    expect(harvested.ok).toBe(true);
+    if (!harvested.ok) {
+      return;
+    }
+
+    expect(harvested.harvestedByCropId).toMatchObject({
+      carrot: 2,
+      potato: 3,
+    });
+    expect(
+      harvested.state.innKitchen?.pantry.ingredientQuantitiesById,
+    ).toMatchObject({
+      carrot: 2,
+      potato: 3,
+    });
+    expect(harvested.state.farm?.fieldsById.carrot_field.lastGeneratedAtMs).toBe(
+      111,
+    );
+    expect(harvested.state.farm?.fieldsById.potato_field!.lastGeneratedAtMs).toBe(
+      222,
+    );
+  });
+
+  it("does not generate newly ready crops as part of Harvest All", () => {
+    const state = createFarmState({
+      azureTrialCompleted: true,
+      farm: {
+        fieldsById: {
+          carrot_field: createFarmField({
+            heldQuantity: 1,
+            lastGeneratedAtMs: 10,
+            upgradeLevels: { speed: 1, cap: 1, fertilizer: 0 },
+          }),
+          potato_field: {
+            id: "potato_field",
+            cropId: "potato",
+            heldQuantity: 0,
+            lastGeneratedAtMs: 0,
+            upgradeLevels: { speed: 1, cap: 1, fertilizer: 0 },
+          },
+        },
+      },
+    });
+
+    const harvested = harvestAllFarmCrops(state, FARM_CARROT_GROWTH_MS);
+
+    expect(harvested.ok).toBe(true);
+    if (!harvested.ok) {
+      return;
+    }
+
+    expect(harvested.harvestedByCropId).toEqual({ carrot: 1 });
+    expect(harvested.state.farm?.fieldsById.potato_field!.heldQuantity).toBe(0);
+    expect(
+      harvested.state.farm?.fieldsById.potato_field!.lastGeneratedAtMs,
+    ).toBe(0);
+    expect(
+      harvested.state.innKitchen?.pantry.ingredientQuantitiesById.potato,
+    ).toBeUndefined();
+  });
+
+  it("unlocks placeholder crops from Merchant, T1 gathering, and Ash Wisp sources", () => {
+    const merchant = createNpc("merchant", { x: 3, y: 3 }, "Merchant", "merchant");
+    let state = createFarmState({
+      crowns: 100,
+      farm: createInitialFarmState(),
+    });
+    state = {
+      ...state,
+      entities: {
+        ...state.entities,
+        [merchant.id]: merchant,
+      },
+      quests: {
+        ...state.quests,
+        [EQUIPMENT_TUTORIAL_QUEST_ID]: {
+          ...state.quests[EQUIPMENT_TUTORIAL_QUEST_ID],
+          status: "active",
+        },
+      },
+    };
+
+    expect(getMerchantFarmSeedStock(state, merchant.id)[0]).toMatchObject({
+      cropId: "potato",
+      isOwned: false,
+      priceCrowns: 100,
+    });
+
+    const potatoPurchase = buyMerchantFarmSeed(
+      state,
+      merchant.id,
+      FARM_POTATO_CROP_ID,
+      NOW_MS,
+    );
+    expect(potatoPurchase.result.status).toBe("success");
+    state = potatoPurchase.state;
+    expect(isFarmCropUnlocked(state, FARM_POTATO_CROP_ID)).toBe(true);
+    expect(state.inventory.slots).toEqual([]);
+    expect(getMerchantFarmSeedStock(state, merchant.id)[0]).toMatchObject({
+      isOwned: true,
+    });
+    expect(
+      buyMerchantFarmSeed(state, merchant.id, FARM_POTATO_CROP_ID, NOW_MS)
+        .result,
+    ).toMatchObject({ status: "failed", reason: "already_owned" });
+
+    state = tryUnlockFarmCropFromGathering(
+      state,
+      createResource("herb", { x: 0, y: 0 }, { resourceType: "herb", tier: 1 }),
+      NOW_MS,
+      () => 0,
+    );
+    state = tryUnlockFarmCropFromGathering(
+      state,
+      createResource("wood", { x: 0, y: 0 }, { resourceType: "wood", tier: 1 }),
+      NOW_MS,
+      () => 0,
+    );
+    state = tryUnlockFarmCropFromEnemyDefeat(
+      state,
+      createEnemy("ash-wisp", { x: 0, y: 0 }, "passive", {
+        enemyTypeId: "ash_wisp",
+      }),
+      NOW_MS,
+      () => 0,
+    );
+
+    expect(isFarmCropUnlocked(state, FARM_MOONLEAF_CROP_ID)).toBe(true);
+    expect(isFarmCropUnlocked(state, FARM_BITTERCAP_MUSHROOM_CROP_ID)).toBe(
+      true,
+    );
+    expect(isFarmCropUnlocked(state, FARM_ASHPEPPER_CROP_ID)).toBe(true);
+    expect(state.keyItemsById).toMatchObject({
+      farm_seed_potato: 1,
+      farm_seed_moonleaf: 1,
+      farm_seed_bittercap_mushroom: 1,
+      farm_seed_ashpepper: 1,
+    });
   });
 
   it("records Farm upgrade telemetry while debug recording is active", () => {

@@ -27,6 +27,7 @@ import { getPrototypeGatherAmountBonus } from "./skillRuntime";
 import { isResourceTargetInRange } from "./targetSelection";
 import { isCompanionAssignedToResurrectionRecovery } from "./resurrectionSystem";
 import { getDirectGatherCommandTargetId } from "./directCompanionCommands";
+import { tryUnlockFarmCropFromGathering } from "./farm";
 import {
   isWithinGathererLeaderBoundary,
 } from "./gathererResourceReservation";
@@ -204,6 +205,11 @@ export function updateGatherSystem(
         gatheredResource,
         nextState.currentMapId,
         itemAdd.result.addedQuantity,
+      );
+      nextState = tryUnlockFarmCropFromGathering(
+        nextState,
+        gatheredResource,
+        now,
       );
       nextState = addCombatFeedback(nextState, {
         type: "gather",

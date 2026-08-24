@@ -38,6 +38,7 @@ import type { PixiRendererPerformanceSample } from "./worldRenderer/PixiWorldRen
 import {
   allocateCompanionStatPoint,
   ARMOR_FAMILY_LABELS,
+  buyMerchantFarmSeed,
   buyMerchantItem,
   canCompanionEnterFirstClassSelection,
   CLASS_DEFINITIONS,
@@ -84,7 +85,9 @@ import {
   getFilteredMerchantBuyStock,
   getActiveQuest,
   getActiveCompanions,
+  getFarmCropDefinition,
   getItemDefinition,
+  getMerchantFarmSeedStock,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
   hubCompanionStartPositions,
@@ -127,7 +130,6 @@ import {
   isPartyLeaderNearGuildTavern,
   isTownServicesUnlocked,
   isCompanionHubEligibleForInnKitchen,
-  FARM_CARROT_FIELD_ID,
   harvestAllFarmCrops,
   openGuildNoticeBoard,
   bulkCookInnMealsForCompanions,
@@ -187,6 +189,8 @@ import {
   type CompanionAoeChannelState,
   type CraftingFailureReason,
   type CraftingRecipeId,
+  type FarmCropId,
+  type FarmFieldId,
   type FarmFieldUpgradeId,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
@@ -217,6 +221,7 @@ import {
   type ItemId,
   type MapVisualObject,
   type MerchantBuyFailureReason,
+  type MerchantFarmSeedBuyFailureReason,
   type MerchantStockEntry,
   type MerchantStockGroup,
   type NavigationClickAccessibility,
@@ -241,7 +246,7 @@ import {
   type WorldTravelTeleportFailureReason,
   type WorldWipeRecoveryChoice,
 } from "./game";
-import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
+import { FARM_CROP_ICON_SRC, INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
 import {
   deleteLocalSave,
   downloadSavedGame,
@@ -371,7 +376,7 @@ type NavigationClickAccessibilityCache = {
   map: GameMap;
 };
 
-type MerchantPanel = "buy" | "sell";
+type MerchantPanel = "buy" | "farm_seeds" | "sell";
 type QuestGiverPanel = "available" | "current";
 type NpcInteractionKind =
   | "merchant"
@@ -534,6 +539,18 @@ const merchantBuyFailureMessages: Record<MerchantBuyFailureReason, string> = {
   inventory_add_failed: "Inventory could not receive the item",
   currency_remove_failed: "Crowns could not be spent",
   merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+};
+
+const merchantFarmSeedFailureMessages: Record<
+  MerchantFarmSeedBuyFailureReason,
+  string
+> = {
+  invalid_merchant: "Merchant unavailable",
+  merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+  item_not_in_stock: "Seed is not in stock",
+  already_owned: "Seed already owned",
+  insufficient_crowns: "Not enough Crowns",
+  currency_remove_failed: "Crowns could not be spent",
 };
 
 const skillBookFailureMessages: Record<ReadSkillBookFailureReason, string> = {
@@ -1972,6 +1989,87 @@ function MerchantBuyPanel({
             </>
           ) : (
             <span className="merchant-empty-stock">Select an item</span>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function MerchantFarmSeedPanel({
+  merchantNpcId,
+  state,
+  onBuy,
+}: {
+  merchantNpcId: string;
+  state: GameState;
+  onBuy: (cropId: FarmCropId) => void;
+}) {
+  const stock = getMerchantFarmSeedStock(state, merchantNpcId);
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <aside
+      className="merchant-detail-panel merchant-buy-panel"
+      aria-label="Merchant farm seeds"
+    >
+      <div className="merchant-buy-header">
+        <div>
+          <h2>Farm Seeds</h2>
+          <span>Permanent crop unlocks</span>
+        </div>
+        <strong>{formatCurrencyDisplay(state.wallet, "crowns")}</strong>
+      </div>
+      <div className="merchant-buy-layout">
+        <div className="merchant-stock-list" aria-label="Merchant seed stock">
+          {stock.length > 0 ? (
+            stock.map((entry) => {
+              const canAffordSeed = crownBalance >= entry.priceCrowns;
+
+              return (
+                <button
+                  key={entry.cropId}
+                  className={`merchant-stock-row${
+                    canAffordSeed || entry.isOwned ? "" : " unaffordable"
+                  }`}
+                  disabled={entry.isOwned}
+                  onClick={() => onBuy(entry.cropId)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{entry.displayName}</strong>
+                    <small>{entry.isOwned ? "Owned" : entry.sourceHint}</small>
+                  </span>
+                  <b>{entry.isOwned ? "Sold out" : entry.priceCrowns}</b>
+                </button>
+              );
+            })
+          ) : (
+            <span className="merchant-empty-stock">No seeds in stock</span>
+          )}
+        </div>
+        <div className="merchant-buy-detail" aria-label="Selected seed details">
+          {stock[0] ? (
+            <>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="merchant-detail-item-icon"
+                src={
+                  FARM_CROP_ICON_SRC[stock[0].cropId] ?? FARM_CROP_ICON_SRC.locked
+                }
+              />
+              <div>
+                <span className="merchant-detail-kicker">Farm Seed</span>
+                <h3>{stock[0].displayName}</h3>
+                <p>
+                  Unlocks the {stock[0].cropDisplayName} plot at level 0
+                  production.
+                </p>
+              </div>
+            </>
+          ) : (
+            <span className="merchant-empty-stock">Select a seed</span>
           )}
         </div>
       </div>
@@ -5007,10 +5105,13 @@ function App() {
     setGameState(cooked.state);
   }
 
-  function purchaseFarmUpgradeFromMenu(upgradeId: FarmFieldUpgradeId) {
+  function purchaseFarmUpgradeFromMenu(
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) {
     const upgraded = purchaseFarmFieldUpgrade(
       gameState,
-      FARM_CARROT_FIELD_ID,
+      fieldId,
       upgradeId,
       currentTime,
     );
@@ -5018,7 +5119,7 @@ function App() {
     if (upgraded.ok) {
       queueSaveAfterStateChange("Farm upgrade saved");
       setFarmResultMessage(
-        `Carrots ${getFarmUpgradeResultLabel(upgraded.upgradeId)} upgraded to Lv ${upgraded.nextLevel}.`,
+        `${getFarmCropDefinition(upgraded.field.cropId).displayName} ${getFarmUpgradeResultLabel(upgraded.upgradeId)} upgraded to Lv ${upgraded.nextLevel}.`,
       );
     } else {
       setFarmResultMessage(getFarmFailureMessage(upgraded.reason));
@@ -5186,6 +5287,32 @@ function App() {
       );
     } else {
       setMerchantResultMessage(merchantBuyFailureMessages[purchase.result.reason]);
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function buyMerchantFarmSeedFromMenu(cropId: FarmCropId) {
+    if (!activeMerchantNpcId) {
+      return;
+    }
+
+    const purchase = buyMerchantFarmSeed(
+      gameState,
+      activeMerchantNpcId,
+      cropId,
+      currentTime,
+    );
+
+    if (purchase.result.status === "success") {
+      queueSaveAfterStateChange("Farm seed purchase saved");
+      setMerchantResultMessage(
+        `Bought ${purchase.result.displayName} for ${purchase.result.priceCrowns} Crowns`,
+      );
+    } else {
+      setMerchantResultMessage(
+        merchantFarmSeedFailureMessages[purchase.result.reason],
+      );
     }
 
     setGameState(purchase.state);
@@ -5839,6 +5966,14 @@ function App() {
                 Buy
               </button>
               <button
+                className={activeMerchantPanel === "farm_seeds" ? "active" : ""}
+                disabled={activeMerchantLocked}
+                onClick={() => selectMerchantPanel("farm_seeds")}
+                type="button"
+              >
+                Farm Seeds
+              </button>
+              <button
                 className={activeMerchantPanel === "sell" ? "active" : ""}
                 disabled={activeMerchantLocked}
                 onClick={() => selectMerchantPanel("sell")}
@@ -5859,6 +5994,12 @@ function App() {
                   merchantNpcId={activeMerchant.id}
                   state={gameState}
                   onBuy={buyMerchantStockItem}
+                />
+              ) : activeMerchantPanel === "farm_seeds" ? (
+                <MerchantFarmSeedPanel
+                  merchantNpcId={activeMerchant.id}
+                  state={gameState}
+                  onBuy={buyMerchantFarmSeedFromMenu}
                 />
               ) : (
                 <aside className="merchant-detail-panel">
