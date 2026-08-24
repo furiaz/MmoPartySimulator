@@ -1685,6 +1685,195 @@
   font-weight: 800;
 }
 
+.livestock-section {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.livestock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.livestock-actions button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  flex: 0 1 180px;
+  min-height: 46px;
+  text-align: center;
+}
+
+.livestock-actions button small {
+  grid-column: 1;
+  text-align: center;
+}
+
+.livestock-summary-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.42);
+}
+
+.livestock-summary-panel div,
+.livestock-details article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.livestock-summary-panel span,
+.livestock-details span,
+.livestock-details dt,
+.livestock-details p,
+.livestock-details li {
+  color: #9fb6bb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.livestock-summary-panel strong,
+.livestock-details dd {
+  color: #f3df93;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.livestock-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.livestock-grid-column {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.livestock-grid {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.livestock-grid-cell {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  aspect-ratio: 1 / 1;
+  border: 1px solid #2e4a51;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.62);
+  color: #9fb6bb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.livestock-grid-cell.occupied {
+  border-color: #9d7b3f;
+  background: rgba(83, 58, 27, 0.62);
+  color: #f5d986;
+}
+
+.livestock-grid-cell.selected {
+  border-color: #65aac0;
+  background: rgba(23, 55, 66, 0.72);
+}
+
+.livestock-grid-cell.available-target {
+  outline: 2px solid #f3df93;
+  outline-offset: 2px;
+}
+
+.livestock-grid-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.livestock-grid-controls span {
+  flex: 1 1 180px;
+  min-width: 0;
+  color: #dcebed;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.livestock-available-list {
+  display: grid;
+  gap: 8px;
+}
+
+.livestock-available-list h3,
+.livestock-details h3 {
+  margin: 0;
+}
+
+.livestock-available-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.livestock-available-list button {
+  min-width: 132px;
+}
+
+.livestock-details {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.livestock-details article {
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.livestock-details dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.livestock-details dl div {
+  display: grid;
+  grid-template-columns: minmax(82px, 1fr) minmax(0, 1.4fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.livestock-details dt,
+.livestock-details dd {
+  margin: 0;
+}
+
+.livestock-details ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 760px) {
+  .livestock-summary-panel,
+  .livestock-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .overlay-panel-layer {
   position: fixed;
   inset: 0;

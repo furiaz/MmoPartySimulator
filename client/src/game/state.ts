@@ -27,6 +27,7 @@ import type {
   InnUpgradesState,
   KeyItemsById,
   LeaderIntent,
+  LivestockState,
   NewsBroadcastEvent,
   OfflineFarmingPendingLootState,
   PartyIntent,
@@ -173,6 +174,7 @@ export type GameState = {
   innUpgrades?: InnUpgradesState;
   innKitchen?: InnKitchenState;
   farm?: FarmState;
+  livestock?: LivestockState;
   worldDiscovery?: WorldDiscoveryState;
   inventory: PartyInventory;
   keyItemsById?: KeyItemsById;

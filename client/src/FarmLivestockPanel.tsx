@@ -5,23 +5,49 @@ import {
   type FarmFieldId,
   type FarmFieldUpgradeId,
   type GameState,
+  type LivestockCreatureId,
+  type LivestockPlacementId,
+  type LivestockPlacementRotation,
 } from "./game";
 import {
   getFarmDisplay,
   type FarmCropFilter,
   type FarmFieldDisplay,
 } from "./farmPresentation";
+import {
+  getLivestockDisplay,
+  getLivestockPlacementTimeRemainingText,
+  getNextLivestockRotation,
+  type LivestockCreatureDisplay,
+  type LivestockGridCellDisplay,
+} from "./livestockPresentation";
 import { OverlayPanel } from "./OverlayPanel";
 
 type FarmLivestockPanelProps = {
   currentTime: number;
   farmResultMessage?: string | null;
+  livestockResultMessage?: string | null;
   state: GameState;
   onHarvestAll: () => void;
   onPurchaseFarmUpgrade: (
     fieldId: FarmFieldId,
     upgradeId: FarmFieldUpgradeId,
   ) => void;
+  onPlaceLivestockCreature: (
+    creatureId: LivestockCreatureId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => void;
+  onMoveLivestockPlacement: (
+    placementId: LivestockPlacementId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => boolean;
+  onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
+  onCollectAllLivestockOutputs: () => void;
+  onOpenInnKitchenPantry: () => void;
 };
 
 type FarmLivestockSection = "farm" | "livestock";
@@ -29,12 +55,19 @@ type FarmLivestockSection = "farm" | "livestock";
 export function FarmLivestockPanel({
   currentTime,
   farmResultMessage,
+  livestockResultMessage,
   state,
   onHarvestAll,
   onPurchaseFarmUpgrade,
+  onPlaceLivestockCreature,
+  onMoveLivestockPlacement,
+  onRemoveLivestockPlacement,
+  onCollectAllLivestockOutputs,
+  onOpenInnKitchenPantry,
 }: FarmLivestockPanelProps) {
   const [cropFilter, setCropFilter] = useState<FarmCropFilter>("unlocked");
   const display = getFarmDisplay(state, currentTime, cropFilter);
+  const livestockDisplay = getLivestockDisplay(state, currentTime);
   const lockedMessage = getTownServicesLockedMessage(state);
   const field = display.field;
   const [activeSection, setActiveSection] =
@@ -45,6 +78,66 @@ export function FarmLivestockPanel({
   const selectedUpgradeField =
     display.fields.find((farmField) => farmField.fieldId === selectedUpgradeFieldId) ??
     null;
+  const [heldCreatureId, setHeldCreatureId] =
+    useState<LivestockCreatureId | null>(null);
+  const [selectedPlacementId, setSelectedPlacementId] =
+    useState<LivestockPlacementId | null>(null);
+  const [livestockRotation, setLivestockRotation] =
+    useState<LivestockPlacementRotation>("horizontal");
+  const [isLivestockSummaryOpen, setLivestockSummaryOpen] = useState(false);
+  const selectedPlacement =
+    livestockDisplay.placements.find(
+      (placement) => placement.id === selectedPlacementId,
+    ) ?? null;
+  const heldCreature = livestockDisplay.creatures.find(
+    (creature) => creature.creatureId === heldCreatureId,
+  );
+  const livestockCanRotate = false;
+
+  function clearLivestockSelection() {
+    setHeldCreatureId(null);
+    setSelectedPlacementId(null);
+    setLivestockRotation("horizontal");
+  }
+
+  function selectAvailableCreature(creature: LivestockCreatureDisplay) {
+    if (!creature.canHoldForPlacement) {
+      return;
+    }
+
+    setHeldCreatureId(creature.creatureId);
+    setSelectedPlacementId(null);
+    setLivestockRotation("horizontal");
+  }
+
+  function handleLivestockCellClick(cell: LivestockGridCellDisplay) {
+    if (cell.placementId && !heldCreatureId) {
+      setSelectedPlacementId(cell.placementId);
+      return;
+    }
+
+    if (heldCreatureId) {
+      onPlaceLivestockCreature(
+        heldCreatureId,
+        cell.x,
+        cell.y,
+        livestockRotation,
+      );
+      return;
+    }
+
+    if (selectedPlacementId && !cell.placementId) {
+      const didMove = onMoveLivestockPlacement(
+        selectedPlacementId,
+        cell.x,
+        cell.y,
+        livestockRotation,
+      );
+      if (didMove) {
+        clearLivestockSelection();
+      }
+    }
+  }
 
   return (
     <section
@@ -105,7 +198,7 @@ export function FarmLivestockPanel({
           type="button"
         >
           <strong>Livestock</strong>
-          <small>Not ready</small>
+          <small>{livestockDisplay.outputs[0]?.holdText ?? "Eggs 0/20"}</small>
         </button>
       </div>
 
@@ -163,15 +256,197 @@ export function FarmLivestockPanel({
           </section>
         </>
       ) : (
-        <section className="guild-tavern-section farm-livestock-placeholder">
+        <section className="guild-tavern-section livestock-section">
           {!lockedMessage && !display.isNearLivestockKeeper ? (
             <p className="guild-requires-service">
-              Stand near Livestock to manage future Livestock actions. You can
-              browse from afar, but actions will require proximity.
+              Stand near Livestock to place, move, remove, or collect. You can
+              browse from afar, but actions require proximity.
             </p>
           ) : null}
-          <h3>Livestock</h3>
-          <p>Locked for a later work order.</p>
+          {livestockResultMessage ? (
+            <p className="guild-result-message">{livestockResultMessage}</p>
+          ) : null}
+
+          <div className="guild-tavern-service-actions farm-actions livestock-actions">
+            <button
+              disabled={!livestockDisplay.canCollect}
+              onClick={onCollectAllLivestockOutputs}
+              type="button"
+            >
+              <span>Collect All</span>
+              <small>{livestockDisplay.collectActionText}</small>
+            </button>
+            <button onClick={onOpenInnKitchenPantry} type="button">
+              <span>Open Pantry</span>
+              <small>Inn Kitchen</small>
+            </button>
+            <button
+              aria-expanded={isLivestockSummaryOpen}
+              onClick={() => setLivestockSummaryOpen((isOpen) => !isOpen)}
+              type="button"
+            >
+              <span>Costs & Yield</span>
+              <small>{isLivestockSummaryOpen ? "Hide" : "Show"}</small>
+            </button>
+          </div>
+
+          {isLivestockSummaryOpen ? (
+            <div className="livestock-summary-panel">
+              <div>
+                <span>Daily Feed</span>
+                <strong>{livestockDisplay.totalFeedText}</strong>
+              </div>
+              <div>
+                <span>Expected Output</span>
+                <strong>Eggs/hr {livestockDisplay.totalOutputPerHourText}</strong>
+              </div>
+              <div>
+                <span>Held Output</span>
+                <strong>{livestockDisplay.outputs[0]?.holdText ?? "Eggs 0/20"}</strong>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="livestock-layout">
+            <div className="livestock-grid-column">
+              <div
+                className="livestock-grid"
+                style={{
+                  gridTemplateColumns: `repeat(${livestockDisplay.width}, minmax(42px, 1fr))`,
+                }}
+              >
+                {livestockDisplay.cells.map((cell) => (
+                  <button
+                    className={[
+                      "livestock-grid-cell",
+                      cell.placementId ? "occupied" : "",
+                      cell.placementId === selectedPlacementId ? "selected" : "",
+                      !cell.placementId && (heldCreatureId || selectedPlacementId)
+                        ? "available-target"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    key={`${cell.x},${cell.y}`}
+                    onClick={() => handleLivestockCellClick(cell)}
+                    type="button"
+                  >
+                    {cell.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="livestock-grid-controls">
+                <span>
+                  {heldCreature
+                    ? `Selected: ${heldCreature.displayName} held`
+                    : selectedPlacement
+                      ? `Selected: ${selectedPlacement.creatureId}`
+                      : "Selected: None"}
+                </span>
+                <button
+                  disabled={!livestockCanRotate}
+                  onClick={() =>
+                    setLivestockRotation((rotation) =>
+                      getNextLivestockRotation(rotation),
+                    )
+                  }
+                  type="button"
+                >
+                  Rotate
+                </button>
+                <button
+                  disabled={!heldCreatureId && !selectedPlacementId}
+                  onClick={clearLivestockSelection}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!selectedPlacementId || !livestockDisplay.canUseActions}
+                  onClick={() => {
+                    if (selectedPlacementId) {
+                      onRemoveLivestockPlacement(selectedPlacementId);
+                      clearLivestockSelection();
+                    }
+                  }}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="livestock-available-list">
+                <h3>Available Creatures</h3>
+                <div>
+                  {livestockDisplay.creatures.map((creature) => (
+                    <button
+                      disabled={!creature.canHoldForPlacement}
+                      key={creature.creatureId}
+                      onClick={() => selectAvailableCreature(creature)}
+                      type="button"
+                    >
+                      <strong>{creature.displayName}</strong>
+                      <small>x{creature.availableCount}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <aside className="livestock-details">
+              {livestockDisplay.creatures.map((creature) => (
+                <article key={creature.creatureId}>
+                  <div>
+                    <h3>{creature.displayName}</h3>
+                    <span>
+                      Owned {creature.ownedCount} / Placed {creature.placedCount}
+                    </span>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Size</dt>
+                      <dd>{creature.footprintText}</dd>
+                    </div>
+                    <div>
+                      <dt>Feed/day</dt>
+                      <dd>{creature.feedText}</dd>
+                    </div>
+                    <div>
+                      <dt>Yield</dt>
+                      <dd>{creature.yieldText}</dd>
+                    </div>
+                    <div>
+                      <dt>Eggs/hr</dt>
+                      <dd>{creature.expectedOutputPerHourText}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+              <article>
+                <div>
+                  <h3>Placed Creatures</h3>
+                  <span>{livestockDisplay.placements.length} active</span>
+                </div>
+                {livestockDisplay.placements.length > 0 ? (
+                  <ul>
+                    {livestockDisplay.placements.map((placement) => (
+                      <li key={placement.id}>
+                        {placement.creatureId} at {placement.x + 1},{" "}
+                        {placement.y + 1} - next Egg in{" "}
+                        {getLivestockPlacementTimeRemainingText(
+                          placement,
+                          currentTime,
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No creatures placed.</p>
+                )}
+              </article>
+            </aside>
+          </div>
         </section>
       )}
 

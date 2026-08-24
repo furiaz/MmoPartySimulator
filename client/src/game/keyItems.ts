@@ -13,6 +13,8 @@ export const FARM_BITTERCAP_MUSHROOM_SEED_KEY_ITEM_ID =
   "farm_seed_bittercap_mushroom" satisfies KeyItemId;
 export const FARM_ASHPEPPER_SEED_KEY_ITEM_ID =
   "farm_seed_ashpepper" satisfies KeyItemId;
+export const LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_duskhen" satisfies KeyItemId;
 
 export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
   teleport_echo_harbor_union_bastion: {
@@ -44,6 +46,11 @@ export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
     id: "farm_seed_ashpepper",
     displayName: "Ashpepper Seed",
     description: "Unlocks the Ashpepper plot at the Farm.",
+  },
+  livestock_creature_duskhen: {
+    id: "livestock_creature_duskhen",
+    displayName: "Duskhen Discovery",
+    description: "Registers Duskhens as a Livestock creature.",
   },
 };
 

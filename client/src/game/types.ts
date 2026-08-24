@@ -608,7 +608,8 @@ export type KeyItemId =
   | "farm_seed_potato"
   | "farm_seed_moonleaf"
   | "farm_seed_bittercap_mushroom"
-  | "farm_seed_ashpepper";
+  | "farm_seed_ashpepper"
+  | "livestock_creature_duskhen";
 
 export type KeyItemDefinition = {
   id: KeyItemId;
@@ -2034,7 +2035,21 @@ export type DebugTelemetryEventType =
   | "farm_crop_unlock_duplicate"
   | "farm_seed_purchase_attempt"
   | "farm_seed_purchase_succeeded"
-  | "farm_seed_purchase_failed";
+  | "farm_seed_purchase_failed"
+  | "livestock_place_attempt"
+  | "livestock_place_succeeded"
+  | "livestock_place_failed"
+  | "livestock_move_attempt"
+  | "livestock_move_succeeded"
+  | "livestock_move_failed"
+  | "livestock_remove_attempt"
+  | "livestock_remove_succeeded"
+  | "livestock_remove_failed"
+  | "livestock_output_generated"
+  | "livestock_generation_blocked_cap"
+  | "livestock_collect_all_succeeded"
+  | "livestock_collect_all_failed"
+  | "livestock_pantry_transfer";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2302,6 +2317,18 @@ export type DebugTelemetryEvent = {
     | "ash_wisp_defeat";
   farmUnlockChance?: number;
   farmUnlockRoll?: number;
+  livestockCreatureId?: LivestockCreatureId;
+  livestockPlacementId?: LivestockPlacementId;
+  livestockOutputId?: LivestockOutputId;
+  livestockGridX?: number;
+  livestockGridY?: number;
+  livestockRotation?: LivestockPlacementRotation;
+  livestockFootprintWidth?: number;
+  livestockFootprintHeight?: number;
+  livestockQuantityBefore?: number;
+  livestockQuantityAfter?: number;
+  livestockCapacity?: number;
+  livestockGeneratedQuantity?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2842,6 +2869,38 @@ export type FarmState = {
   fieldsById: {
     carrot_field: FarmFieldState;
   } & Partial<Record<FarmFieldId, FarmFieldState>>;
+};
+
+export type LivestockCreatureId = "duskhen";
+
+export type LivestockOutputId = "egg";
+
+export type LivestockPlacementId = string;
+
+export type LivestockPlacementRotation = "horizontal" | "vertical";
+
+export type LivestockGridState = {
+  width: number;
+  height: number;
+};
+
+export type LivestockPlacedCreatureState = {
+  id: LivestockPlacementId;
+  creatureId: LivestockCreatureId;
+  x: number;
+  y: number;
+  rotation: LivestockPlacementRotation;
+  placedAtMs: number;
+  lastProducedAtMs: number;
+};
+
+export type LivestockState = {
+  grid: LivestockGridState;
+  ownedCreaturesById: Partial<Record<LivestockCreatureId, number>>;
+  placementsById: Record<LivestockPlacementId, LivestockPlacedCreatureState>;
+  placementSequence: number;
+  holdingQuantitiesByOutputId: Partial<Record<LivestockOutputId, number>>;
+  holdingCapsByOutputId: Partial<Record<LivestockOutputId, number>>;
 };
 
 export type GuildNoticeBoardState = {

@@ -109,6 +109,7 @@ export function GuildTavernPanel({
   noticeBoardResultMessage,
   secondaryPartyResultMessage,
   innKitchenResultMessage,
+  pantryRequestId,
   state,
   onCancelNoticeBoardQuest,
   onMoveGuildRosterCompanion,
@@ -138,6 +139,7 @@ export function GuildTavernPanel({
   noticeBoardResultMessage?: string | null;
   secondaryPartyResultMessage?: string | null;
   innKitchenResultMessage?: string | null;
+  pantryRequestId?: number;
   secondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummary | null;
   state: GameState;
   onCancelNoticeBoardQuest: (slotIndex?: number) => void;
@@ -226,6 +228,15 @@ export function GuildTavernPanel({
   const selectedKitchenRecipeId = selectedKitchenRow
     ? selectedKitchenRow.selectedRecipeId
     : INN_KITCHEN_HOUSE_BREAD_RECIPE_ID;
+
+  useEffect(() => {
+    if (!pantryRequestId) {
+      return;
+    }
+
+    setActiveSection("inn");
+    setGuildView("kitchenPantry");
+  }, [pantryRequestId]);
 
   useEffect(() => {
     if (!selectedKitchenCompanionId && kitchenRows.length > 0) {

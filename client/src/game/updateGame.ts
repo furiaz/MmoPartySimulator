@@ -29,6 +29,7 @@ import { updateGatherSystem } from "./gatherSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
 import { updateNewsBroadcasts } from "./newsBroadcast";
 import { settleFarmState } from "./farm";
+import { settleLivestockState } from "./livestock";
 import { processInnKitchenAutoCook } from "./innKitchen";
 import {
   syncPartyDerivedMaxHealth,
@@ -109,6 +110,7 @@ export function updateGame(
   nextState = updateConsumableBehaviorSystem(nextState, timing.nowMs);
   nextState = updateConsumableSystem(nextState, timing.nowMs);
   nextState = settleFarmState(nextState, timing.nowMs);
+  nextState = settleLivestockState(nextState, timing.nowMs);
   nextState = processInnKitchenAutoCook(nextState, timing.nowMs).state;
   nextState = syncPartyDerivedMaxHealth(nextState);
   nextState = debugApplyCompanionInfiniteHealth(nextState);

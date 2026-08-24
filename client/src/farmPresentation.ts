@@ -11,6 +11,7 @@ import {
   getFarmFieldHoldCap,
   getFarmSpeedMultiplier,
   getFarmState,
+  getLivestockExpectedOutputsPerHour,
   getFarmUpgradeCostCrowns,
   isPartyLeaderNearFarmer,
   isPartyLeaderNearLivestockKeeper,
@@ -125,7 +126,9 @@ export function getFarmDisplay(
     totalCropsPerHourText: formatRate(totalCropsPerHour),
     totalHeldQuantity,
     totalHoldCap,
-    livestockProductionPerHourText: "0",
+    livestockProductionPerHourText: formatRate(
+      getLivestockExpectedOutputsPerHour(state),
+    ),
     fields: visibleFields,
     allFields,
     field: firstField,

@@ -26,6 +26,11 @@ import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
 import { sanitizeFarmState, settleFarmState } from "./farm";
+import {
+  ensureInitialLivestockKeyItems,
+  sanitizeLivestockState,
+  settleLivestockState,
+} from "./livestock";
 import { sanitizeInnKitchenState } from "./innKitchen";
 import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
 import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
@@ -196,11 +201,15 @@ export function restoreGameStateFromSave(value: unknown): RestoreSaveResult {
     currentMapId,
     map,
   });
+  const restoredAtMs = Date.now();
 
   return {
     ok: true,
     savedAtMs: validation.save.savedAtMs,
-    state: settleFarmState(sanitizedState, Date.now()),
+    state: settleLivestockState(
+      settleFarmState(sanitizedState, restoredAtMs),
+      restoredAtMs,
+    ),
   };
 }
 
@@ -483,6 +492,7 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     restingCompanionsById,
   }, undefined, { settleHearthFire: false });
   const farm = sanitizeFarmState(state.farm);
+  const livestock = sanitizeLivestockState(state.livestock);
   const worldDiscovery = sanitizeWorldDiscoveryState(
     state.worldDiscovery,
     {
@@ -505,11 +515,14 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     innUpgrades,
     innKitchen,
     farm,
+    livestock,
     worldDiscovery,
     inventory: sanitizeObsoleteFoodFromInventory(
       sanitizePartyInventory(state.inventory),
     ),
-    keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
+    keyItemsById: sanitizeKeyItemsById(
+      ensureInitialLivestockKeyItems(state.keyItemsById),
+    ),
     bank: {
       ...sanitizePartyBank(state.bank),
       autoRoutingMode: sanitizeBankAutoRoutingMode(

@@ -130,8 +130,11 @@ import {
   isPartyLeaderNearGuildTavern,
   isTownServicesUnlocked,
   isCompanionHubEligibleForInnKitchen,
+  collectAllLivestockOutputs,
   harvestAllFarmCrops,
+  moveLivestockPlacement,
   openGuildNoticeBoard,
+  placeLivestockCreature,
   bulkCookInnMealsForCompanions,
   cookInnMealForCompanion,
   getInnKitchenPreference,
@@ -149,6 +152,7 @@ import {
   purchaseGuildSecondaryPartyUpgrade,
   purchaseFarmFieldUpgrade,
   recruitGuildCandidate,
+  removeLivestockPlacement,
   rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
   refreshGuildNoticeBoardState,
@@ -192,6 +196,9 @@ import {
   type FarmCropId,
   type FarmFieldId,
   type FarmFieldUpgradeId,
+  type LivestockCreatureId,
+  type LivestockPlacementId,
+  type LivestockPlacementRotation,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
   type ConsumableBehaviorUpdate,
@@ -673,6 +680,28 @@ function getFarmFailureMessage(reason: string): string {
     case "invalid_field":
     default:
       return "Farm action unavailable.";
+  }
+}
+
+function getLivestockFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_service":
+      return "Complete The Azure Trial to unlock town services.";
+    case "not_near_livestock":
+      return "Stand near Livestock.";
+    case "no_available_creature":
+      return "No available Duskhens.";
+    case "occupied_cell":
+      return "That ranch space is occupied.";
+    case "out_of_bounds":
+      return "That ranch space is outside the grid.";
+    case "nothing_to_collect":
+      return "No Livestock output to collect.";
+    case "invalid_creature":
+      return "Livestock creature unavailable.";
+    case "invalid_placement":
+    default:
+      return "Livestock action unavailable.";
   }
 }
 
@@ -2813,6 +2842,10 @@ function App() {
     useState<string | null>(null);
   const [farmResultMessage, setFarmResultMessage] =
     useState<string | null>(null);
+  const [livestockResultMessage, setLivestockResultMessage] =
+    useState<string | null>(null);
+  const [guildTavernPantryRequestId, setGuildTavernPantryRequestId] =
+    useState(0);
   const [
     guildSecondaryPartyRedeemSummary,
     setGuildSecondaryPartyRedeemSummary,
@@ -4591,6 +4624,7 @@ function App() {
     }
     if (subpage !== "farmLivestock") {
       setFarmResultMessage(null);
+      setLivestockResultMessage(null);
     }
   }
 
@@ -5143,6 +5177,96 @@ function App() {
     }
 
     setGameState(harvested.state);
+  }
+
+  function placeLivestockCreatureFromMenu(
+    creatureId: LivestockCreatureId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) {
+    const placed = placeLivestockCreature(
+      gameState,
+      creatureId,
+      x,
+      y,
+      rotation,
+      currentTime,
+    );
+
+    if (placed.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage("Placed Duskhen.");
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(placed.reason));
+    }
+
+    setGameState(placed.state);
+  }
+
+  function moveLivestockPlacementFromMenu(
+    placementId: LivestockPlacementId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ): boolean {
+    const moved = moveLivestockPlacement(
+      gameState,
+      placementId,
+      x,
+      y,
+      rotation,
+      currentTime,
+    );
+
+    if (moved.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage("Moved Duskhen.");
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(moved.reason));
+    }
+
+    setGameState(moved.state);
+    return moved.ok;
+  }
+
+  function removeLivestockPlacementFromMenu(placementId: LivestockPlacementId) {
+    const removed = removeLivestockPlacement(
+      gameState,
+      placementId,
+      currentTime,
+    );
+
+    if (removed.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage("Removed Duskhen.");
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(removed.reason));
+    }
+
+    setGameState(removed.state);
+  }
+
+  function collectAllLivestockOutputsFromMenu() {
+    const collected = collectAllLivestockOutputs(gameState, currentTime);
+
+    if (collected.ok) {
+      queueSaveAfterStateChange("Livestock collection saved");
+      const eggs = collected.collectedByOutputId.egg ?? 0;
+      setLivestockResultMessage(
+        `Collected ${eggs} Egg${eggs === 1 ? "" : "s"} to Pantry.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(collected.reason));
+    }
+
+    setGameState(collected.state);
+  }
+
+  function openInnKitchenPantryFromFarmLivestock() {
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("guildTavern");
+    setGuildTavernPantryRequestId((requestId) => requestId + 1);
   }
 
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
@@ -6339,6 +6463,8 @@ function App() {
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
               innKitchenResultMessage={innKitchenResultMessage}
               farmResultMessage={farmResultMessage}
+              livestockResultMessage={livestockResultMessage}
+              guildTavernPantryRequestId={guildTavernPantryRequestId}
               guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
@@ -6387,6 +6513,11 @@ function App() {
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
               onHarvestAllFarmCrops={harvestAllFarmCropsFromMenu}
               onPurchaseFarmUpgrade={purchaseFarmUpgradeFromMenu}
+              onPlaceLivestockCreature={placeLivestockCreatureFromMenu}
+              onMoveLivestockPlacement={moveLivestockPlacementFromMenu}
+              onRemoveLivestockPlacement={removeLivestockPlacementFromMenu}
+              onCollectAllLivestockOutputs={collectAllLivestockOutputsFromMenu}
+              onOpenInnKitchenPantry={openInnKitchenPantryFromFarmLivestock}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }
