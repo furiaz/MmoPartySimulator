@@ -147,39 +147,6 @@ Debugging / Fixing:
 - Do NOT guess or silently override behavior
 
 
----
-## Documentation Companion Ticket Rule
-
-Whenever a GitHub Issue ticket is created for executable implementation work, also create one companion documentation ticket for the same topic.
-
-Do not create a companion documentation ticket for documentation-only tickets, parent epics, child epics, tracking-only issues, planning-only issues, or future placeholder tickets that are not ready for implementation.
-
-For large feature hierarchies, create documentation companion tickets only for leaf implementation tickets that are approved for execution, unless the user explicitly asks for one shared documentation strategy ticket for the whole feature.
-
-The documentation ticket should cover:
-
-- Updating relevant project documentation after or alongside the implementation
-- Any changes needed in GDD.md, GTD.md, README files, comments, or other supporting docs
-- Confirming whether no documentation change is needed
-
-The documentation ticket must:
-
-- Reference the implementation ticket
-- Use the next available ticket number
-- Use the standard ticket title format
-- Be added to the GitHub Project board
-- Be moved to Design Stage unless the user says otherwise
-- Use an appropriate documentation label
-The documentation ticket should also inherit all non-completion labels from the implementation ticket.
-
-When copying labels from the implementation ticket to the documentation ticket:
-
-- Copy scope/category labels such as `enhancement`, `feature`, `bug`, `New System`, or similar.
-- Also apply the appropriate documentation label.
-- Do NOT copy workflow/status labels such as `Completed`.
-- If the implementation ticket has no scope/category label, apply only the appropriate documentation label.
-
-
 Do not edit GDD.md, GTD.md, or AGENTS.md automatically. If those documents need changes, ask the user to make or approve those updates.
 
 ## Protected Documentation Edit Approval Rule
@@ -191,7 +158,7 @@ Codex must not edit AGENTS.md, GDD.md, or GTD.md unless the user explicitly says
 - "Approve editing GTD.md"
 - "You may edit [exact protected document name]"
 
-General requests such as "fix the documentation", "update the docs", "do issue X", or "execute the documentation ticket" are not enough approval to edit protected documents.
+General requests such as "fix the documentation", "update the docs", or "do issue X" are not enough approval to edit protected documents.
 
 If protected documentation appears to need updates, Codex must:
 1. Identify the needed documentation change.
@@ -259,29 +226,6 @@ Ticket titles must use the format:
 
 Future idea cards may use normal descriptive titles while they are in Dragons Vault or Todo.
 When a future idea is promoted into Design Stage or Implementation scope, rename it to the next ticket number before implementation work begins.
-
-For companion documentation tickets, Codex must not apply the `Completed` label unless the user explicitly says the documentation ticket is complete.
-
-When the linked implementation ticket moves to In Progress, the companion documentation ticket should be moved to Design Stage.
-
-Codex may review documentation impact and leave comments on the documentation ticket, including:
-- Documentation files that may need updates
-- Protected documentation changes that require explicit approval
-- Proposed text for the user to apply manually
-- Confirmation that no documentation change appears necessary
-
-However, documentation review comments do not complete the documentation ticket.
-
-The documentation companion ticket should only receive the `Completed` label after the user explicitly confirms that documentation was updated manually or that no documentation update is needed.
-
-Acceptable user wording includes:
-- "Documentation ticket is complete"
-- "Mark the documentation ticket completed"
-- "Docs are updated, complete the documentation ticket"
-- "No docs needed, complete the documentation ticket"
-
-If the user has not explicitly approved completion, leave the documentation ticket in Design Stage or the user-requested project status, and do not apply `Completed`.
-
 
 ## Ticket Number Validation Rule
 
@@ -388,7 +332,7 @@ The Plan Review Gate output must include:
 
 If the review finds conflicts with GDD.md or GTD.md, Codex must stop and ask for confirmation before creating the ticket.
 
-Only after the Final Reviewed Plan exists may Codex create the implementation ticket and companion documentation ticket.
+Only after the Final Reviewed Plan exists may Codex create the implementation ticket.
 
 ## Execution Plan Workflow
 
@@ -401,12 +345,9 @@ When the user asks for an execution plan:
 - For large multi-system work, create a parent epic, child epics when useful, and focused leaf implementation tickets from the reviewed implementation plan.
 - Use the next available ticket number in this title format:
   - [Ticket 0001]: Short descriptive title
-- Also create the required companion documentation ticket for each executable leaf implementation ticket, unless the ticket is documentation-only, tracking-only, an epic, or a future placeholder.
-- Link the documentation ticket to the implementation ticket.
-- Add both issues to the GitHub Project board.
-- Move both issues to Design Stage unless the user says otherwise.
+- Add the implementation issue to the GitHub Project board.
+- Move the implementation issue to Design Stage unless the user says otherwise.
 - Apply an appropriate non-documentation label to the implementation ticket based on scope, such as feature, bug, enhancement, or New System.
-- Apply an appropriate documentation label to the companion documentation ticket.
 
 When the user later asks to execute an approved ticket or plan:
 
@@ -416,8 +357,6 @@ When the user later asks to execute an approved ticket or plan:
 - Run the verification plan from the ticket.
 - After implementation and verification are complete, move the GitHub Project item to Manual Review.
 - After implementation and verification are complete, apply the `Completed` label to the GitHub Issue.
-- This Manual Review step applies to the implementation ticket only. It does not apply to the companion documentation ticket unless the user explicitly requests that move.
-- After implementation and verification are complete, Codex may comment on the companion documentation ticket with documentation impact notes, but must not move the documentation ticket to Manual Review or apply `Completed` unless the user explicitly requests it.
 - Completion notes should list the main files changed, verification performed, and confirm the `Completed` label was applied to the GitHub Issue.
 - Do not move the ticket to Done unless the user explicitly approves completion after review.
 - Before implementation, verify the active issue title already starts with [Ticket 000N]:.
@@ -431,15 +370,47 @@ When the user later asks to execute an approved ticket or plan:
 For each implementation ticket:
 
 - Keep changes scoped so the ticket can be reviewed or reverted independently.
-- Mention the ticket number in the commit message when committing related work.
+- Mention the ticket number in the commit message only when the user has explicitly authorized a commit.
 - Avoid mixing unrelated tickets in the same commit.
 - If multiple tickets are implemented together, explain why in the ticket and commit message.
 - Completion notes should list the main files changed and any verification performed.
 - If rollback is needed, prefer reverting the commit associated with the ticket instead of manually undoing unrelated code.
 
-## Git Handling Authorization
+## Explicit Git Authorization Required
 
-The user has authorized Codex to handle git workflow for ticket-scoped work after implementation and verification are complete.
+Codex must never commit, merge, push, or create a pull request without explicit user authorization for that exact git action.
+
+Implementation approval is not git authorization.
+
+The following kinds of user messages authorize implementation only, not commits, merges, pushes, or pull requests:
+
+- "let's do this"
+- "lets do this"
+- "go ahead"
+- "implement this"
+- "PLEASE IMPLEMENT THIS PLAN"
+- "fix this"
+- "looks good"
+- "ok"
+
+Acceptable git authorization must explicitly name the requested git action, such as:
+
+- "commit this"
+- "commit these changes"
+- "push this branch"
+- "create a PR"
+- "merge this PR"
+- "commit and open a PR"
+
+If the user has not explicitly authorized the specific git action:
+
+- Do not stage files.
+- Do not commit.
+- Do not push.
+- Do not create a pull request.
+- Do not merge.
+- Leave completed implementation changes in the working tree for user review.
+- Report verification results and the current working-tree status instead.
 
 When Codex handles git workflow:
 
@@ -449,8 +420,10 @@ When Codex handles git workflow:
 - Use commit messages that reference the active ticket number.
 - Push the branch and create a pull request when the user has asked Codex to handle the full git workflow for that task.
 - Keep GitHub Issue and Project status updates aligned with the ticket workflow rules.
+- Always tell the user when commits, merges, or pull requests are created or performed.
+- For every commit, merge, or pull request, report the exact summary/title used and the description/body used. If there was no description/body, say that explicitly.
 
-This authorization does not bypass issue creation, protected documentation approval, verification, review, rollback, or conflict-resolution rules.
+Explicit git authorization does not bypass issue creation, protected documentation approval, verification, review, rollback, or conflict-resolution rules.
 
 ## Explicit Quick Fix Exception
 

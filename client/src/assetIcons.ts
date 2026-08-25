@@ -45,7 +45,7 @@ export const INVENTORY_ITEM_ICON_SRC: Partial<Record<ItemId, string>> = {
   hardwood: `${nowAssetPackPath}/wood-node.png`,
   iron_ore: `${nowAssetPackPath}/ore-node.png`,
   redleaf_herb: `${nowAssetPackPath}/herb-node.png`,
-  ore_shard: `${nowAssetPackPath}/ore-node.png`,
+  tin_ore: `${nowAssetPackPath}/ore-node.png`,
   crafting_string: `${craftingSupplyIconPath}/crafting_string.png`,
   iron_nails: `${craftingSupplyIconPath}/iron_nails.png`,
   slime_gel_t1: `${nowAssetPackPath}/herb-node.png`,
@@ -425,7 +425,7 @@ export const LIVESTOCK_CREATURE_ICON_SRC: Record<
 > = {
   duskhen: `${farmLivestockAssetPath}/duskhen.png`,
   wolf: `${farmLivestockAssetPath}/wolf.png`,
-  iron_crawler: `${farmLivestockAssetPath}/iron-crawler.png`,
+  tin_crawler: `${farmLivestockAssetPath}/tin-crawler.png`,
   elder_mossling: `${farmLivestockAssetPath}/elder-mossling.png`,
   locked: `${farmLivestockAssetPath}/locked-crop.png`,
 };

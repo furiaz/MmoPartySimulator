@@ -16,10 +16,14 @@ import {
   getGuildNoticeBoardUpgradeStatuses,
   purchaseGuildNoticeBoardUpgrade,
 } from "./guildRecruitUpgrades";
+import {
+  createInitialLivestockState,
+  LIVESTOCK_WOLF_CREATURE_ID,
+} from "./livestock";
 import { countInventoryItem } from "./inventory";
 import type { GameState } from "./state";
 import { createTestGameState } from "./testState";
-import type { Enemy, GuildNoticeBoardQuest } from "./types";
+import type { Enemy, GuildNoticeBoardQuest, LivestockState } from "./types";
 import { getCurrencyBalance, setCurrencyBalanceForDebug } from "./wallet";
 
 const NOW_MS = new Date(2026, 0, 1, 10, 0, 0).getTime();
@@ -106,6 +110,83 @@ describe("guild notice board upgrades", () => {
     ).toMatchObject({
       usedToday: 0,
       remaining: 1,
+    });
+  });
+
+  it("adds placed fed Wolf helpers to Notice Board rerolls", () => {
+    const livestock = createInitialLivestockState();
+    let state = createUpgradeState(1_000, {
+      ...livestock,
+      ownedCreaturesById: {
+        ...livestock.ownedCreaturesById,
+        wolf: 2,
+      },
+      placementsById: {
+        wolf_1: {
+          id: "wolf_1",
+          creatureId: LIVESTOCK_WOLF_CREATURE_ID,
+          x: 0,
+          y: 0,
+          rotation: "horizontal",
+          placedAtMs: 0,
+          lastProducedAtMs: 0,
+        },
+        wolf_2: {
+          id: "wolf_2",
+          creatureId: LIVESTOCK_WOLF_CREATURE_ID,
+          x: 2,
+          y: 0,
+          rotation: "horizontal",
+          placedAtMs: 0,
+          lastProducedAtMs: 0,
+        },
+      },
+    });
+
+    expect(getGuildNoticeBoardRerollDisplayState(state, NOW_MS)).toMatchObject({
+      isUnlocked: true,
+      dailyLimit: 2,
+      remaining: 2,
+      sourceTooltipText: "2 from Livestock (Wolf x2)",
+    });
+
+    state = purchaseGuildNoticeBoardUpgrade(state, "notice_board_scouts").state;
+
+    expect(getGuildNoticeBoardRerollDisplayState(state, NOW_MS)).toMatchObject({
+      dailyLimit: 3,
+      remaining: 3,
+      sourceTooltipText: "1 from Guild (Scouts), 2 from Livestock (Wolf x2)",
+    });
+
+    const rerolled = rerollGuildNoticeBoard(state, NOW_MS);
+
+    expect(rerolled.ok).toBe(true);
+    if (!rerolled.ok) {
+      return;
+    }
+
+    expect(rerolled.rerollsRemaining).toBe(2);
+    expect(
+      getGuildNoticeBoardRerollDisplayState(
+        {
+          ...rerolled.state,
+          livestock: {
+            ...rerolled.state.livestock!,
+            placementsById: {
+              ...rerolled.state.livestock!.placementsById,
+              wolf_1: {
+                ...rerolled.state.livestock!.placementsById.wolf_1,
+                isHungry: true,
+              },
+            },
+          },
+        },
+        NOW_MS,
+      ),
+    ).toMatchObject({
+      dailyLimit: 2,
+      remaining: 1,
+      sourceTooltipText: "1 from Guild (Scouts), 1 from Livestock (Wolf x1)",
     });
   });
 
@@ -275,7 +356,7 @@ describe("guild notice board upgrades", () => {
   });
 });
 
-function createUpgradeState(crowns = 0): GameState {
+function createUpgradeState(crowns = 0, livestock?: LivestockState): GameState {
   const leader = {
     ...createCompanion("companion-1", { x: 10, y: 10 }, "companion-1", "defender", 0),
     state: "idle" as const,
@@ -290,6 +371,7 @@ function createUpgradeState(crowns = 0): GameState {
     highestCharacterLevelEver: 10,
     guildNoticeBoard: createInitialGuildNoticeBoardState(NOW_MS),
     guildUpgrades: createInitialGuildUpgradesState(),
+    livestock,
   });
 
   return setCurrencyBalanceForDebug(state, "crowns", crowns).state;

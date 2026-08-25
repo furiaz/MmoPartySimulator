@@ -7,7 +7,7 @@ import {
   getKeyItemDefinition,
   LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID,
   LIVESTOCK_ELDER_MOSSLING_DISCOVERY_KEY_ITEM_ID,
-  LIVESTOCK_IRON_CRAWLER_DISCOVERY_KEY_ITEM_ID,
+  LIVESTOCK_TIN_CRAWLER_DISCOVERY_KEY_ITEM_ID,
   LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID,
 } from "./keyItems";
 import { queueNewsBroadcast, queueUnlockNewsBroadcast } from "./newsBroadcast";
@@ -41,13 +41,13 @@ export const LIVESTOCK_GRID_HEIGHT = 3;
 export const LIVESTOCK_DUSKHEN_CREATURE_ID =
   "duskhen" satisfies LivestockCreatureId;
 export const LIVESTOCK_WOLF_CREATURE_ID = "wolf" satisfies LivestockCreatureId;
-export const LIVESTOCK_IRON_CRAWLER_CREATURE_ID =
-  "iron_crawler" satisfies LivestockCreatureId;
+export const LIVESTOCK_TIN_CRAWLER_CREATURE_ID =
+  "tin_crawler" satisfies LivestockCreatureId;
 export const LIVESTOCK_ELDER_MOSSLING_CREATURE_ID =
   "elder_mossling" satisfies LivestockCreatureId;
 export const LIVESTOCK_EGG_OUTPUT_ID = "egg" satisfies LivestockOutputId;
-export const LIVESTOCK_ORE_SHARD_OUTPUT_ID =
-  "ore_shard" satisfies LivestockOutputId;
+export const LIVESTOCK_TIN_ORE_OUTPUT_ID =
+  "tin_ore" satisfies LivestockOutputId;
 export const LIVESTOCK_DUSKHEN_BASE_OWNED = 2;
 export const LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS = 3 * 60 * 60 * 1000;
 export const LIVESTOCK_DUSKHEN_EGG_YIELD = 1;
@@ -125,7 +125,7 @@ export type LivestockCreatureDefinition = {
 export type LivestockCreatureUnlockSource =
   | "merchant"
   | "wolf_defeat"
-  | "iron_crawler_defeat"
+  | "tin_crawler_defeat"
   | "elder_mossling_defeat";
 
 export type LivestockCreatureUnlockResult =
@@ -235,7 +235,7 @@ export const LIVESTOCK_ANIMAL_UPGRADE_DEFINITIONS: Record<
   },
   outputCap: {
     id: "outputCap",
-    displayName: "Egg Holding",
+    displayName: "Output Holding",
     maxLevel: LIVESTOCK_OUTPUT_CAP_MAX_LEVEL,
     isEnabled: true,
   },
@@ -309,16 +309,16 @@ export const LIVESTOCK_CREATURE_DEFINITIONS: LivestockCreatureDefinition[] = [
     discoveryKeyItemId: LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID,
   },
   {
-    id: LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
-    displayName: "Iron Crawler",
-    shortLabel: "IC",
+    id: LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
+    displayName: "Tin Crawler",
+    shortLabel: "TC",
     footprint: {
       width: 2,
       height: 2,
     },
     output: {
-      id: LIVESTOCK_ORE_SHARD_OUTPUT_ID,
-      displayName: "Ore Shard",
+      id: LIVESTOCK_TIN_ORE_OUTPUT_ID,
+      displayName: "Tin Ore",
       intervalMs: LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
       quantity: LIVESTOCK_DUSKHEN_EGG_YIELD,
       destination: "inventory",
@@ -329,8 +329,8 @@ export const LIVESTOCK_CREATURE_DEFINITIONS: LivestockCreatureDefinition[] = [
         quantity: LIVESTOCK_DUSKHEN_FEED_PER_DAY,
       },
     ],
-    sourceHint: "Rare drop from Iron Crawlers",
-    discoveryKeyItemId: LIVESTOCK_IRON_CRAWLER_DISCOVERY_KEY_ITEM_ID,
+    sourceHint: "Rare drop from Tin Crawlers",
+    discoveryKeyItemId: LIVESTOCK_TIN_CRAWLER_DISCOVERY_KEY_ITEM_ID,
   },
   {
     id: LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
@@ -360,7 +360,7 @@ export function createInitialLivestockState(nowMs = 0): LivestockState {
     ownedCreaturesById: {
       duskhen: LIVESTOCK_DUSKHEN_BASE_OWNED,
       wolf: 0,
-      iron_crawler: 0,
+      tin_crawler: 0,
       elder_mossling: 0,
     },
     placementsById: {},
@@ -368,16 +368,16 @@ export function createInitialLivestockState(nowMs = 0): LivestockState {
     lastFeedDayStartMs: getLivestockLocalDayStartMs(nowMs),
     animalUpgradeLevelsByCreatureId: {
       duskhen: createInitialLivestockAnimalUpgradeLevels(),
-      iron_crawler: createInitialLivestockAnimalUpgradeLevels(),
+      tin_crawler: createInitialLivestockAnimalUpgradeLevels(),
     },
     buildingUpgradeLevels,
     holdingQuantitiesByOutputId: {
       egg: 0,
-      ore_shard: 0,
+      tin_ore: 0,
     },
     holdingCapsByOutputId: {
       egg: getLivestockOutputCapForLevel(1),
-      ore_shard: getLivestockOutputCapForLevel(1),
+      tin_ore: getLivestockOutputCapForLevel(1),
     },
   };
 }
@@ -2543,7 +2543,7 @@ function appendLivestockTelemetry(
 }
 
 function isLivestockOutputId(value: string): value is LivestockOutputId {
-  return value === LIVESTOCK_EGG_OUTPUT_ID || value === LIVESTOCK_ORE_SHARD_OUTPUT_ID;
+  return value === LIVESTOCK_EGG_OUTPUT_ID || value === LIVESTOCK_TIN_ORE_OUTPUT_ID;
 }
 
 function getLivestockDiscoveryKeyItemId(
@@ -2573,10 +2573,10 @@ function getLivestockUnlockSourceForEnemyType(
         creatureId: LIVESTOCK_WOLF_CREATURE_ID,
         source: "wolf_defeat",
       };
-    case "iron_crawler":
+    case "tin_crawler":
       return {
-        creatureId: LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
-        source: "iron_crawler_defeat",
+        creatureId: LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
+        source: "tin_crawler_defeat",
       };
     case "elder_mossling":
       return {

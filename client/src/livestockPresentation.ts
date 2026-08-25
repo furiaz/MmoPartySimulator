@@ -13,6 +13,7 @@ import {
   getNextLivestockFeedAtMs,
   getLivestockState,
   getLivestockUpgradeCostCrowns,
+  getLivestockHelperBonusSummary,
   isPartyLeaderNearLivestockKeeper,
   isTownServicesUnlocked,
   LIVESTOCK_ANIMAL_UPGRADE_DEFINITIONS,
@@ -97,6 +98,7 @@ export type LivestockDisplay = {
   outputs: LivestockOutputDisplay[];
   totalOutputPerHourText: string;
   expectedDailyOutputText: string;
+  helperBonusText: string;
   totalFeedText: string;
   feedingStatusText: string;
   nextFeedAtText: string;
@@ -192,13 +194,14 @@ export function getLivestockDisplay(
       const output = definition.output!;
       const quantity = livestock.holdingQuantitiesByOutputId[output.id] ?? 0;
       const cap = livestock.holdingCapsByOutputId[output.id] ?? 0;
+      const displayName = pluralizeOutputName(output.displayName);
 
       return {
         outputId: output.id,
-        displayName: `${output.displayName}${output.displayName.endsWith("s") ? "" : "s"}`,
+        displayName,
         quantity,
         cap,
-        holdText: `${output.displayName}${output.displayName.endsWith("s") ? "" : "s"} ${quantity}/${cap}`,
+        holdText: `${displayName} ${quantity}/${cap}`,
       };
     });
   const totalHeld = outputs.reduce((total, output) => total + output.quantity, 0);
@@ -218,6 +221,7 @@ export function getLivestockDisplay(
     outputs,
     totalOutputPerHourText: formatRate(getLivestockExpectedOutputsPerHour(state)),
     expectedDailyOutputText: getExpectedDailyOutputText(livestock, placements),
+    helperBonusText: getLivestockHelperBonusSummary(state).summaryText,
     totalFeedText: getTotalFeedText(creatures),
     feedingStatusText: `Fed ${Math.max(0, placedCount - hungryCount)} / Hungry ${hungryCount}`,
     nextFeedAtText: formatClockTime(getNextLivestockFeedAtMs(nowMs)),
@@ -377,7 +381,7 @@ function getAnimalUpgradeEffectText(
     case "feedDiscount":
       return `${getLivestockFeedDiscountPercent(level).toFixed(0)}% discount`;
     case "outputCap":
-      return `${definition.output?.displayName ?? "Output"}s ${getLivestockOutputCapForLevel(level)}`;
+      return `${pluralizeOutputName(definition.output?.displayName ?? "Output")} ${getLivestockOutputCapForLevel(level)}`;
     default:
       return "";
   }
@@ -509,7 +513,7 @@ function getExpectedDailyOutputText(
     const intervalMs = getLivestockOutputIntervalMs(livestock, definition);
     const expectedDailyQuantity =
       ((24 * 60 * 60 * 1000) / intervalMs) * definition.output.quantity;
-    const displayName = pluralizeIngredientName(definition.output.displayName);
+    const displayName = pluralizeOutputName(definition.output.displayName);
 
     outputByName.set(
       displayName,
@@ -522,6 +526,10 @@ function getExpectedDailyOutputText(
         .map(([outputName, quantity]) => `${outputName} ${formatRate(quantity)}/day`)
         .join(", ")
     : "No output expected";
+}
+
+function pluralizeOutputName(displayName: string): string {
+  return displayName === "Tin Ore" ? displayName : pluralizeIngredientName(displayName);
 }
 
 function formatClockTime(ms: number): string {

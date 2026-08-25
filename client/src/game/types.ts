@@ -57,7 +57,7 @@ export type EnemyTypeId =
   | "wolf"
   | "orc"
   | "ember_imp"
-  | "iron_crawler"
+  | "tin_crawler"
   | "briar_wolf"
   | "mire_spider"
   | "night_bat"
@@ -192,7 +192,7 @@ export type ResourceItemId =
   | "hardwood"
   | "iron_ore"
   | "redleaf_herb"
-  | "ore_shard";
+  | "tin_ore";
 
 export type CraftingSupplyItemId =
   | "crafting_string"
@@ -612,7 +612,7 @@ export type KeyItemId =
   | "farm_seed_ashpepper"
   | "livestock_creature_duskhen"
   | "livestock_creature_wolf"
-  | "livestock_creature_iron_crawler"
+  | "livestock_creature_tin_crawler"
   | "livestock_creature_elder_mossling";
 
 export type KeyItemDefinition = {
@@ -2346,7 +2346,7 @@ export type DebugTelemetryEvent = {
   livestockUnlockSource?:
     | "merchant"
     | "wolf_defeat"
-    | "iron_crawler_defeat"
+    | "tin_crawler_defeat"
     | "elder_mossling_defeat";
   livestockUnlockChance?: number;
   livestockUnlockRoll?: number;
@@ -2908,10 +2908,10 @@ export type FarmState = {
 export type LivestockCreatureId =
   | "duskhen"
   | "wolf"
-  | "iron_crawler"
+  | "tin_crawler"
   | "elder_mossling";
 
-export type LivestockOutputId = "egg" | "ore_shard";
+export type LivestockOutputId = "egg" | "tin_ore";
 
 export type LivestockFeedIngredientId = FarmCropId | LivestockOutputId;
 

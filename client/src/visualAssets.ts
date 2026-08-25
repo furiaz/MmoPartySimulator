@@ -345,7 +345,7 @@ const prototypeEnemyVisualAssets: Partial<Record<EnemyTypeId, SpriteVisualAsset>
   mossling: createStaticEnemySprite(`${prototypeEnemyBasePath}/mossling-se.png`),
   wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/wolf.png`),
   ember_imp: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/ember_imp.png`),
-  iron_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/iron_crawler.png`),
+  tin_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/tin_crawler.png`),
   briar_wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/briar_wolf.png`),
   mire_spider: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/mire_spider.png`),
   night_bat: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/night_bat.png`),

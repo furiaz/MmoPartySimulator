@@ -11,6 +11,7 @@ import {
   getFarmFieldHoldCap,
   getFarmSpeedMultiplier,
   getFarmState,
+  getLivestockHelperBonusSummary,
   getLivestockExpectedOutputsPerHour,
   getFarmUpgradeCostCrowns,
   isPartyLeaderNearFarmer,
@@ -98,8 +99,9 @@ export function getFarmDisplay(
             definition,
             field,
             isNearFarmer,
-          isUnlocked,
-          nowMs,
+            isUnlocked,
+            nowMs,
+            state,
         })
       : getLockedFieldDisplay(definition);
   });
@@ -152,6 +154,7 @@ function getUnlockedFieldDisplay({
   isNearFarmer,
   isUnlocked,
   nowMs,
+  state,
 }: {
   crownBalance: number;
   definition: ReturnType<typeof getFarmCropDefinitions>[number];
@@ -159,17 +162,22 @@ function getUnlockedFieldDisplay({
   isNearFarmer: boolean;
   isUnlocked: boolean;
   nowMs: number;
+  state: GameState;
 }): FarmFieldDisplay & { generationPerHourValue: number } {
   const holdCap = getFarmFieldHoldCap(field);
   const isAtCap = field.heldQuantity >= holdCap;
   const isProducing = field.upgradeLevels.speed >= 1 && !isAtCap;
-  const generationIntervalMs = getFarmFieldGenerationIntervalMs(field);
+  const generationIntervalMs = getFarmFieldGenerationIntervalMs(field, state);
   const elapsedMs = Math.max(0, nowMs - field.lastGeneratedAtMs);
   const timeRemainingMs =
     isProducing ? Math.max(0, generationIntervalMs - elapsedMs) : null;
-  const cropsPerHour = getFarmExpectedCropsPerHour(field);
+  const cropsPerHour = getFarmExpectedCropsPerHour(field, state);
   const speedMultiplier = getFarmSpeedMultiplier(field);
   const fertilizerChance = getFarmFertilizerDoubleCropChancePercent(field);
+  const helperBonus = getLivestockHelperBonusSummary(state);
+  const helperTooltip = helperBonus.farmGenerationLivestockSourceText
+    ? `; ${helperBonus.farmGenerationLivestockSourceText}`
+    : "";
 
   return {
     fieldId: definition.fieldId,
@@ -203,9 +211,9 @@ function getUnlockedFieldDisplay({
     multiCropText: formatPercent(fertilizerChance),
     multiCropTooltip: `Fertilizer Lv ${field.upgradeLevels.fertilizer}/${FARM_FIELD_UPGRADE_DEFINITIONS.fertilizer.maxLevel}`,
     generationPerHourText: formatRate(cropsPerHour),
-    generationPerHourTooltip: `Based on Faster Generation Lv ${field.upgradeLevels.speed}/${FARM_FIELD_UPGRADE_DEFINITIONS.speed.maxLevel} and Fertilizer Lv ${field.upgradeLevels.fertilizer}/${FARM_FIELD_UPGRADE_DEFINITIONS.fertilizer.maxLevel}`,
+    generationPerHourTooltip: `Based on Faster Generation Lv ${field.upgradeLevels.speed}/${FARM_FIELD_UPGRADE_DEFINITIONS.speed.maxLevel} and Fertilizer Lv ${field.upgradeLevels.fertilizer}/${FARM_FIELD_UPGRADE_DEFINITIONS.fertilizer.maxLevel}${helperTooltip}`,
     generationPerDayText: formatRate(cropsPerHour * 24),
-    generationPerDayTooltip: "Expected crop output over 24 hours at current upgrades.",
+    generationPerDayTooltip: `Expected crop output over 24 hours at current upgrades${helperTooltip}.`,
     holdingTooltip: `Harvest Cap Lv ${field.upgradeLevels.cap}/${FARM_FIELD_UPGRADE_DEFINITIONS.cap.maxLevel}`,
     upgrades: (Object.keys(FARM_FIELD_UPGRADE_DEFINITIONS) as FarmFieldUpgradeId[]).map(
       (upgradeId) =>

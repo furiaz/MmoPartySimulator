@@ -35,11 +35,11 @@
       "path": "/assets/Generated/enemy-placeholders/items/ember_imp.png"
     },
     {
-      "enemyTypeId": "iron_crawler",
-      "displayName": "Iron Crawler",
+      "enemyTypeId": "tin_crawler",
+      "displayName": "Tin Crawler",
       "level": 14,
       "canvas": { "width": 32, "height": 32 },
-      "path": "/assets/Generated/enemy-placeholders/items/iron_crawler.png"
+      "path": "/assets/Generated/enemy-placeholders/items/tin_crawler.png"
     },
     {
       "enemyTypeId": "briar_wolf",

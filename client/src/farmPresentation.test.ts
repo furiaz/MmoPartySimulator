@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { FARM_CARROT_GROWTH_MS } from "./game";
+import {
+  createInitialLivestockState,
+  FARM_CARROT_GROWTH_MS,
+  LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+} from "./game";
 import { getFarmDisplay } from "./farmPresentation";
 import { createTestGameState } from "./game/testState";
 
@@ -89,6 +93,57 @@ describe("farm presentation", () => {
     expect(display.totalCropsPerHourText).toBe("3.37");
     expect(display.field.generationPerHourTooltip).toBe(
       "Based on Faster Generation Lv 3/5 and Fertilizer Lv 2/3",
+    );
+  });
+
+  it("includes Elder Mossling helper bonus in Farm expected rates and tooltips", () => {
+    const livestock = createInitialLivestockState();
+    const state = createTestGameState({
+      farm: {
+        fieldsById: {
+          carrot_field: {
+            id: "carrot_field",
+            cropId: "carrot",
+            upgradeLevels: {
+              speed: 1,
+              cap: 1,
+              fertilizer: 0,
+            },
+            heldQuantity: 0,
+            lastGeneratedAtMs: 0,
+          },
+        },
+      },
+      livestock: {
+        ...livestock,
+        ownedCreaturesById: {
+          ...livestock.ownedCreaturesById,
+          elder_mossling: 1,
+        },
+        placementsById: {
+          elder_mossling_1: {
+            id: "elder_mossling_1",
+            creatureId: LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+            x: 0,
+            y: 0,
+            rotation: "horizontal",
+            placedAtMs: 0,
+            lastProducedAtMs: 0,
+          },
+        },
+      },
+    });
+
+    const display = getFarmDisplay(state, 0);
+
+    expect(display.field.speedText).toBe("100%");
+    expect(display.field.generationPerHourText).toBe("3.30");
+    expect(display.field.generationPerDayText).toBe("79.20");
+    expect(display.field.generationPerHourTooltip).toBe(
+      "Based on Faster Generation Lv 1/5 and Fertilizer Lv 0/3; +10% from Livestock (Elder Mossling x1)",
+    );
+    expect(display.field.generationPerDayTooltip).toBe(
+      "Expected crop output over 24 hours at current upgrades; +10% from Livestock (Elder Mossling x1).",
     );
   });
 });

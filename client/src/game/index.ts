@@ -1025,6 +1025,7 @@ export {
   getFarmFertilizerDoubleCropChancePercent,
   getFarmFieldGenerationIntervalMs,
   getFarmFieldHoldCap,
+  getFarmHelperSpeedMultiplier,
   getFarmState,
   getFarmSpeedMultiplier,
   getFarmUpgradeCostCrowns,
@@ -1067,8 +1068,8 @@ export {
   LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
   LIVESTOCK_GRID_HEIGHT,
   LIVESTOCK_GRID_WIDTH,
-  LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
-  LIVESTOCK_ORE_SHARD_OUTPUT_ID,
+  LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
+  LIVESTOCK_TIN_ORE_OUTPUT_ID,
   LIVESTOCK_UPGRADE_COST_BASE_CROWNS,
   LIVESTOCK_WOLF_CREATURE_ID,
   addOwnedLivestockCreature,
@@ -1113,6 +1114,12 @@ export {
   type LivestockRemoveResult,
   type LivestockUpgradeResult,
 } from "./livestock";
+export {
+  LIVESTOCK_ELDER_MOSSLING_FARM_BONUS_PERCENT,
+  LIVESTOCK_WOLF_NOTICE_BOARD_REROLLS,
+  getLivestockHelperBonusSummary,
+  type LivestockHelperBonusSummary,
+} from "./livestockHelperBonuses";
 export {
   GUILD_NOTICE_BOARD_REFRESH_INTERVAL_MS,
   GUILD_NOTICE_BOARD_REWARD_CROWNS,

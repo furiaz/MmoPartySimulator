@@ -4,6 +4,8 @@ import {
   createInitialLivestockState,
   LIVESTOCK_DUSKHEN_CREATURE_ID,
   LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
+  LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+  LIVESTOCK_WOLF_CREATURE_ID,
 } from "./game/livestock";
 import { createTestGameState } from "./game/testState";
 import { getLivestockDisplay } from "./livestockPresentation";
@@ -18,6 +20,7 @@ describe("livestock presentation", () => {
     expect(display.cells).toHaveLength(15);
     expect(display.totalOutputPerHourText).toBe("0");
     expect(display.expectedDailyOutputText).toBe("No output expected");
+    expect(display.helperBonusText).toBe("No helper bonuses active");
     expect(display.totalFeedText).toBe("No feed needed");
     expect(display.outputs[0]).toMatchObject({
       outputId: "egg",
@@ -57,7 +60,7 @@ describe("livestock presentation", () => {
       },
       {
         id: "outputCap",
-        displayName: "Egg Holding",
+        displayName: "Output Holding",
         level: 1,
         maxLevel: 5,
         currentEffectText: "Eggs 20",
@@ -261,7 +264,7 @@ describe("livestock presentation", () => {
     expect(all.creatures.map((creature) => creature.creatureId)).toEqual([
       "duskhen",
       "wolf",
-      "iron_crawler",
+      "tin_crawler",
       "elder_mossling",
     ]);
     expect(all.creatures[1]).toMatchObject({
@@ -271,6 +274,47 @@ describe("livestock presentation", () => {
       canHoldForPlacement: false,
       upgrades: [],
     });
+  });
+
+  it("shows active helper bonuses in the summary text", () => {
+    const livestock = createInitialLivestockState();
+    const display = getLivestockDisplay(
+      createLivestockPresentationState({
+        livestock: {
+          ...livestock,
+          ownedCreaturesById: {
+            ...livestock.ownedCreaturesById,
+            wolf: 1,
+            elder_mossling: 1,
+          },
+          placementsById: {
+            wolf_1: {
+              id: "wolf_1",
+              creatureId: LIVESTOCK_WOLF_CREATURE_ID,
+              x: 0,
+              y: 0,
+              rotation: "horizontal",
+              placedAtMs: 0,
+              lastProducedAtMs: 0,
+            },
+            elder_mossling_1: {
+              id: "elder_mossling_1",
+              creatureId: LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+              x: 2,
+              y: 0,
+              rotation: "horizontal",
+              placedAtMs: 0,
+              lastProducedAtMs: 0,
+            },
+          },
+        },
+      }),
+      0,
+    );
+
+    expect(display.helperBonusText).toBe(
+      "Farm generation +10% (Elder Mossling x1), Notice Board rerolls +1/day (Wolf x1)",
+    );
   });
 });
 

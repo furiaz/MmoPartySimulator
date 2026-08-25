@@ -9,8 +9,10 @@ import {
   LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
   LIVESTOCK_DUSKHEN_FEED_PER_DAY,
   LIVESTOCK_EGG_HOLD_CAP,
-  LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
-  LIVESTOCK_ORE_SHARD_OUTPUT_ID,
+  LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+  LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
+  LIVESTOCK_TIN_ORE_OUTPUT_ID,
+  LIVESTOCK_WOLF_CREATURE_ID,
   moveLivestockPlacement,
   placeLivestockCreature,
   purchaseLivestockAnimalUpgrade,
@@ -20,6 +22,7 @@ import {
   settleLivestockState,
   tryUnlockLivestockCreatureFromEnemyDefeat,
 } from "./livestock";
+import { getLivestockHelperBonusSummary } from "./livestockHelperBonuses";
 import { createEmptyPartyInventory, countInventoryItem } from "./inventory";
 import {
   LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID,
@@ -711,20 +714,68 @@ describe("Livestock MVP", () => {
     );
   });
 
-  it("places larger unlocked creatures and produces Iron Crawler Ore Shards", () => {
+  it("counts only placed fed helper creatures for helper bonuses", () => {
+    const livestock = createInitialLivestockState();
+    const state = createLivestockTestState({
+      livestock: {
+        ...livestock,
+        ownedCreaturesById: {
+          ...livestock.ownedCreaturesById,
+          wolf: 3,
+          elder_mossling: 2,
+        },
+        placementsById: {
+          wolf_fed: createPlacedCreature({
+            id: "wolf_fed",
+            creatureId: LIVESTOCK_WOLF_CREATURE_ID,
+            x: 0,
+            y: 0,
+          }),
+          wolf_hungry: createPlacedCreature({
+            id: "wolf_hungry",
+            creatureId: LIVESTOCK_WOLF_CREATURE_ID,
+            x: 2,
+            y: 0,
+            isHungry: true,
+          }),
+          mossling_fed: createPlacedCreature({
+            id: "mossling_fed",
+            creatureId: LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+            x: 0,
+            y: 1,
+          }),
+        },
+      },
+    });
+
+    expect(getLivestockHelperBonusSummary(state)).toMatchObject({
+      activeWolfCount: 1,
+      noticeBoardRerollBonus: 1,
+      activeElderMosslingCount: 1,
+      farmGenerationBonusPercent: 10,
+      farmGenerationMultiplier: 1.1,
+      noticeBoardLivestockSourceText: "1 from Livestock (Wolf x1)",
+      farmGenerationLivestockSourceText:
+        "+10% from Livestock (Elder Mossling x1)",
+      summaryText:
+        "Farm generation +10% (Elder Mossling x1), Notice Board rerolls +1/day (Wolf x1)",
+    });
+  });
+
+  it("places a Tin Crawler and produces Tin Ore", () => {
     let state = createLivestockTestState({
       pantryIngredients: { bittercap_mushroom: 10 },
     });
     state = addOwnedLivestockCreature(
       state,
-      LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
-      "iron_crawler_defeat",
+      LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
+      "tin_crawler_defeat",
       NOW_MS,
     ).state;
 
     const placed = placeLivestockCreature(
       state,
-      LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
+      LIVESTOCK_TIN_CRAWLER_CREATURE_ID,
       0,
       0,
       "horizontal",
@@ -747,16 +798,16 @@ describe("Livestock MVP", () => {
     );
     expect(
       settled.livestock?.holdingQuantitiesByOutputId[
-        LIVESTOCK_ORE_SHARD_OUTPUT_ID
+        LIVESTOCK_TIN_ORE_OUTPUT_ID
       ],
     ).toBe(1);
   });
 
-  it("collects Ore Shards to inventory and blocks all collection if inventory transfer fails", () => {
+  it("collects Tin Ore to inventory and blocks all collection if inventory transfer fails", () => {
     const withOre = createLivestockTestState({
       livestock: {
         ...createInitialLivestockState(),
-        holdingQuantitiesByOutputId: { egg: 1, ore_shard: 1 },
+        holdingQuantitiesByOutputId: { egg: 1, tin_ore: 1 },
       },
     });
     const collected = collectAllLivestockOutputs(withOre, NOW_MS);
@@ -767,10 +818,10 @@ describe("Livestock MVP", () => {
     }
 
     expect(collected.state.innKitchen?.pantry.ingredientQuantitiesById.egg).toBe(1);
-    expect(countInventoryItem(collected.state.inventory, "ore_shard")).toBe(1);
+    expect(countInventoryItem(collected.state.inventory, "tin_ore")).toBe(1);
     expect(collected.state.livestock?.holdingQuantitiesByOutputId).toMatchObject({
       egg: 0,
-      ore_shard: 0,
+      tin_ore: 0,
     });
 
     const blocked = collectAllLivestockOutputs(
@@ -778,7 +829,7 @@ describe("Livestock MVP", () => {
         inventory: createEmptyPartyInventory(0),
         livestock: {
           ...createInitialLivestockState(),
-          holdingQuantitiesByOutputId: { egg: 1, ore_shard: 1 },
+          holdingQuantitiesByOutputId: { egg: 1, tin_ore: 1 },
         },
       }),
       NOW_MS,
@@ -787,7 +838,7 @@ describe("Livestock MVP", () => {
     expect(blocked).toMatchObject({ ok: false, reason: "collection_error" });
     expect(blocked.state.livestock?.holdingQuantitiesByOutputId).toMatchObject({
       egg: 1,
-      ore_shard: 1,
+      tin_ore: 1,
     });
   });
 
@@ -920,5 +971,30 @@ function createPlacedDuskhen({
     rotation: "horizontal",
     placedAtMs: lastProducedAtMs,
     lastProducedAtMs,
+  };
+}
+
+function createPlacedCreature({
+  id,
+  creatureId,
+  x,
+  y,
+  isHungry = false,
+}: {
+  id: string;
+  creatureId: LivestockPlacedCreatureState["creatureId"];
+  x: number;
+  y: number;
+  isHungry?: boolean;
+}): LivestockPlacedCreatureState {
+  return {
+    id,
+    creatureId,
+    x,
+    y,
+    rotation: "horizontal",
+    placedAtMs: 0,
+    lastProducedAtMs: 0,
+    isHungry: isHungry ? true : undefined,
   };
 }

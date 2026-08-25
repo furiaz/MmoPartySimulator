@@ -1601,12 +1601,15 @@ function GuildNoticeBoardView({
             <button
               disabled={rerollDisabled}
               onClick={onReroll}
+              title={rerollState.sourceTooltipText}
               type="button"
             >
               Reroll {rerollState.remaining}/{rerollState.dailyLimit}
             </button>
           ) : (
-            <small>Scouts locked</small>
+            <small title={rerollState.sourceTooltipText}>
+              Scouts or Wolf helper locked
+            </small>
           )}
         </div>
 

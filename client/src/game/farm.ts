@@ -11,6 +11,7 @@ import {
 import { queueUnlockNewsBroadcast } from "./newsBroadcast";
 import { getPartyLeader } from "./partySystem";
 import { getEuclideanDistance } from "./positionUtils";
+import { getLivestockHelperBonusSummary } from "./livestockHelperBonuses";
 import type { GameState } from "./state";
 import type {
   Enemy,
@@ -452,7 +453,7 @@ export function settleFarmState(
     }
 
     const holdCap = getFarmFieldHoldCap(field);
-    const generationIntervalMs = getFarmFieldGenerationIntervalMs(field);
+    const generationIntervalMs = getFarmFieldGenerationIntervalMs(field, state);
     const elapsedMs = Math.max(0, nowMs - field.lastGeneratedAtMs);
 
     if (field.heldQuantity >= holdCap) {
@@ -797,6 +798,7 @@ export function getFarmFieldHoldCap(field: FarmFieldState): number {
 
 export function getFarmFieldGenerationIntervalMs(
   field: FarmFieldState,
+  state?: Pick<GameState, "livestock">,
 ): number {
   const definition = getFarmCropDefinition(field.cropId);
 
@@ -804,10 +806,16 @@ export function getFarmFieldGenerationIntervalMs(
     return definition.growthMs;
   }
 
-  return Math.round(definition.growthMs / getFarmSpeedMultiplier(field));
+  return Math.round(
+    definition.growthMs /
+      (getFarmSpeedMultiplier(field) * getFarmHelperSpeedMultiplier(state)),
+  );
 }
 
-export function getFarmExpectedCropsPerHour(field: FarmFieldState): number {
+export function getFarmExpectedCropsPerHour(
+  field: FarmFieldState,
+  state?: Pick<GameState, "livestock">,
+): number {
   const definition = getFarmCropDefinition(field.cropId);
 
   if (field.upgradeLevels.speed <= 0) {
@@ -815,12 +823,20 @@ export function getFarmExpectedCropsPerHour(field: FarmFieldState): number {
   }
 
   const baseCyclesPerHour =
-    (60 * 60 * 1000) / getFarmFieldGenerationIntervalMs(field);
+    (60 * 60 * 1000) / getFarmFieldGenerationIntervalMs(field, state);
   const expectedYield =
     definition.yieldQuantity *
     (1 + getFarmFertilizerDoubleCropChancePercent(field) / 100);
 
   return baseCyclesPerHour * expectedYield;
+}
+
+export function getFarmHelperSpeedMultiplier(
+  state?: Pick<GameState, "livestock">,
+): number {
+  return state
+    ? getLivestockHelperBonusSummary(state).farmGenerationMultiplier
+    : 1;
 }
 
 export function getFarmFertilizerDoubleCropChancePercent(

@@ -695,7 +695,7 @@ function getLivestockUpgradeResultLabel(
     case "feedDiscount":
       return "Feed Discount";
     case "outputCap":
-      return "Egg Holding";
+      return "Output Holding";
     case "columns":
       return "Expand Columns";
     case "rows":
@@ -5024,7 +5024,7 @@ function App() {
     } else {
       setGuildNoticeBoardResultMessage(
         rerolled.reason === "locked"
-          ? "Unlock Scouts to reroll postings."
+          ? "Unlock Scouts or place a fed Wolf to reroll postings."
           : "No rerolls remaining today.",
       );
     }

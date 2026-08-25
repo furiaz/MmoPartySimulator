@@ -280,9 +280,9 @@ export const ENEMY_TYPES: Record<EnemyTypeId, EnemyTypeDefinition> = {
     detectionRange: 11,
     combatBodyRadius: 0.6,
   },
-  iron_crawler: {
-    id: "iron_crawler",
-    displayName: "Iron Crawler",
+  tin_crawler: {
+    id: "tin_crawler",
+    displayName: "Tin Crawler",
     archetypeId: "crawler",
     temperament: "aggressive",
     targetPreference: "leader",

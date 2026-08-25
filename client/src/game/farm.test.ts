@@ -23,11 +23,19 @@ import {
   tryUnlockFarmCropFromGathering,
   unlockFarmCrop,
 } from "./farm";
+import {
+  createInitialLivestockState,
+  LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+} from "./livestock";
 import { buyMerchantFarmSeed, getMerchantFarmSeedStock } from "./merchant";
 import { EQUIPMENT_TUTORIAL_QUEST_ID } from "./questSystem";
 import { createTestGameState } from "./testState";
 import type { GameState } from "./state";
-import type { FarmFieldUpgradeId, FarmFieldUpgradeLevels } from "./types";
+import type {
+  FarmFieldUpgradeId,
+  FarmFieldUpgradeLevels,
+  LivestockPlacedCreatureState,
+} from "./types";
 import { addCurrencyToWalletState } from "./wallet";
 
 const NOW_MS = 1_000_000;
@@ -203,6 +211,38 @@ describe("Farm upgrades", () => {
     const afterCycle = settleFarmState(state, interval);
 
     expect(interval).toBe(Math.round(FARM_CARROT_GROWTH_MS / 1.2));
+    expect(beforeCycle.farm?.fieldsById.carrot_field.heldQuantity).toBe(0);
+    expect(afterCycle.farm?.fieldsById.carrot_field.heldQuantity).toBe(1);
+  });
+
+  it("uses placed fed Elder Mosslings to speed Farm generation", () => {
+    const livestock = createInitialLivestockState();
+    const field = createFarmField({
+      upgradeLevels: { speed: 1, cap: 1, fertilizer: 0 },
+    });
+    const state = createFarmState({
+      azureTrialCompleted: true,
+      farm: { fieldsById: { carrot_field: field } },
+      livestock: {
+        ...livestock,
+        ownedCreaturesById: {
+          ...livestock.ownedCreaturesById,
+          elder_mossling: 1,
+        },
+        placementsById: {
+          elder_mossling_1: createFarmTestLivestockPlacement({
+            id: "elder_mossling_1",
+            creatureId: LIVESTOCK_ELDER_MOSSLING_CREATURE_ID,
+          }),
+        },
+      },
+    });
+    const interval = getFarmFieldGenerationIntervalMs(field, state);
+
+    const beforeCycle = settleFarmState(state, interval - 1);
+    const afterCycle = settleFarmState(state, interval);
+
+    expect(interval).toBe(Math.round(FARM_CARROT_GROWTH_MS / 1.1));
     expect(beforeCycle.farm?.fieldsById.carrot_field.heldQuantity).toBe(0);
     expect(afterCycle.farm?.fieldsById.carrot_field.heldQuantity).toBe(1);
   });
@@ -595,6 +635,7 @@ function createFarmState({
       carrot_field: createFarmField({ heldQuantity, upgradeLevels }),
     },
   },
+  livestock,
 }: {
   azureTrialCompleted?: boolean;
   crowns?: number;
@@ -602,6 +643,7 @@ function createFarmState({
   leaderPosition?: { x: number; y: number };
   upgradeLevels?: FarmFieldUpgradeLevels;
   farm?: GameState["farm"];
+  livestock?: GameState["livestock"];
 } = {}): GameState {
   const leader = createCompanion("leader", leaderPosition, "leader");
   const farmer = createNpc("farmer", { x: 11, y: 10 }, "Farmer", "farmer");
@@ -612,6 +654,7 @@ function createFarmState({
       [farmer.id]: farmer,
     },
     farm,
+    livestock,
     quests: {
       ...createTestGameState().quests,
       azure_trial: {
@@ -641,5 +684,26 @@ function createFarmField({
     heldQuantity,
     lastGeneratedAtMs,
     upgradeLevels,
+  };
+}
+
+function createFarmTestLivestockPlacement({
+  id,
+  creatureId,
+  isHungry = false,
+}: {
+  id: string;
+  creatureId: LivestockPlacedCreatureState["creatureId"];
+  isHungry?: boolean;
+}): LivestockPlacedCreatureState {
+  return {
+    id,
+    creatureId,
+    x: 0,
+    y: 0,
+    rotation: "horizontal",
+    placedAtMs: 0,
+    lastProducedAtMs: 0,
+    isHungry: isHungry ? true : undefined,
   };
 }

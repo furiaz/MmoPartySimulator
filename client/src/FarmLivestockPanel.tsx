@@ -356,6 +356,10 @@ export function FarmLivestockPanel({
                 <strong>{livestockDisplay.expectedDailyOutputText}</strong>
               </div>
               <div>
+                <span>Helper Bonuses</span>
+                <strong>{livestockDisplay.helperBonusText}</strong>
+              </div>
+              <div>
                 <span>Feed Status</span>
                 <strong>{livestockDisplay.feedingStatusText}</strong>
               </div>
