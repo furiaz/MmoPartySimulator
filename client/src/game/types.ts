@@ -2049,7 +2049,14 @@ export type DebugTelemetryEventType =
   | "livestock_generation_blocked_cap"
   | "livestock_collect_all_succeeded"
   | "livestock_collect_all_failed"
-  | "livestock_pantry_transfer";
+  | "livestock_pantry_transfer"
+  | "livestock_feed_paid"
+  | "livestock_feed_failed"
+  | "livestock_midnight_feed"
+  | "livestock_feed_now_succeeded"
+  | "livestock_feed_now_failed"
+  | "livestock_became_hungry"
+  | "livestock_resumed_production";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2329,6 +2336,7 @@ export type DebugTelemetryEvent = {
   livestockQuantityAfter?: number;
   livestockCapacity?: number;
   livestockGeneratedQuantity?: number;
+  livestockFeedCost?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2892,6 +2900,9 @@ export type LivestockPlacedCreatureState = {
   rotation: LivestockPlacementRotation;
   placedAtMs: number;
   lastProducedAtMs: number;
+  isHungry?: boolean;
+  hungrySinceMs?: number;
+  pausedProductionRemainingMs?: number;
 };
 
 export type LivestockState = {
@@ -2899,6 +2910,7 @@ export type LivestockState = {
   ownedCreaturesById: Partial<Record<LivestockCreatureId, number>>;
   placementsById: Record<LivestockPlacementId, LivestockPlacedCreatureState>;
   placementSequence: number;
+  lastFeedDayStartMs: number;
   holdingQuantitiesByOutputId: Partial<Record<LivestockOutputId, number>>;
   holdingCapsByOutputId: Partial<Record<LivestockOutputId, number>>;
 };

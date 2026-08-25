@@ -3,8 +3,10 @@ import { createCompanion, createNpc } from "./entities";
 import {
   collectAllLivestockOutputs,
   createInitialLivestockState,
+  feedHungryLivestockNow,
   LIVESTOCK_DUSKHEN_CREATURE_ID,
   LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
+  LIVESTOCK_DUSKHEN_FEED_PER_DAY,
   LIVESTOCK_EGG_HOLD_CAP,
   moveLivestockPlacement,
   placeLivestockCreature,
@@ -151,6 +153,46 @@ describe("Livestock MVP", () => {
     expect(outOfBounds).toMatchObject({ ok: false, reason: "out_of_bounds" });
   });
 
+  it("consumes prorated Pantry carrots on placement and rejects insufficient feed", () => {
+    const midday = new Date(2026, 0, 1, 12).getTime();
+    const placed = placeLivestockCreature(
+      createLivestockTestState({ pantryCarrots: 10 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      0,
+      0,
+      "horizontal",
+      midday,
+    );
+    const insufficient = placeLivestockCreature(
+      createLivestockTestState({ pantryCarrots: 4 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      0,
+      0,
+      "horizontal",
+      midday,
+    );
+    const freeLatePlacement = placeLivestockCreature(
+      createLivestockTestState({ pantryCarrots: 0 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      0,
+      0,
+      "horizontal",
+      new Date(2026, 0, 1, 23, 59).getTime(),
+    );
+
+    expect(placed.ok).toBe(true);
+    if (placed.ok) {
+      expect(
+        placed.state.innKitchen?.pantry.ingredientQuantitiesById.carrot,
+      ).toBe(5);
+    }
+    expect(insufficient).toMatchObject({
+      ok: false,
+      reason: "insufficient_feed",
+    });
+    expect(freeLatePlacement.ok).toBe(true);
+  });
+
   it("moves while preserving timers and re-places removed Duskhens with a fresh timer", () => {
     const placement = createPlacedDuskhen({
       id: "livestock_duskhen_1",
@@ -270,6 +312,114 @@ describe("Livestock MVP", () => {
     expect(capped.livestock?.holdingQuantitiesByOutputId.egg).toBe(20);
   });
 
+  it("feeds placed animals at midnight in placement order and marks unfed animals hungry", () => {
+    const start = new Date(2026, 0, 1, 0).getTime();
+    const first = createPlacedDuskhen({
+      id: "livestock_duskhen_1",
+      x: 0,
+      y: 0,
+      lastProducedAtMs: start,
+    });
+    const second = createPlacedDuskhen({
+      id: "livestock_duskhen_2",
+      x: 1,
+      y: 0,
+      lastProducedAtMs: start,
+    });
+    const fed = settleLivestockState(
+      createLivestockTestState({
+        pantryCarrots: LIVESTOCK_DUSKHEN_FEED_PER_DAY,
+        livestock: {
+          ...createInitialLivestockState(start),
+          placementSequence: 2,
+          lastFeedDayStartMs: start,
+          placementsById: {
+            [first.id]: first,
+            [second.id]: second,
+          },
+        },
+      }),
+      new Date(2026, 0, 2, 0, 1).getTime(),
+    );
+
+    expect(fed.livestock?.placementsById[first.id].isHungry).toBeUndefined();
+    expect(fed.livestock?.placementsById[second.id].isHungry).toBe(true);
+    expect(fed.innKitchen?.pantry.ingredientQuantitiesById.carrot).toBe(0);
+  });
+
+  it("pauses hungry production and resumes remaining timer after Feed Now", () => {
+    const start = new Date(2026, 0, 1, 0).getTime();
+    const beforeMidnight = new Date(2026, 0, 1, 22).getTime();
+    const afterMidnight = new Date(2026, 0, 2, 0, 1).getTime();
+    const afterFeed = new Date(2026, 0, 2, 12).getTime();
+    const placed = createPlacedDuskhen({
+      id: "livestock_duskhen_1",
+      x: 0,
+      y: 0,
+      lastProducedAtMs: beforeMidnight,
+    });
+    const hungry = settleLivestockState(
+      createLivestockTestState({
+        pantryCarrots: 0,
+        livestock: {
+          ...createInitialLivestockState(start),
+          placementSequence: 1,
+          lastFeedDayStartMs: start,
+          placementsById: {
+            [placed.id]: placed,
+          },
+        },
+      }),
+      afterMidnight,
+    );
+    const hungryPlacement = hungry.livestock?.placementsById[placed.id];
+
+    expect(hungryPlacement?.isHungry).toBe(true);
+    expect(hungryPlacement?.pausedProductionRemainingMs).toBe(
+      LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS - 2 * 60 * 60 * 1000,
+    );
+
+    const stillPaused = settleLivestockState(
+      {
+        ...hungry,
+        innKitchen: {
+          ...hungry.innKitchen!,
+          pantry: {
+            ...hungry.innKitchen!.pantry,
+            ingredientQuantitiesById: {
+              ...hungry.innKitchen!.pantry.ingredientQuantitiesById,
+              carrot: 5,
+            },
+          },
+        },
+      },
+      afterFeed,
+    );
+
+    expect(stillPaused.livestock?.holdingQuantitiesByOutputId.egg).toBe(0);
+
+    const fed = feedHungryLivestockNow(stillPaused, afterFeed);
+    expect(fed.ok).toBe(true);
+    if (!fed.ok) {
+      return;
+    }
+
+    const resumedOneHourLater = settleLivestockState(
+      fed.state,
+      afterFeed + 60 * 60 * 1000,
+    );
+    expect(
+      resumedOneHourLater.livestock?.placementsById[placed.id].isHungry,
+    ).not.toBe(true);
+    expect(resumedOneHourLater.livestock?.holdingQuantitiesByOutputId.egg).toBe(1);
+  });
+
+  it("Feed Now fails when no animals are hungry", () => {
+    const fed = feedHungryLivestockNow(createLivestockTestState(), NOW_MS);
+
+    expect(fed).toMatchObject({ ok: false, reason: "no_hungry_animals" });
+  });
+
   it("collects held Eggs into Pantry without generating first, resetting timers, or creating inventory clutter", () => {
     const placement = createPlacedDuskhen({
       id: "livestock_duskhen_1",
@@ -351,11 +501,13 @@ function createLivestockTestState({
   leaderPosition = { x: 10, y: 10 },
   livestock = createInitialLivestockState(),
   keyItemsById,
+  pantryCarrots = 100,
 }: {
   azureTrialCompleted?: boolean;
   leaderPosition?: Position;
   livestock?: LivestockState;
   keyItemsById?: Partial<Record<string, number>>;
+  pantryCarrots?: number;
 } = {}) {
   const leader = createCompanion("leader", leaderPosition, "leader");
   const keeper = createNpc(
@@ -364,7 +516,9 @@ function createLivestockTestState({
     "Livestock",
     "livestock_keeper",
   );
-  const baseQuests = createTestGameState().quests;
+  const baseState = createTestGameState();
+  const baseQuests = baseState.quests;
+  const baseKitchen = baseState.innKitchen!;
 
   return createTestGameState({
     partyLeaderId: leader.id,
@@ -384,6 +538,21 @@ function createLivestockTestState({
       azure_trial: {
         ...baseQuests.azure_trial,
         status: azureTrialCompleted ? "completed" : "available",
+      },
+    },
+    innKitchen: {
+      ...baseKitchen,
+      pantry: {
+        ...baseKitchen.pantry,
+        unlockedIngredientIds: baseKitchen.pantry.unlockedIngredientIds.includes(
+          "carrot",
+        )
+          ? baseKitchen.pantry.unlockedIngredientIds
+          : [...baseKitchen.pantry.unlockedIngredientIds, "carrot"],
+        ingredientQuantitiesById: {
+          ...baseKitchen.pantry.ingredientQuantitiesById,
+          carrot: pantryCarrots,
+        },
       },
     },
   });

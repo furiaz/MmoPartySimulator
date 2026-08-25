@@ -29,10 +29,13 @@ describe("livestock presentation", () => {
       placedCount: 0,
       availableCount: 2,
       footprintText: "1x1",
-      feedText: "Carrot 1/day",
+      feedText: "Carrot 10/day",
       yieldText: "Egg 1 / 3h",
       canHoldForPlacement: true,
     });
+    expect(display.pantryFeedText).toBe("Pantry Carrots 0");
+    expect(display.feedingStatusText).toBe("Fed 0 / Hungry 0");
+    expect(display.canFeedNow).toBe(false);
   });
 
   it("shows occupied grid cells and aggregate feed/output for placed Duskhens", () => {
@@ -77,10 +80,50 @@ describe("livestock presentation", () => {
       expectedOutputPerHourText: "0.67",
       canHoldForPlacement: false,
     });
-    expect(display.totalFeedText).toBe("Carrots 2/day");
+    expect(display.totalFeedText).toBe("Carrots 20/day");
     expect(display.totalOutputPerHourText).toBe("0.67");
     expect(display.outputs[0].holdText).toBe("Eggs 7/20");
     expect(display.canCollect).toBe(true);
+  });
+
+  it("shows hungry grid cells and disables their expected output", () => {
+    const display = getLivestockDisplay(
+      createLivestockPresentationState({
+        livestock: {
+          ...createInitialLivestockState(),
+          placementSequence: 1,
+          placementsById: {
+            livestock_duskhen_1: {
+              id: "livestock_duskhen_1",
+              creatureId: LIVESTOCK_DUSKHEN_CREATURE_ID,
+              x: 0,
+              y: 0,
+              rotation: "horizontal",
+              placedAtMs: 0,
+              lastProducedAtMs: 0,
+              isHungry: true,
+              hungrySinceMs: 1,
+              pausedProductionRemainingMs: LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
+            },
+          },
+        },
+      }),
+      1,
+    );
+
+    expect(display.cells[0]).toMatchObject({
+      placementId: "livestock_duskhen_1",
+      isHungry: true,
+    });
+    expect(display.creatures[0]).toMatchObject({
+      placedCount: 1,
+      fedCount: 0,
+      hungryCount: 1,
+      expectedOutputPerHourText: "0",
+    });
+    expect(display.totalOutputPerHourText).toBe("0");
+    expect(display.feedNowActionText).toBe("1 hungry");
+    expect(display.canFeedNow).toBe(true);
   });
 
   it("allows browsing while locked or far but disables execution actions", () => {

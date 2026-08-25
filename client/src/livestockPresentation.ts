@@ -4,6 +4,7 @@ import {
   getLivestockCreatureDefinitions,
   getLivestockExpectedOutputsPerHour,
   getLivestockFootprintCells,
+  getNextLivestockFeedAtMs,
   getLivestockState,
   isPartyLeaderNearLivestockKeeper,
   isTownServicesUnlocked,
@@ -24,6 +25,7 @@ export type LivestockGridCellDisplay = {
   creatureId: LivestockCreatureId | null;
   label: string;
   isOrigin: boolean;
+  isHungry: boolean;
 };
 
 export type LivestockCreatureDisplay = {
@@ -37,6 +39,8 @@ export type LivestockCreatureDisplay = {
   feedText: string;
   yieldText: string;
   expectedOutputPerHourText: string;
+  fedCount: number;
+  hungryCount: number;
   canHoldForPlacement: boolean;
 };
 
@@ -60,17 +64,21 @@ export type LivestockDisplay = {
   outputs: LivestockOutputDisplay[];
   totalOutputPerHourText: string;
   totalFeedText: string;
+  pantryFeedText: string;
+  feedingStatusText: string;
+  nextFeedAtText: string;
   collectActionText: string;
   canCollect: boolean;
+  feedNowActionText: string;
+  canFeedNow: boolean;
+  hasHungryAnimals: boolean;
 };
 
 export function getLivestockDisplay(
   state: GameState,
   nowMs = Date.now(),
 ): LivestockDisplay {
-  void nowMs;
-
-  const livestock = getLivestockState(state);
+  const livestock = getLivestockState(state, nowMs);
   const isUnlocked = isTownServicesUnlocked(state);
   const isNearLivestockKeeper = isPartyLeaderNearLivestockKeeper(state);
   const canUseActions = isUnlocked && isNearLivestockKeeper;
@@ -81,13 +89,18 @@ export function getLivestockDisplay(
     const placedCount = placements.filter(
       (placement) => placement.creatureId === definition.id,
     ).length;
+    const hungryCount = placements.filter(
+      (placement) =>
+        placement.creatureId === definition.id && placement.isHungry === true,
+    ).length;
+    const fedCount = Math.max(0, placedCount - hungryCount);
     const ownedCount = livestock.ownedCreaturesById[definition.id] ?? 0;
     const availableCount = getAvailableLivestockCreatureCount(
       livestock,
       definition.id,
     );
     const expectedPerHour =
-      placedCount *
+      fedCount *
       ((60 * 60 * 1000 * definition.output.quantity) /
         definition.output.intervalMs);
 
@@ -107,6 +120,8 @@ export function getLivestockDisplay(
           : "None",
       yieldText: `${definition.output.displayName} ${definition.output.quantity} / ${formatDuration(definition.output.intervalMs)}`,
       expectedOutputPerHourText: formatRate(expectedPerHour),
+      fedCount,
+      hungryCount,
       canHoldForPlacement: canUseActions && availableCount > 0,
     };
   });
@@ -128,6 +143,10 @@ export function getLivestockDisplay(
     },
   ];
   const totalHeld = outputs.reduce((total, output) => total + output.quantity, 0);
+  const hungryCount = placements.filter((placement) => placement.isHungry).length;
+  const placedCount = placements.length;
+  const pantryCarrots =
+    state.innKitchen?.pantry.ingredientQuantitiesById.carrot ?? 0;
 
   return {
     isUnlocked,
@@ -141,12 +160,23 @@ export function getLivestockDisplay(
     outputs,
     totalOutputPerHourText: formatRate(getLivestockExpectedOutputsPerHour(state)),
     totalFeedText: getTotalFeedText(creatures),
+    pantryFeedText: `Pantry Carrots ${pantryCarrots}`,
+    feedingStatusText: `Fed ${Math.max(0, placedCount - hungryCount)} / Hungry ${hungryCount}`,
+    nextFeedAtText: formatClockTime(getNextLivestockFeedAtMs(nowMs)),
     collectActionText: canUseActions
       ? totalHeld > 0
         ? outputs.map((output) => output.holdText).join(", ")
         : "Nothing held"
       : "Requires proximity",
     canCollect: canUseActions && totalHeld > 0,
+    feedNowActionText:
+      hungryCount <= 0
+        ? "No hungry animals"
+        : canUseActions
+          ? `${hungryCount} hungry`
+          : "Requires proximity",
+    canFeedNow: canUseActions && hungryCount > 0,
+    hasHungryAnimals: hungryCount > 0,
   };
 }
 
@@ -158,6 +188,12 @@ export function getLivestockPlacementTimeRemainingText(
 
   if (!definition) {
     return "Unknown";
+  }
+
+  if (placement.isHungry) {
+    return `Hungry (${formatDuration(
+      placement.pausedProductionRemainingMs ?? definition.output.intervalMs,
+    )} paused)`;
   }
 
   return formatDuration(
@@ -188,6 +224,7 @@ function createGridCells(
         creatureId: occupant?.placement.creatureId ?? null,
         label: occupant?.isOrigin ? occupant.definition.shortLabel : "",
         isOrigin: occupant?.isOrigin ?? false,
+        isHungry: occupant?.placement.isHungry ?? false,
       });
     }
   }
@@ -240,6 +277,13 @@ function getTotalFeedText(creatures: LivestockCreatureDisplay[]): string {
   }, 0);
 
   return carrotTotal > 0 ? `Carrots ${carrotTotal}/day` : "No feed needed";
+}
+
+function formatClockTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function formatDuration(ms: number): string {

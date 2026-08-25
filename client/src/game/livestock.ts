@@ -23,6 +23,9 @@ export const LIVESTOCK_DUSKHEN_BASE_OWNED = 2;
 export const LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS = 3 * 60 * 60 * 1000;
 export const LIVESTOCK_DUSKHEN_EGG_YIELD = 1;
 export const LIVESTOCK_EGG_HOLD_CAP = 20;
+export const LIVESTOCK_DAY_MS = 24 * 60 * 60 * 1000;
+export const LIVESTOCK_DUSKHEN_FEED_CROP_ID = "carrot" satisfies FarmCropId;
+export const LIVESTOCK_DUSKHEN_FEED_PER_DAY = 10;
 
 export type LivestockCommandFailureReason =
   | "locked_service"
@@ -32,7 +35,9 @@ export type LivestockCommandFailureReason =
   | "no_available_creature"
   | "out_of_bounds"
   | "occupied_cell"
-  | "nothing_to_collect";
+  | "nothing_to_collect"
+  | "insufficient_feed"
+  | "no_hungry_animals";
 
 export type LivestockCreatureDefinition = {
   id: LivestockCreatureId;
@@ -90,6 +95,19 @@ export type LivestockCollectAllResult =
       reason: LivestockCommandFailureReason;
     };
 
+export type LivestockFeedNowResult =
+  | {
+      ok: true;
+      state: GameState;
+      fedPlacementIds: LivestockPlacementId[];
+      consumedByCropId: Partial<Record<FarmCropId, number>>;
+    }
+  | {
+      ok: false;
+      state: GameState;
+      reason: LivestockCommandFailureReason;
+    };
+
 export const LIVESTOCK_CREATURE_DEFINITIONS: LivestockCreatureDefinition[] = [
   {
     id: LIVESTOCK_DUSKHEN_CREATURE_ID,
@@ -107,16 +125,14 @@ export const LIVESTOCK_CREATURE_DEFINITIONS: LivestockCreatureDefinition[] = [
     },
     feedPerDay: [
       {
-        cropId: "carrot",
-        quantity: 1,
+        cropId: LIVESTOCK_DUSKHEN_FEED_CROP_ID,
+        quantity: LIVESTOCK_DUSKHEN_FEED_PER_DAY,
       },
     ],
   },
 ];
 
 export function createInitialLivestockState(nowMs = 0): LivestockState {
-  void nowMs;
-
   return {
     grid: {
       width: LIVESTOCK_GRID_WIDTH,
@@ -127,6 +143,7 @@ export function createInitialLivestockState(nowMs = 0): LivestockState {
     },
     placementsById: {},
     placementSequence: 0,
+    lastFeedDayStartMs: getLivestockLocalDayStartMs(nowMs),
     holdingQuantitiesByOutputId: {
       egg: 0,
     },
@@ -136,8 +153,11 @@ export function createInitialLivestockState(nowMs = 0): LivestockState {
   };
 }
 
-export function getLivestockState(state: GameState): LivestockState {
-  return sanitizeLivestockState(state.livestock);
+export function getLivestockState(
+  state: GameState,
+  nowMs = Date.now(),
+): LivestockState {
+  return sanitizeLivestockState(state.livestock, nowMs);
 }
 
 export function getLivestockCreatureDefinitions(): LivestockCreatureDefinition[] {
@@ -154,8 +174,11 @@ export function getLivestockCreatureDefinition(
   );
 }
 
-export function sanitizeLivestockState(livestock: unknown): LivestockState {
-  const fallback = createInitialLivestockState();
+export function sanitizeLivestockState(
+  livestock: unknown,
+  nowMs = Date.now(),
+): LivestockState {
+  const fallback = createInitialLivestockState(nowMs);
 
   if (!isRecord(livestock)) {
     return fallback;
@@ -244,6 +267,10 @@ export function sanitizeLivestockState(livestock: unknown): LivestockState {
       sanitizeNonNegativeInteger(livestock.placementSequence),
       getHighestPlacementSequence(placementsById),
     ),
+    lastFeedDayStartMs: sanitizeLivestockDayStart(
+      livestock.lastFeedDayStartMs,
+      nowMs,
+    ),
     holdingQuantitiesByOutputId,
     holdingCapsByOutputId,
   };
@@ -267,13 +294,57 @@ export function settleLivestockState(
   state: GameState,
   nowMs = Date.now(),
 ): GameState {
-  let livestock = sanitizeLivestockState(state.livestock);
-  let nextState = setLivestockStateIfChanged(state, livestock);
+  let livestock = sanitizeLivestockState(state.livestock, nowMs);
+  let nextState = setLivestockStateIfChanged(state, livestock, nowMs);
+  const currentDayStartMs = getLivestockLocalDayStartMs(nowMs);
+
+  while (livestock.lastFeedDayStartMs < currentDayStartMs) {
+    const feedAtMs = Math.min(
+      getNextLivestockDayStartMs(livestock.lastFeedDayStartMs),
+      currentDayStartMs,
+    );
+    const productionResult = settleLivestockProduction(
+      nextState,
+      livestock,
+      feedAtMs,
+      nowMs,
+    );
+    nextState = productionResult.state;
+    livestock = productionResult.livestock;
+
+    const feedResult = applyMidnightLivestockFeeding(
+      nextState,
+      livestock,
+      feedAtMs,
+      nowMs,
+    );
+    nextState = feedResult.state;
+    livestock = feedResult.livestock;
+  }
+
+  const productionResult = settleLivestockProduction(
+    nextState,
+    livestock,
+    nowMs,
+    nowMs,
+  );
+
+  return productionResult.state;
+}
+
+function settleLivestockProduction(
+  state: GameState,
+  startingLivestock: LivestockState,
+  nowMs: number,
+  sanitizeNowMs: number,
+): { state: GameState; livestock: LivestockState } {
+  let livestock = startingLivestock;
+  let nextState = setLivestockStateIfChanged(state, livestock, sanitizeNowMs);
 
   for (const placement of Object.values(livestock.placementsById)) {
     const definition = getLivestockCreatureDefinition(placement.creatureId);
 
-    if (!definition) {
+    if (!definition || placement.isHungry) {
       continue;
     }
 
@@ -299,7 +370,7 @@ export function settleLivestockState(
         },
       };
       nextState = appendLivestockTelemetry(
-        setLivestockStateIfChanged(nextState, livestock),
+        setLivestockStateIfChanged(nextState, livestock, sanitizeNowMs),
         "livestock_generation_blocked_cap",
         {
           placement,
@@ -352,7 +423,7 @@ export function settleLivestockState(
       },
     };
     nextState = appendLivestockTelemetry(
-      setLivestockStateIfChanged(nextState, livestock),
+      setLivestockStateIfChanged(nextState, livestock, sanitizeNowMs),
       "livestock_output_generated",
       {
         placement,
@@ -385,7 +456,110 @@ export function settleLivestockState(
     }
   }
 
-  return nextState;
+  return { state: nextState, livestock };
+}
+
+function applyMidnightLivestockFeeding(
+  state: GameState,
+  startingLivestock: LivestockState,
+  feedAtMs: number,
+  sanitizeNowMs: number,
+): { state: GameState; livestock: LivestockState } {
+  let livestock = {
+    ...startingLivestock,
+    lastFeedDayStartMs: feedAtMs,
+  };
+  let nextState = setLivestockStateIfChanged(state, livestock, sanitizeNowMs);
+  let fedCount = 0;
+  let hungryCount = 0;
+  let consumedFeedCost = 0;
+
+  for (const placement of getOrderedLivestockPlacements(livestock)) {
+    const definition = getLivestockCreatureDefinition(placement.creatureId);
+
+    if (!definition) {
+      continue;
+    }
+
+    const feedCosts = getFullLivestockFeedCosts(definition);
+    const feedResult = consumeLivestockFeedCosts(
+      nextState,
+      feedCosts,
+      feedAtMs,
+    );
+    const feedCost = getTotalFeedCost(feedCosts);
+
+    if (!feedResult.ok) {
+      const nextPlacement = makeLivestockPlacementHungry(
+        placement,
+        definition,
+        feedAtMs,
+      );
+      livestock = {
+        ...livestock,
+        placementsById: {
+          ...livestock.placementsById,
+          [placement.id]: nextPlacement,
+        },
+      };
+      nextState = appendLivestockTelemetry(
+        setLivestockStateIfChanged(nextState, livestock, sanitizeNowMs),
+        "livestock_became_hungry",
+        {
+          placement,
+          nextPlacement,
+          outputId: definition.output.id,
+          feedCost,
+          result: "failed",
+          reason: "insufficient_feed",
+        },
+      );
+      hungryCount += 1;
+      continue;
+    }
+
+    nextState = feedResult.state;
+    consumedFeedCost += feedCost;
+
+    if (placement.isHungry) {
+      const nextPlacement = resumeLivestockPlacementProduction(
+        placement,
+        definition,
+        feedAtMs,
+      );
+      livestock = {
+        ...livestock,
+        placementsById: {
+          ...livestock.placementsById,
+          [placement.id]: nextPlacement,
+        },
+      };
+      nextState = appendLivestockTelemetry(
+        setLivestockStateIfChanged(nextState, livestock, sanitizeNowMs),
+        "livestock_resumed_production",
+        {
+          placement,
+          nextPlacement,
+          outputId: definition.output.id,
+          feedCost,
+          result: "success",
+        },
+      );
+    }
+
+    fedCount += 1;
+  }
+
+  nextState = appendLivestockTelemetry(nextState, "livestock_midnight_feed", {
+    creatureId: LIVESTOCK_DUSKHEN_CREATURE_ID,
+    outputId: LIVESTOCK_EGG_OUTPUT_ID,
+    quantityBefore: fedCount,
+    quantityAfter: hungryCount,
+    feedCost: consumedFeedCost,
+    result: "success",
+  });
+
+  return { state: nextState, livestock };
 }
 
 export function placeLivestockCreature(
@@ -397,7 +571,7 @@ export function placeLivestockCreature(
   nowMs = Date.now(),
 ): LivestockPlacementResult {
   let nextState = settleLivestockState(state, nowMs);
-  const livestock = sanitizeLivestockState(nextState.livestock);
+  const livestock = sanitizeLivestockState(nextState.livestock, nowMs);
   const definition = getLivestockCreatureDefinition(creatureId);
 
   nextState = appendLivestockTelemetry(nextState, "livestock_place_attempt", {
@@ -457,6 +631,38 @@ export function placeLivestockCreature(
     });
   }
 
+  const initialFeedCosts = getProratedLivestockFeedCosts(definition, nowMs);
+  const initialFeedResult = consumeLivestockFeedCosts(
+    nextState,
+    initialFeedCosts,
+    nowMs,
+  );
+
+  if (!initialFeedResult.ok) {
+    return failPlacement(nextState, "livestock_place_failed", "insufficient_feed", {
+      creatureId,
+      outputId: definition.output.id,
+      x,
+      y,
+      rotation,
+      feedCost: getTotalFeedCost(initialFeedCosts),
+    });
+  }
+
+  nextState = appendLivestockTelemetry(
+    initialFeedResult.state,
+    "livestock_feed_paid",
+    {
+      creatureId,
+      outputId: definition.output.id,
+      x,
+      y,
+      rotation,
+      feedCost: getTotalFeedCost(initialFeedCosts),
+      result: "success",
+    },
+  );
+
   const placement: LivestockPlacedCreatureState = {
     id: createPlacementId(livestock, creatureId),
     creatureId,
@@ -502,7 +708,7 @@ export function moveLivestockPlacement(
   nowMs = Date.now(),
 ): LivestockPlacementResult {
   let nextState = settleLivestockState(state, nowMs);
-  const livestock = sanitizeLivestockState(nextState.livestock);
+  const livestock = sanitizeLivestockState(nextState.livestock, nowMs);
   const placement = livestock.placementsById[placementId];
   const definition = placement
     ? getLivestockCreatureDefinition(placement.creatureId)
@@ -602,7 +808,7 @@ export function removeLivestockPlacement(
   nowMs = Date.now(),
 ): LivestockRemoveResult {
   let nextState = settleLivestockState(state, nowMs);
-  const livestock = sanitizeLivestockState(nextState.livestock);
+  const livestock = sanitizeLivestockState(nextState.livestock, nowMs);
   const placement = livestock.placementsById[placementId];
   const definition = placement
     ? getLivestockCreatureDefinition(placement.creatureId)
@@ -654,8 +860,8 @@ export function collectAllLivestockOutputs(
   state: GameState,
   nowMs = Date.now(),
 ): LivestockCollectAllResult {
-  const livestock = sanitizeLivestockState(state.livestock);
-  const collectState = setLivestockStateIfChanged(state, livestock);
+  const livestock = sanitizeLivestockState(state.livestock, nowMs);
+  const collectState = setLivestockStateIfChanged(state, livestock, nowMs);
   const actionFailure = getLivestockActionFailure(collectState);
 
   if (actionFailure) {
@@ -745,6 +951,101 @@ export function collectAllLivestockOutputs(
   };
 }
 
+export function feedHungryLivestockNow(
+  state: GameState,
+  nowMs = Date.now(),
+): LivestockFeedNowResult {
+  let nextState = settleLivestockState(state, nowMs);
+  let livestock = sanitizeLivestockState(nextState.livestock, nowMs);
+  nextState = setLivestockStateIfChanged(nextState, livestock, nowMs);
+  const actionFailure = getLivestockActionFailure(nextState);
+
+  if (actionFailure) {
+    return failFeedNow(nextState, actionFailure);
+  }
+
+  const hungryPlacements = getOrderedLivestockPlacements(livestock).filter(
+    (placement) => placement.isHungry,
+  );
+
+  if (hungryPlacements.length <= 0) {
+    return failFeedNow(nextState, "no_hungry_animals");
+  }
+
+  const fedPlacementIds: LivestockPlacementId[] = [];
+  const consumedByCropId: Partial<Record<FarmCropId, number>> = {};
+
+  for (const placement of hungryPlacements) {
+    const definition = getLivestockCreatureDefinition(placement.creatureId);
+
+    if (!definition) {
+      continue;
+    }
+
+    const feedCosts = getProratedLivestockFeedCosts(definition, nowMs);
+    const feedResult = consumeLivestockFeedCosts(nextState, feedCosts, nowMs);
+
+    if (!feedResult.ok) {
+      nextState = appendLivestockTelemetry(nextState, "livestock_feed_failed", {
+        placement,
+        outputId: definition.output.id,
+        feedCost: getTotalFeedCost(feedCosts),
+        result: "failed",
+        reason: "insufficient_feed",
+      });
+      continue;
+    }
+
+    nextState = feedResult.state;
+    for (const [cropId, quantity] of Object.entries(feedCosts) as Array<
+      [FarmCropId, number]
+    >) {
+      consumedByCropId[cropId] = (consumedByCropId[cropId] ?? 0) + quantity;
+    }
+
+    const nextPlacement = resumeLivestockPlacementProduction(
+      placement,
+      definition,
+      nowMs,
+    );
+    livestock = {
+      ...livestock,
+      placementsById: {
+        ...livestock.placementsById,
+        [placement.id]: nextPlacement,
+      },
+    };
+    nextState = appendLivestockTelemetry(
+      setLivestockStateIfChanged(nextState, livestock, nowMs),
+      "livestock_resumed_production",
+      {
+        placement,
+        nextPlacement,
+        outputId: definition.output.id,
+        feedCost: getTotalFeedCost(feedCosts),
+        result: "success",
+      },
+    );
+    fedPlacementIds.push(placement.id);
+  }
+
+  if (fedPlacementIds.length <= 0) {
+    return failFeedNow(nextState, "insufficient_feed");
+  }
+
+  return {
+    ok: true,
+    state: appendLivestockTelemetry(nextState, "livestock_feed_now_succeeded", {
+      creatureId: LIVESTOCK_DUSKHEN_CREATURE_ID,
+      outputId: LIVESTOCK_EGG_OUTPUT_ID,
+      feedCost: getTotalFeedCost(consumedByCropId),
+      result: "success",
+    }),
+    fedPlacementIds,
+    consumedByCropId,
+  };
+}
+
 export function getLivestockExpectedOutputsPerHour(
   state: Pick<GameState, "livestock">,
 ): number {
@@ -753,7 +1054,7 @@ export function getLivestockExpectedOutputsPerHour(
   return Object.values(livestock.placementsById).reduce((total, placement) => {
     const definition = getLivestockCreatureDefinition(placement.creatureId);
 
-    if (!definition) {
+    if (!definition || placement.isHungry) {
       return total;
     }
 
@@ -855,8 +1156,14 @@ function validatePlacementLocation(
 function setLivestockStateIfChanged(
   state: GameState,
   livestock: LivestockState,
+  nowMs = Date.now(),
 ): GameState {
-  if (areLivestockStatesEqual(sanitizeLivestockState(state.livestock), livestock)) {
+  if (
+    areLivestockStatesEqual(
+      sanitizeLivestockState(state.livestock, nowMs),
+      livestock,
+    )
+  ) {
     return state;
   }
 
@@ -936,7 +1243,8 @@ function sanitizePlacement(
     return null;
   }
 
-  return {
+  const isHungry = placement.isHungry === true;
+  const sanitizedPlacement: LivestockPlacedCreatureState = {
     id:
       typeof placement.id === "string" && placement.id.length > 0
         ? placement.id
@@ -947,6 +1255,19 @@ function sanitizePlacement(
     rotation: sanitizeRotation(placement.rotation),
     placedAtMs: sanitizeNonNegativeInteger(placement.placedAtMs),
     lastProducedAtMs: sanitizeNonNegativeInteger(placement.lastProducedAtMs),
+  };
+
+  if (!isHungry) {
+    return sanitizedPlacement;
+  }
+
+  return {
+    ...sanitizedPlacement,
+    isHungry: true,
+    hungrySinceMs: sanitizeNonNegativeInteger(placement.hungrySinceMs),
+    pausedProductionRemainingMs: sanitizeNonNegativeInteger(
+      placement.pausedProductionRemainingMs,
+    ),
   };
 }
 
@@ -964,6 +1285,221 @@ function getHighestPlacementSequence(
   }, 0);
 }
 
+function sanitizeLivestockDayStart(value: unknown, nowMs: number): number {
+  const sanitized = sanitizeNonNegativeInteger(value);
+
+  if (sanitized <= 0) {
+    return getLivestockLocalDayStartMs(nowMs);
+  }
+
+  return sanitized;
+}
+
+export function getLivestockLocalDayStartMs(nowMs = Date.now()): number {
+  const date = new Date(nowMs);
+
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  ).getTime();
+}
+
+export function getNextLivestockDayStartMs(dayStartMs: number): number {
+  const date = new Date(dayStartMs);
+
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + 1,
+  ).getTime();
+}
+
+export function getNextLivestockFeedAtMs(nowMs = Date.now()): number {
+  return getNextLivestockDayStartMs(getLivestockLocalDayStartMs(nowMs));
+}
+
+function getRemainingMsUntilNextLocalMidnight(nowMs: number): number {
+  return Math.max(0, getNextLivestockFeedAtMs(nowMs) - nowMs);
+}
+
+function getProratedLivestockFeedCosts(
+  definition: LivestockCreatureDefinition,
+  nowMs: number,
+): Partial<Record<FarmCropId, number>> {
+  const remainingMs = getRemainingMsUntilNextLocalMidnight(nowMs);
+
+  return definition.feedPerDay.reduce<Partial<Record<FarmCropId, number>>>(
+    (costs, feed) => ({
+      ...costs,
+      [feed.cropId]:
+        (costs[feed.cropId] ?? 0) +
+        Math.floor((feed.quantity * remainingMs) / LIVESTOCK_DAY_MS),
+    }),
+    {},
+  );
+}
+
+function getFullLivestockFeedCosts(
+  definition: LivestockCreatureDefinition,
+): Partial<Record<FarmCropId, number>> {
+  return definition.feedPerDay.reduce<Partial<Record<FarmCropId, number>>>(
+    (costs, feed) => ({
+      ...costs,
+      [feed.cropId]: (costs[feed.cropId] ?? 0) + feed.quantity,
+    }),
+    {},
+  );
+}
+
+function consumeLivestockFeedCosts(
+  state: GameState,
+  feedCosts: Partial<Record<FarmCropId, number>>,
+  nowMs: number,
+): { ok: true; state: GameState } | { ok: false } {
+  const totalCost = getTotalFeedCost(feedCosts);
+
+  if (totalCost <= 0) {
+    return { ok: true, state };
+  }
+
+  const kitchen = sanitizeInnKitchenState(state.innKitchen, state, nowMs, {
+    settleHearthFire: false,
+  });
+  const nextIngredientQuantities = {
+    ...kitchen.pantry.ingredientQuantitiesById,
+  };
+
+  for (const [cropId, quantity] of Object.entries(feedCosts) as Array<
+    [FarmCropId, number]
+  >) {
+    if (quantity <= 0) {
+      continue;
+    }
+
+    if ((nextIngredientQuantities[cropId] ?? 0) < quantity) {
+      return { ok: false };
+    }
+  }
+
+  for (const [cropId, quantity] of Object.entries(feedCosts) as Array<
+    [FarmCropId, number]
+  >) {
+    if (quantity <= 0) {
+      continue;
+    }
+
+    nextIngredientQuantities[cropId] =
+      (nextIngredientQuantities[cropId] ?? 0) - quantity;
+  }
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      innKitchen: {
+        ...kitchen,
+        pantry: {
+          ...kitchen.pantry,
+          ingredientQuantitiesById: nextIngredientQuantities,
+        },
+      },
+    },
+  };
+}
+
+function getTotalFeedCost(
+  feedCosts: Partial<Record<FarmCropId, number>>,
+): number {
+  return Object.values(feedCosts).reduce(
+    (total, quantity) => total + Math.max(0, quantity ?? 0),
+    0,
+  );
+}
+
+function makeLivestockPlacementHungry(
+  placement: LivestockPlacedCreatureState,
+  definition: LivestockCreatureDefinition,
+  nowMs: number,
+): LivestockPlacedCreatureState {
+  if (placement.isHungry) {
+    return placement;
+  }
+
+  return {
+    ...placement,
+    isHungry: true,
+    hungrySinceMs: nowMs,
+    pausedProductionRemainingMs: getLivestockProductionRemainingMs(
+      placement,
+      definition,
+      nowMs,
+    ),
+  };
+}
+
+function resumeLivestockPlacementProduction(
+  placement: LivestockPlacedCreatureState,
+  definition: LivestockCreatureDefinition,
+  nowMs: number,
+): LivestockPlacedCreatureState {
+  const remainingMs = Math.min(
+    definition.output.intervalMs,
+    Math.max(
+      0,
+      placement.pausedProductionRemainingMs ??
+        getLivestockProductionRemainingMs(placement, definition, nowMs),
+    ),
+  );
+
+  return {
+    ...placement,
+    isHungry: false,
+    hungrySinceMs: undefined,
+    pausedProductionRemainingMs: undefined,
+    lastProducedAtMs: nowMs - (definition.output.intervalMs - remainingMs),
+  };
+}
+
+function getLivestockProductionRemainingMs(
+  placement: LivestockPlacedCreatureState,
+  definition: LivestockCreatureDefinition,
+  nowMs: number,
+): number {
+  const elapsedMs = Math.max(0, nowMs - placement.lastProducedAtMs);
+  const cycleProgressMs = elapsedMs % definition.output.intervalMs;
+
+  return cycleProgressMs === 0 && elapsedMs > 0
+    ? definition.output.intervalMs
+    : definition.output.intervalMs - cycleProgressMs;
+}
+
+function getOrderedLivestockPlacements(
+  livestock: LivestockState,
+): LivestockPlacedCreatureState[] {
+  const definitionOrder = new Map(
+    LIVESTOCK_CREATURE_DEFINITIONS.map((definition, index) => [
+      definition.id,
+      index,
+    ]),
+  );
+
+  return Object.values(livestock.placementsById).sort((first, second) => {
+    const firstOrder = definitionOrder.get(first.creatureId) ?? Number.MAX_SAFE_INTEGER;
+    const secondOrder = definitionOrder.get(second.creatureId) ?? Number.MAX_SAFE_INTEGER;
+
+    if (firstOrder !== secondOrder) {
+      return firstOrder - secondOrder;
+    }
+
+    if (first.placedAtMs !== second.placedAtMs) {
+      return first.placedAtMs - second.placedAtMs;
+    }
+
+    return first.id.localeCompare(second.id);
+  });
+}
+
 function failPlacement(
   state: GameState,
   type: "livestock_place_failed" | "livestock_move_failed",
@@ -976,6 +1512,7 @@ function failPlacement(
     x?: number;
     y?: number;
     rotation?: LivestockPlacementRotation;
+    feedCost?: number;
   },
 ): LivestockPlacementResult {
   return {
@@ -1026,6 +1563,21 @@ function failCollect(
   };
 }
 
+function failFeedNow(
+  state: GameState,
+  reason: LivestockCommandFailureReason,
+): LivestockFeedNowResult {
+  return {
+    ok: false,
+    state: appendLivestockTelemetry(state, "livestock_feed_now_failed", {
+      outputId: LIVESTOCK_EGG_OUTPUT_ID,
+      result: "failed",
+      reason,
+    }),
+    reason,
+  };
+}
+
 function appendLivestockTelemetry(
   state: GameState,
   type:
@@ -1042,7 +1594,14 @@ function appendLivestockTelemetry(
     | "livestock_generation_blocked_cap"
     | "livestock_collect_all_succeeded"
     | "livestock_collect_all_failed"
-    | "livestock_pantry_transfer",
+    | "livestock_pantry_transfer"
+    | "livestock_feed_paid"
+    | "livestock_feed_failed"
+    | "livestock_midnight_feed"
+    | "livestock_feed_now_succeeded"
+    | "livestock_feed_now_failed"
+    | "livestock_became_hungry"
+    | "livestock_resumed_production",
   event: {
     placement?: LivestockPlacedCreatureState;
     nextPlacement?: LivestockPlacedCreatureState;
@@ -1056,6 +1615,7 @@ function appendLivestockTelemetry(
     quantityAfter?: number;
     capacity?: number;
     generatedQuantity?: number;
+    feedCost?: number;
     result: string;
     reason?: string;
   },
@@ -1087,6 +1647,7 @@ function appendLivestockTelemetry(
     livestockQuantityAfter: event.quantityAfter,
     livestockCapacity: event.capacity,
     livestockGeneratedQuantity: event.generatedQuantity,
+    livestockFeedCost: event.feedCost,
     result: event.result,
     reason: event.reason,
   });

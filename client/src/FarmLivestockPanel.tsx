@@ -38,7 +38,7 @@ type FarmLivestockPanelProps = {
     x: number,
     y: number,
     rotation: LivestockPlacementRotation,
-  ) => void;
+  ) => boolean;
   onMoveLivestockPlacement: (
     placementId: LivestockPlacementId,
     x: number,
@@ -47,6 +47,7 @@ type FarmLivestockPanelProps = {
   ) => boolean;
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
+  onFeedHungryLivestockNow: () => void;
   onOpenInnKitchenPantry: () => void;
 };
 
@@ -63,6 +64,7 @@ export function FarmLivestockPanel({
   onMoveLivestockPlacement,
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
+  onFeedHungryLivestockNow,
   onOpenInnKitchenPantry,
 }: FarmLivestockPanelProps) {
   const [cropFilter, setCropFilter] = useState<FarmCropFilter>("unlocked");
@@ -112,17 +114,25 @@ export function FarmLivestockPanel({
 
   function handleLivestockCellClick(cell: LivestockGridCellDisplay) {
     if (cell.placementId && !heldCreatureId) {
+      if (cell.placementId === selectedPlacementId) {
+        clearLivestockSelection();
+        return;
+      }
+
       setSelectedPlacementId(cell.placementId);
       return;
     }
 
     if (heldCreatureId) {
-      onPlaceLivestockCreature(
+      const didPlace = onPlaceLivestockCreature(
         heldCreatureId,
         cell.x,
         cell.y,
         livestockRotation,
       );
+      if (didPlace) {
+        clearLivestockSelection();
+      }
       return;
     }
 
@@ -276,6 +286,14 @@ export function FarmLivestockPanel({
               <span>Collect All</span>
               <small>{livestockDisplay.collectActionText}</small>
             </button>
+            <button
+              disabled={!livestockDisplay.canFeedNow}
+              onClick={onFeedHungryLivestockNow}
+              type="button"
+            >
+              <span>Feed Now</span>
+              <small>{livestockDisplay.feedNowActionText}</small>
+            </button>
             <button onClick={onOpenInnKitchenPantry} type="button">
               <span>Open Pantry</span>
               <small>Inn Kitchen</small>
@@ -295,6 +313,18 @@ export function FarmLivestockPanel({
               <div>
                 <span>Daily Feed</span>
                 <strong>{livestockDisplay.totalFeedText}</strong>
+              </div>
+              <div>
+                <span>Pantry Feed</span>
+                <strong>{livestockDisplay.pantryFeedText}</strong>
+              </div>
+              <div>
+                <span>Feed Status</span>
+                <strong>{livestockDisplay.feedingStatusText}</strong>
+              </div>
+              <div>
+                <span>Next Feed</span>
+                <strong>{livestockDisplay.nextFeedAtText}</strong>
               </div>
               <div>
                 <span>Expected Output</span>
@@ -320,6 +350,7 @@ export function FarmLivestockPanel({
                     className={[
                       "livestock-grid-cell",
                       cell.placementId ? "occupied" : "",
+                      cell.isHungry ? "hungry" : "",
                       cell.placementId === selectedPlacementId ? "selected" : "",
                       !cell.placementId && (heldCreatureId || selectedPlacementId)
                         ? "available-target"
@@ -401,6 +432,9 @@ export function FarmLivestockPanel({
                     <h3>{creature.displayName}</h3>
                     <span>
                       Owned {creature.ownedCount} / Placed {creature.placedCount}
+                      {creature.hungryCount > 0
+                        ? ` / Hungry ${creature.hungryCount}`
+                        : ""}
                     </span>
                   </div>
                   <dl>
@@ -415,6 +449,12 @@ export function FarmLivestockPanel({
                     <div>
                       <dt>Yield</dt>
                       <dd>{creature.yieldText}</dd>
+                    </div>
+                    <div>
+                      <dt>Fed</dt>
+                      <dd>
+                        {creature.fedCount}/{creature.placedCount}
+                      </dd>
                     </div>
                     <div>
                       <dt>Eggs/hr</dt>

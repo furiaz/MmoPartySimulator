@@ -1088,6 +1088,10 @@
 }
 
 .atlas-subtabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 92px;
   padding: 8px 10px;
   font-weight: 800;
@@ -1097,6 +1101,13 @@
   border-color: #7aa6ad;
   background: rgba(58, 90, 96, 0.62);
   color: #ffffff;
+}
+
+.atlas-warning-label {
+  color: #ff9b9b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .afk-estimate-panel {
@@ -1714,7 +1725,7 @@
 
 .livestock-summary-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   padding: 10px;
   border: 1px solid #334a50;
@@ -1782,6 +1793,12 @@
   border-color: #9d7b3f;
   background: rgba(83, 58, 27, 0.62);
   color: #f5d986;
+}
+
+.livestock-grid-cell.hungry {
+  border-color: #e15f5f;
+  box-shadow: 0 0 0 2px rgba(225, 95, 95, 0.35);
+  color: #ffd4d4;
 }
 
 .livestock-grid-cell.selected {

@@ -1060,7 +1060,9 @@ export {
   getLivestockCreatureDefinitions,
   getLivestockExpectedOutputsPerHour,
   getLivestockFootprintCells,
+  getNextLivestockFeedAtMs,
   getLivestockState,
+  feedHungryLivestockNow,
   moveLivestockPlacement,
   placeLivestockCreature,
   removeLivestockPlacement,
@@ -1069,6 +1071,7 @@ export {
   type LivestockCollectAllResult,
   type LivestockCommandFailureReason,
   type LivestockCreatureDefinition,
+  type LivestockFeedNowResult,
   type LivestockPlacementResult,
   type LivestockRemoveResult,
 } from "./livestock";

@@ -4,6 +4,7 @@ import { WorldPanel } from "./WorldPanel";
 import { BankPanel } from "./BankPanel";
 import { GuildTavernPanel } from "./GuildTavernPanel";
 import { FarmLivestockPanel } from "./FarmLivestockPanel";
+import { getLivestockDisplay } from "./livestockPresentation";
 import type {
   AtlasSubpage,
   GameMenuTab,
@@ -119,6 +120,7 @@ export function GameMenu({
   onMoveLivestockPlacement,
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
+  onFeedHungryLivestockNow,
   onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
@@ -234,7 +236,7 @@ export function GameMenu({
     x: number,
     y: number,
     rotation: LivestockPlacementRotation,
-  ) => void;
+  ) => boolean;
   onMoveLivestockPlacement: (
     placementId: LivestockPlacementId,
     x: number,
@@ -243,6 +245,7 @@ export function GameMenu({
   ) => boolean;
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
+  onFeedHungryLivestockNow: () => void;
   onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
@@ -417,6 +420,7 @@ export function GameMenu({
                   onMoveLivestockPlacement={onMoveLivestockPlacement}
                   onRemoveLivestockPlacement={onRemoveLivestockPlacement}
                   onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
+                  onFeedHungryLivestockNow={onFeedHungryLivestockNow}
                   onOpenInnKitchenPantry={onOpenInnKitchenPantry}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
@@ -489,6 +493,7 @@ function AtlasPanel({
   onMoveLivestockPlacement,
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
+  onFeedHungryLivestockNow,
   onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
@@ -554,7 +559,7 @@ function AtlasPanel({
     x: number,
     y: number,
     rotation: LivestockPlacementRotation,
-  ) => void;
+  ) => boolean;
   onMoveLivestockPlacement: (
     placementId: LivestockPlacementId,
     x: number,
@@ -563,11 +568,14 @@ function AtlasPanel({
   ) => boolean;
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
+  onFeedHungryLivestockNow: () => void;
   onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
+  const livestockDisplay = getLivestockDisplay(gameState, currentTime);
+
   return (
     <section className="atlas-panel" aria-label="Atlas">
       <nav className="atlas-subtabs" aria-label="Atlas pages">
@@ -604,7 +612,10 @@ function AtlasPanel({
           onClick={() => onSelectSubpage("farmLivestock")}
           type="button"
         >
-          Farm & Livestock
+          <span>Farm & Livestock</span>
+          {livestockDisplay.hasHungryAnimals ? (
+            <small className="atlas-warning-label">Hungry</small>
+          ) : null}
         </button>
         <button
           className={activeSubpage === "afkEstimate" ? "active" : ""}
@@ -681,6 +692,7 @@ function AtlasPanel({
           onMoveLivestockPlacement={onMoveLivestockPlacement}
           onRemoveLivestockPlacement={onRemoveLivestockPlacement}
           onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
+          onFeedHungryLivestockNow={onFeedHungryLivestockNow}
           onOpenInnKitchenPantry={onOpenInnKitchenPantry}
         />
       ) : (

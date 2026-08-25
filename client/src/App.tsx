@@ -131,6 +131,7 @@ import {
   isTownServicesUnlocked,
   isCompanionHubEligibleForInnKitchen,
   collectAllLivestockOutputs,
+  feedHungryLivestockNow,
   harvestAllFarmCrops,
   moveLivestockPlacement,
   openGuildNoticeBoard,
@@ -697,6 +698,10 @@ function getLivestockFailureMessage(reason: string): string {
       return "That ranch space is outside the grid.";
     case "nothing_to_collect":
       return "No Livestock output to collect.";
+    case "insufficient_feed":
+      return "Not enough Pantry feed.";
+    case "no_hungry_animals":
+      return "No hungry Livestock.";
     case "invalid_creature":
       return "Livestock creature unavailable.";
     case "invalid_placement":
@@ -5184,7 +5189,7 @@ function App() {
     x: number,
     y: number,
     rotation: LivestockPlacementRotation,
-  ) {
+  ): boolean {
     const placed = placeLivestockCreature(
       gameState,
       creatureId,
@@ -5202,6 +5207,7 @@ function App() {
     }
 
     setGameState(placed.state);
+    return placed.ok;
   }
 
   function moveLivestockPlacementFromMenu(
@@ -5261,6 +5267,23 @@ function App() {
     }
 
     setGameState(collected.state);
+  }
+
+  function feedHungryLivestockNowFromMenu() {
+    const fed = feedHungryLivestockNow(gameState, currentTime);
+
+    if (fed.ok) {
+      queueSaveAfterStateChange("Livestock feeding saved");
+      setLivestockResultMessage(
+        `Fed ${fed.fedPlacementIds.length} hungry Duskhen${
+          fed.fedPlacementIds.length === 1 ? "" : "s"
+        }.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(fed.reason));
+    }
+
+    setGameState(fed.state);
   }
 
   function openInnKitchenPantryFromFarmLivestock() {
@@ -6517,6 +6540,7 @@ function App() {
               onMoveLivestockPlacement={moveLivestockPlacementFromMenu}
               onRemoveLivestockPlacement={removeLivestockPlacementFromMenu}
               onCollectAllLivestockOutputs={collectAllLivestockOutputsFromMenu}
+              onFeedHungryLivestockNow={feedHungryLivestockNowFromMenu}
               onOpenInnKitchenPantry={openInnKitchenPantryFromFarmLivestock}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
