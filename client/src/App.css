@@ -1007,7 +1007,7 @@
   z-index: 13;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  width: min(700px, calc(100vw - 32px));
+  width: min(868px, calc(100vw - 32px));
   max-height: calc(100vh - 88px);
   overflow: hidden;
   border: 1px solid var(--main-menu-panel-border);
@@ -1015,31 +1015,6 @@
   color: var(--main-menu-panel-text);
   box-shadow: var(--main-menu-panel-shadow);
   backdrop-filter: blur(10px);
-}
-
-.game-menu-panel.bank-menu-panel {
-  width: min(868px, calc(100vw - 32px));
-  overflow: visible;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.game-menu-panel.bank-menu-panel .game-menu-tabs {
-  border: 1px solid var(--main-menu-panel-border);
-  background: var(--main-menu-panel-background);
-  box-shadow: var(--main-menu-panel-shadow);
-  backdrop-filter: blur(10px);
-}
-
-.game-menu-panel.bank-menu-panel .game-menu-content {
-  overflow: visible;
-  padding: 12px 0 0;
-}
-
-.game-menu-panel.guild-tavern-menu-panel {
-  width: min(868px, calc(100vw - 32px));
 }
 
 .game-menu-tabs {
@@ -3640,8 +3615,7 @@
 
 .bank-panel {
   box-sizing: border-box;
-  width: min(820px, calc(100vw - 188px));
-  max-height: calc(100vh - 172px);
+  width: 100%;
   padding: 14px;
   overflow-x: hidden;
   border: 1px solid var(--main-menu-panel-border);
