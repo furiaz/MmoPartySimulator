@@ -2,6 +2,7 @@ import type {
   EquipmentSlot,
   FarmCropId,
   ItemId,
+  LivestockCreatureId,
   MapVisualObjectId,
   NpcEntity,
   ResourceType,
@@ -44,6 +45,7 @@ export const INVENTORY_ITEM_ICON_SRC: Partial<Record<ItemId, string>> = {
   hardwood: `${nowAssetPackPath}/wood-node.png`,
   iron_ore: `${nowAssetPackPath}/ore-node.png`,
   redleaf_herb: `${nowAssetPackPath}/herb-node.png`,
+  ore_shard: `${nowAssetPackPath}/ore-node.png`,
   crafting_string: `${craftingSupplyIconPath}/crafting_string.png`,
   iron_nails: `${craftingSupplyIconPath}/iron_nails.png`,
   slime_gel_t1: `${nowAssetPackPath}/herb-node.png`,
@@ -414,6 +416,17 @@ export const FARM_CROP_ICON_SRC: Record<FarmCropId | "locked", string> = {
   moonleaf: `${farmLivestockAssetPath}/moonleaf.png`,
   bittercap_mushroom: `${farmLivestockAssetPath}/bittercap-mushroom.png`,
   ashpepper: `${farmLivestockAssetPath}/ashpepper.png`,
+  locked: `${farmLivestockAssetPath}/locked-crop.png`,
+};
+
+export const LIVESTOCK_CREATURE_ICON_SRC: Record<
+  LivestockCreatureId | "locked",
+  string
+> = {
+  duskhen: `${farmLivestockAssetPath}/duskhen.png`,
+  wolf: `${farmLivestockAssetPath}/wolf.png`,
+  iron_crawler: `${farmLivestockAssetPath}/iron-crawler.png`,
+  elder_mossling: `${farmLivestockAssetPath}/elder-mossling.png`,
   locked: `${farmLivestockAssetPath}/locked-crop.png`,
 };
 

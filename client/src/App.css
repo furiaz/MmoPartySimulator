@@ -1853,6 +1853,10 @@
   background: rgba(5, 11, 14, 0.42);
 }
 
+.livestock-creature-card.locked {
+  opacity: 0.78;
+}
+
 .livestock-creature-select,
 .livestock-creature-upgrade-button {
   min-width: 0;
@@ -1867,19 +1871,29 @@
   text-align: center;
 }
 
-.livestock-creature-icon-slot {
-  display: grid;
-  place-items: center;
+.livestock-creature-icon {
   width: 42px;
   height: 42px;
+  object-fit: contain;
   border: 1px dashed #4c666c;
   border-radius: 6px;
   background: rgba(6, 14, 18, 0.68);
 }
 
+.livestock-creature-icon.locked {
+  filter: grayscale(1) brightness(0.42);
+  opacity: 0.72;
+}
+
 .livestock-creature-select strong {
   color: #dcebed;
   font-size: 12px;
+  line-height: 1.2;
+}
+
+.livestock-creature-select small {
+  color: #93a9ad;
+  font-size: 10px;
   line-height: 1.2;
 }
 

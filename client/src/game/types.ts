@@ -191,7 +191,8 @@ export type ResourceItemId =
   | "field_herb"
   | "hardwood"
   | "iron_ore"
-  | "redleaf_herb";
+  | "redleaf_herb"
+  | "ore_shard";
 
 export type CraftingSupplyItemId =
   | "crafting_string"
@@ -609,7 +610,10 @@ export type KeyItemId =
   | "farm_seed_moonleaf"
   | "farm_seed_bittercap_mushroom"
   | "farm_seed_ashpepper"
-  | "livestock_creature_duskhen";
+  | "livestock_creature_duskhen"
+  | "livestock_creature_wolf"
+  | "livestock_creature_iron_crawler"
+  | "livestock_creature_elder_mossling";
 
 export type KeyItemDefinition = {
   id: KeyItemId;
@@ -865,6 +869,7 @@ export type InventoryMutationSource =
   | "skill_book"
   | "chest"
   | "bank"
+  | "livestock"
   | "unknown";
 
 export type CurrencyMutationSource =
@@ -2037,6 +2042,12 @@ export type DebugTelemetryEventType =
   | "farm_seed_purchase_attempt"
   | "farm_seed_purchase_succeeded"
   | "farm_seed_purchase_failed"
+  | "livestock_creature_unlock_roll"
+  | "livestock_creature_unlocked"
+  | "livestock_creature_unlock_duplicate"
+  | "livestock_creature_purchase_attempt"
+  | "livestock_creature_purchase_succeeded"
+  | "livestock_creature_purchase_failed"
   | "livestock_place_attempt"
   | "livestock_place_succeeded"
   | "livestock_place_failed"
@@ -2051,6 +2062,7 @@ export type DebugTelemetryEventType =
   | "livestock_collect_all_succeeded"
   | "livestock_collect_all_failed"
   | "livestock_pantry_transfer"
+  | "livestock_inventory_transfer"
   | "livestock_feed_paid"
   | "livestock_feed_failed"
   | "livestock_midnight_feed"
@@ -2331,6 +2343,13 @@ export type DebugTelemetryEvent = {
   livestockCreatureId?: LivestockCreatureId;
   livestockPlacementId?: LivestockPlacementId;
   livestockOutputId?: LivestockOutputId;
+  livestockUnlockSource?:
+    | "merchant"
+    | "wolf_defeat"
+    | "iron_crawler_defeat"
+    | "elder_mossling_defeat";
+  livestockUnlockChance?: number;
+  livestockUnlockRoll?: number;
   livestockGridX?: number;
   livestockGridY?: number;
   livestockRotation?: LivestockPlacementRotation;
@@ -2886,9 +2905,15 @@ export type FarmState = {
   } & Partial<Record<FarmFieldId, FarmFieldState>>;
 };
 
-export type LivestockCreatureId = "duskhen";
+export type LivestockCreatureId =
+  | "duskhen"
+  | "wolf"
+  | "iron_crawler"
+  | "elder_mossling";
 
-export type LivestockOutputId = "egg";
+export type LivestockOutputId = "egg" | "ore_shard";
+
+export type LivestockFeedIngredientId = FarmCropId | LivestockOutputId;
 
 export type LivestockPlacementId = string;
 

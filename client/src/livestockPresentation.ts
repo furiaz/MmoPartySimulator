@@ -19,8 +19,6 @@ import {
   LIVESTOCK_ANIMAL_UPGRADE_IDS,
   LIVESTOCK_BUILDING_UPGRADE_DEFINITIONS,
   LIVESTOCK_BUILDING_UPGRADE_IDS,
-  LIVESTOCK_EGG_HOLD_CAP,
-  LIVESTOCK_EGG_OUTPUT_ID,
   type GameState,
   type LivestockAnimalUpgradeId,
   type LivestockBuildingUpgradeId,
@@ -30,6 +28,9 @@ import {
   type LivestockPlacementId,
   type LivestockPlacementRotation,
 } from "./game";
+import { LIVESTOCK_CREATURE_ICON_SRC } from "./assetIcons";
+
+export type LivestockCreatureFilter = "unlocked" | "all";
 
 export type LivestockUpgradeDisplay<
   TUpgradeId extends LivestockAnimalUpgradeId | LivestockBuildingUpgradeId,
@@ -67,6 +68,9 @@ export type LivestockCreatureDisplay = {
   yieldText: string;
   expectedOutputPerHourText: string;
   upgrades: Array<LivestockUpgradeDisplay<LivestockAnimalUpgradeId>>;
+  isUnlocked: boolean;
+  sourceHint: string;
+  iconSrc: string;
   fedCount: number;
   hungryCount: number;
   canHoldForPlacement: boolean;
@@ -88,11 +92,12 @@ export type LivestockDisplay = {
   height: number;
   cells: LivestockGridCellDisplay[];
   creatures: LivestockCreatureDisplay[];
+  allCreatures: LivestockCreatureDisplay[];
   placements: LivestockPlacedCreatureState[];
   outputs: LivestockOutputDisplay[];
   totalOutputPerHourText: string;
+  expectedDailyOutputText: string;
   totalFeedText: string;
-  pantryFeedText: string;
   feedingStatusText: string;
   nextFeedAtText: string;
   collectActionText: string;
@@ -107,6 +112,7 @@ export type LivestockDisplay = {
 export function getLivestockDisplay(
   state: GameState,
   nowMs = Date.now(),
+  creatureFilter: LivestockCreatureFilter = "unlocked",
 ): LivestockDisplay {
   const livestock = getLivestockState(state, nowMs);
   const isUnlocked = isTownServicesUnlocked(state);
@@ -116,7 +122,7 @@ export function getLivestockDisplay(
     a.id.localeCompare(b.id),
   );
   const buildingUpgradeLevels = getLivestockBuildingUpgradeLevels(livestock);
-  const creatures = getLivestockCreatureDefinitions().map((definition) => {
+  const allCreatures = getLivestockCreatureDefinitions().map((definition) => {
     const upgradeLevels = getLivestockAnimalUpgradeLevels(livestock, definition.id);
     const intervalMs = getLivestockOutputIntervalMs(livestock, definition);
     const placedCount = placements.filter(
@@ -132,9 +138,11 @@ export function getLivestockDisplay(
       livestock,
       definition.id,
     );
-    const expectedPerHour =
-      fedCount *
-      ((60 * 60 * 1000 * definition.output.quantity) / intervalMs);
+    const expectedPerHour = definition.output
+      ? fedCount *
+        ((60 * 60 * 1000 * definition.output.quantity) / intervalMs)
+      : 0;
+    const isUnlocked = ownedCount > 0;
 
     return {
       creatureId: definition.id,
@@ -149,49 +157,53 @@ export function getLivestockDisplay(
           ? definition.feedPerDay
               .map(
                 (feed) =>
-                  `${formatIngredientName(feed.cropId)} ${getLivestockEffectiveFeedQuantity(
+                  `${formatIngredientName(feed.ingredientId)} ${getLivestockEffectiveFeedQuantity(
                     feed.quantity,
                     upgradeLevels.feedDiscount,
                   )}/day`,
               )
               .join(", ")
           : "None",
-      yieldText: `${definition.output.displayName} ${
-        definition.output.quantity
-      } / ${formatDuration(intervalMs)}`,
+      yieldText: definition.output
+        ? `${definition.output.displayName} ${definition.output.quantity} / ${formatDuration(intervalMs)}`
+        : "No output yet",
       expectedOutputPerHourText: formatRate(expectedPerHour),
       upgrades: createAnimalUpgradeDisplays(
         livestock,
         definition.id,
         canUseActions,
       ),
+      isUnlocked,
+      sourceHint: definition.sourceHint,
+      iconSrc: isUnlocked
+        ? LIVESTOCK_CREATURE_ICON_SRC[definition.id]
+        : LIVESTOCK_CREATURE_ICON_SRC.locked,
       fedCount,
       hungryCount,
-      canHoldForPlacement: canUseActions && availableCount > 0,
+      canHoldForPlacement: canUseActions && isUnlocked && availableCount > 0,
     };
   });
-  const outputs: LivestockOutputDisplay[] = [
-    {
-      outputId: LIVESTOCK_EGG_OUTPUT_ID,
-      displayName: "Eggs",
-      quantity:
-        livestock.holdingQuantitiesByOutputId[LIVESTOCK_EGG_OUTPUT_ID] ?? 0,
-      cap:
-        livestock.holdingCapsByOutputId[LIVESTOCK_EGG_OUTPUT_ID] ??
-        LIVESTOCK_EGG_HOLD_CAP,
-      holdText: `Eggs ${
-        livestock.holdingQuantitiesByOutputId[LIVESTOCK_EGG_OUTPUT_ID] ?? 0
-      }/${
-        livestock.holdingCapsByOutputId[LIVESTOCK_EGG_OUTPUT_ID] ??
-        LIVESTOCK_EGG_HOLD_CAP
-      }`,
-    },
-  ];
+  const creatures = creatureFilter === "all"
+    ? allCreatures
+    : allCreatures.filter((creature) => creature.isUnlocked);
+  const outputs: LivestockOutputDisplay[] = getLivestockCreatureDefinitions()
+    .filter((definition) => definition.output)
+    .map((definition) => {
+      const output = definition.output!;
+      const quantity = livestock.holdingQuantitiesByOutputId[output.id] ?? 0;
+      const cap = livestock.holdingCapsByOutputId[output.id] ?? 0;
+
+      return {
+        outputId: output.id,
+        displayName: `${output.displayName}${output.displayName.endsWith("s") ? "" : "s"}`,
+        quantity,
+        cap,
+        holdText: `${output.displayName}${output.displayName.endsWith("s") ? "" : "s"} ${quantity}/${cap}`,
+      };
+    });
   const totalHeld = outputs.reduce((total, output) => total + output.quantity, 0);
   const hungryCount = placements.filter((placement) => placement.isHungry).length;
   const placedCount = placements.length;
-  const pantryCarrots =
-    state.innKitchen?.pantry.ingredientQuantitiesById.carrot ?? 0;
 
   return {
     isUnlocked,
@@ -201,11 +213,12 @@ export function getLivestockDisplay(
     height: livestock.grid.height,
     cells: createGridCells(livestock, placements),
     creatures,
+    allCreatures,
     placements,
     outputs,
     totalOutputPerHourText: formatRate(getLivestockExpectedOutputsPerHour(state)),
+    expectedDailyOutputText: getExpectedDailyOutputText(livestock, placements),
     totalFeedText: getTotalFeedText(creatures),
-    pantryFeedText: `Pantry Carrots ${pantryCarrots}`,
     feedingStatusText: `Fed ${Math.max(0, placedCount - hungryCount)} / Hungry ${hungryCount}`,
     nextFeedAtText: formatClockTime(getNextLivestockFeedAtMs(nowMs)),
     collectActionText: canUseActions
@@ -241,6 +254,10 @@ export function getLivestockPlacementTimeRemainingText(
     return "Unknown";
   }
 
+  if (!definition.output) {
+    return "No output";
+  }
+
   const intervalMs = state
     ? getLivestockOutputIntervalMs(getLivestockState(state, nowMs), definition)
     : definition.output.intervalMs;
@@ -270,7 +287,7 @@ function createAnimalUpgradeDisplays(
   const definition = getLivestockCreatureDefinition(creatureId);
   const levels = getLivestockAnimalUpgradeLevels(livestock, creatureId);
 
-  if (!definition) {
+  if (!definition || !definition.output) {
     return [];
   }
 
@@ -360,7 +377,7 @@ function getAnimalUpgradeEffectText(
     case "feedDiscount":
       return `${getLivestockFeedDiscountPercent(level).toFixed(0)}% discount`;
     case "outputCap":
-      return `Eggs ${getLivestockOutputCapForLevel(level)}`;
+      return `${definition.output?.displayName ?? "Output"}s ${getLivestockOutputCapForLevel(level)}`;
     default:
       return "";
   }
@@ -445,13 +462,66 @@ function findOccupant(
 }
 
 function getTotalFeedText(creatures: LivestockCreatureDisplay[]): string {
-  const carrotTotal = creatures.reduce((total, creature) => {
-    const match = creature.feedText.match(/Carrot(?:s)? (\d+)\/day/);
+  const feedByName = new Map<string, number>();
 
-    return total + (match ? Number(match[1]) * creature.placedCount : 0);
-  }, 0);
+  for (const creature of creatures) {
+    if (creature.placedCount <= 0 || creature.feedText === "None") {
+      continue;
+    }
 
-  return carrotTotal > 0 ? `Carrots ${carrotTotal}/day` : "No feed needed";
+    for (const feedPart of creature.feedText.split(",")) {
+      const match = feedPart.trim().match(/^(.+) (\d+)\/day$/);
+
+      if (!match) {
+        continue;
+      }
+
+      const [, ingredientName, quantityText] = match;
+      const displayName = pluralizeIngredientName(ingredientName);
+      feedByName.set(
+        displayName,
+        (feedByName.get(displayName) ?? 0) +
+          Number(quantityText) * creature.placedCount,
+      );
+    }
+  }
+
+  return feedByName.size > 0
+    ? [...feedByName.entries()]
+        .map(([ingredientName, quantity]) => `${ingredientName} ${quantity}/day`)
+        .join(", ")
+    : "No feed needed";
+}
+
+function getExpectedDailyOutputText(
+  livestock: ReturnType<typeof getLivestockState>,
+  placements: LivestockPlacedCreatureState[],
+): string {
+  const outputByName = new Map<string, number>();
+
+  for (const placement of placements) {
+    const definition = getLivestockCreatureDefinition(placement.creatureId);
+
+    if (!definition?.output || placement.isHungry) {
+      continue;
+    }
+
+    const intervalMs = getLivestockOutputIntervalMs(livestock, definition);
+    const expectedDailyQuantity =
+      ((24 * 60 * 60 * 1000) / intervalMs) * definition.output.quantity;
+    const displayName = pluralizeIngredientName(definition.output.displayName);
+
+    outputByName.set(
+      displayName,
+      (outputByName.get(displayName) ?? 0) + expectedDailyQuantity,
+    );
+  }
+
+  return outputByName.size > 0
+    ? [...outputByName.entries()]
+        .map(([outputName, quantity]) => `${outputName} ${formatRate(quantity)}/day`)
+        .join(", ")
+    : "No output expected";
 }
 
 function formatClockTime(ms: number): string {
@@ -479,6 +549,10 @@ function formatIngredientName(ingredientId: string): string {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function pluralizeIngredientName(ingredientName: string): string {
+  return ingredientName.endsWith("s") ? ingredientName : `${ingredientName}s`;
 }
 
 function formatRate(value: number): string {

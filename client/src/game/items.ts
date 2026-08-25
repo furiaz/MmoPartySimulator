@@ -88,6 +88,16 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
     stackable: true,
     maxStack: 250,
   },
+  ore_shard: {
+    id: "ore_shard",
+    displayName: "Ore Shard",
+    category: "material",
+    description: "Tier 1 ore-family material produced by Iron Crawlers.",
+    rarity: "common",
+    tier: 1,
+    stackable: true,
+    maxStack: 250,
+  },
   crafting_string: {
     id: "crafting_string",
     displayName: "String",

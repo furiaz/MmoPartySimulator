@@ -59,6 +59,8 @@ export type FarmFieldDisplay = {
   multiCropTooltip: string;
   generationPerHourText: string;
   generationPerHourTooltip: string;
+  generationPerDayText: string;
+  generationPerDayTooltip: string;
   holdingTooltip: string;
   upgrades: FarmFieldUpgradeDisplay[];
 };
@@ -202,6 +204,8 @@ function getUnlockedFieldDisplay({
     multiCropTooltip: `Fertilizer Lv ${field.upgradeLevels.fertilizer}/${FARM_FIELD_UPGRADE_DEFINITIONS.fertilizer.maxLevel}`,
     generationPerHourText: formatRate(cropsPerHour),
     generationPerHourTooltip: `Based on Faster Generation Lv ${field.upgradeLevels.speed}/${FARM_FIELD_UPGRADE_DEFINITIONS.speed.maxLevel} and Fertilizer Lv ${field.upgradeLevels.fertilizer}/${FARM_FIELD_UPGRADE_DEFINITIONS.fertilizer.maxLevel}`,
+    generationPerDayText: formatRate(cropsPerHour * 24),
+    generationPerDayTooltip: "Expected crop output over 24 hours at current upgrades.",
     holdingTooltip: `Harvest Cap Lv ${field.upgradeLevels.cap}/${FARM_FIELD_UPGRADE_DEFINITIONS.cap.maxLevel}`,
     upgrades: (Object.keys(FARM_FIELD_UPGRADE_DEFINITIONS) as FarmFieldUpgradeId[]).map(
       (upgradeId) =>
@@ -242,6 +246,8 @@ function getLockedFieldDisplay(
     multiCropTooltip: "Unlock this crop to view Fertilizer levels.",
     generationPerHourText: "0",
     generationPerHourTooltip: "Unlock this crop to view generation.",
+    generationPerDayText: "0",
+    generationPerDayTooltip: "Unlock this crop to view daily generation.",
     holdingTooltip: "Unlock this crop to view Harvest Cap levels.",
     upgrades: [],
     generationPerHourValue: 0,

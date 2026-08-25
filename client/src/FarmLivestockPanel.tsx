@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FARM_CROP_ICON_SRC } from "./assetIcons";
+import { FARM_CROP_ICON_SRC, LIVESTOCK_CREATURE_ICON_SRC } from "./assetIcons";
 import {
   getTownServicesLockedMessage,
   type FarmFieldId,
@@ -20,6 +20,7 @@ import {
   getLivestockDisplay,
   getLivestockPlacementTimeRemainingText,
   getNextLivestockRotation,
+  type LivestockCreatureFilter,
   type LivestockCreatureDisplay,
   type LivestockGridCellDisplay,
   type LivestockUpgradeDisplay,
@@ -80,8 +81,14 @@ export function FarmLivestockPanel({
   onOpenInnKitchenPantry,
 }: FarmLivestockPanelProps) {
   const [cropFilter, setCropFilter] = useState<FarmCropFilter>("unlocked");
+  const [creatureFilter, setCreatureFilter] =
+    useState<LivestockCreatureFilter>("unlocked");
   const display = getFarmDisplay(state, currentTime, cropFilter);
-  const livestockDisplay = getLivestockDisplay(state, currentTime);
+  const livestockDisplay = getLivestockDisplay(
+    state,
+    currentTime,
+    creatureFilter,
+  );
   const lockedMessage = getTownServicesLockedMessage(state);
   const field = display.field;
   const [activeSection, setActiveSection] =
@@ -228,7 +235,10 @@ export function FarmLivestockPanel({
           type="button"
         >
           <strong>Livestock</strong>
-          <small>{livestockDisplay.outputs[0]?.holdText ?? "Eggs 0/20"}</small>
+          <small>
+            {livestockDisplay.outputs.map((output) => output.holdText).join(", ") ||
+              "No output held"}
+          </small>
         </button>
       </div>
 
@@ -342,8 +352,8 @@ export function FarmLivestockPanel({
                 <strong>{livestockDisplay.totalFeedText}</strong>
               </div>
               <div>
-                <span>Pantry Feed</span>
-                <strong>{livestockDisplay.pantryFeedText}</strong>
+                <span>24h Production</span>
+                <strong>{livestockDisplay.expectedDailyOutputText}</strong>
               </div>
               <div>
                 <span>Feed Status</span>
@@ -354,12 +364,16 @@ export function FarmLivestockPanel({
                 <strong>{livestockDisplay.nextFeedAtText}</strong>
               </div>
               <div>
-                <span>Expected Output</span>
-                <strong>Eggs/hr {livestockDisplay.totalOutputPerHourText}</strong>
+                <span>Output/hr</span>
+                <strong>All/hr {livestockDisplay.totalOutputPerHourText}</strong>
               </div>
               <div>
                 <span>Held Output</span>
-                <strong>{livestockDisplay.outputs[0]?.holdText ?? "Eggs 0/20"}</strong>
+                <strong>
+                  {livestockDisplay.outputs
+                    .map((output) => output.holdText)
+                    .join(", ") || "No output held"}
+                </strong>
               </div>
             </div>
           ) : null}
@@ -435,11 +449,34 @@ export function FarmLivestockPanel({
               </div>
 
               <div className="livestock-available-list">
-                <h3>Available Creatures</h3>
+                <div className="guild-roster-topline">
+                  <h3>Available Creatures</h3>
+                  <div
+                    className="farm-crop-filter"
+                    aria-label="Livestock creature filter"
+                  >
+                    <button
+                      className={creatureFilter === "unlocked" ? "active" : ""}
+                      onClick={() => setCreatureFilter("unlocked")}
+                      type="button"
+                    >
+                      Unlocked
+                    </button>
+                    <button
+                      className={creatureFilter === "all" ? "active" : ""}
+                      onClick={() => setCreatureFilter("all")}
+                      type="button"
+                    >
+                      All
+                    </button>
+                  </div>
+                </div>
                 <div>
                   {livestockDisplay.creatures.map((creature) => (
                     <article
-                      className="livestock-creature-card"
+                      className={`livestock-creature-card${
+                        creature.isUnlocked ? "" : " locked"
+                      }`}
                       key={creature.creatureId}
                     >
                       <button
@@ -448,16 +485,24 @@ export function FarmLivestockPanel({
                         onClick={() => selectAvailableCreature(creature)}
                         type="button"
                       >
-                        <span
+                        <img
+                          alt=""
                           aria-hidden="true"
-                          className="livestock-creature-icon-slot"
+                          className={`livestock-creature-icon${
+                            creature.isUnlocked ? "" : " locked"
+                          }`}
+                          src={creature.iconSrc}
                         />
                         <strong>
                           {creature.displayName} x{creature.availableCount}
                         </strong>
+                        {!creature.isUnlocked ? (
+                          <small>{creature.sourceHint}</small>
+                        ) : null}
                       </button>
                       <button
                         className="livestock-creature-upgrade-button"
+                        disabled={!creature.isUnlocked || creature.upgrades.length <= 0}
                         onClick={() =>
                           setSelectedLivestockUpgradeCreatureId(
                             creature.creatureId,
@@ -505,7 +550,7 @@ export function FarmLivestockPanel({
                       </dd>
                     </div>
                     <div>
-                      <dt>Eggs/hr</dt>
+                      <dt>Output/hr</dt>
                       <dd>{creature.expectedOutputPerHourText}</dd>
                     </div>
                   </dl>
@@ -521,7 +566,7 @@ export function FarmLivestockPanel({
                     {livestockDisplay.placements.map((placement) => (
                       <li key={placement.id}>
                         {placement.creatureId} at {placement.x + 1},{" "}
-                        {placement.y + 1} - next Egg in{" "}
+                        {placement.y + 1} - next output in{" "}
                         {getLivestockPlacementTimeRemainingText(
                           placement,
                           currentTime,
@@ -650,6 +695,9 @@ function FarmCropRow({
           <span title={field.generationPerHourTooltip}>
             Gen/hr {field.generationPerHourText}
           </span>
+          <span title={field.generationPerDayTooltip}>
+            Crops/day {field.generationPerDayText}
+          </span>
         </div>
         <strong title={field.holdingTooltip}>{field.holdText}</strong>
       </div>
@@ -745,7 +793,12 @@ function LivestockAnimalUpgradeOverlayContent({
   return (
     <>
       <div className="farm-upgrade-overlay-heading">
-        <span aria-hidden="true" className="livestock-creature-icon-slot" />
+        <img
+          alt=""
+          aria-hidden="true"
+          className="livestock-creature-icon"
+          src={creature.iconSrc}
+        />
         <h3>{creature.displayName}</h3>
       </div>
 
@@ -787,7 +840,12 @@ function LivestockBuildingUpgradeOverlayContent({
   return (
     <>
       <div className="farm-upgrade-overlay-heading">
-        <span aria-hidden="true" className="livestock-creature-icon-slot" />
+        <img
+          alt=""
+          aria-hidden="true"
+          className="livestock-creature-icon"
+          src={LIVESTOCK_CREATURE_ICON_SRC.locked}
+        />
         <h3>Livestock Building</h3>
       </div>
 

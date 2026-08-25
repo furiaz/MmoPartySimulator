@@ -9,6 +9,7 @@ import {
 import {
   TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID,
   getKeyItemQuantity,
+  LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID,
 } from "./keyItems";
 import { createDebugMap, MAP_ONE_ID, MAP_TWO_ID } from "./debugMap";
 import { createTestGameState } from "./testState";
@@ -173,6 +174,36 @@ describe("enemy drop system", () => {
       firstDefeat.newsBroadcasts?.length ?? 0,
     );
     expect(secondDefeat.inventory.slots).toEqual([]);
+  });
+
+  it("can unlock livestock creatures from enemy defeat processing", () => {
+    const now = 1000;
+    const enemy = {
+      ...createEnemy("wolf", { x: 5, y: 5 }, "aggressive", {
+        enemyTypeId: "wolf",
+      }),
+      state: "dead" as const,
+      health: 0,
+    };
+    const state = createTestGameState({
+      currentMapId: MAP_ONE_ID,
+      map: createDebugMap(MAP_ONE_ID),
+      entities: { [enemy.id]: enemy },
+    });
+    const randomValues = [0.99, 0.99, 0.09];
+
+    const nextState = handleEnemyDefeatedDrops(
+      state,
+      enemy,
+      "leader",
+      now,
+      () => randomValues.shift() ?? 0.99,
+    );
+
+    expect(getKeyItemQuantity(nextState, LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID))
+      .toBe(1);
+    expect(nextState.livestock?.ownedCreaturesById.wolf).toBe(1);
+    expect(nextState.newsBroadcasts?.at(-1)?.text).toBe("Dropped: Wolf Pup");
   });
 });
 

@@ -15,6 +15,12 @@ export const FARM_ASHPEPPER_SEED_KEY_ITEM_ID =
   "farm_seed_ashpepper" satisfies KeyItemId;
 export const LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID =
   "livestock_creature_duskhen" satisfies KeyItemId;
+export const LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_wolf" satisfies KeyItemId;
+export const LIVESTOCK_IRON_CRAWLER_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_iron_crawler" satisfies KeyItemId;
+export const LIVESTOCK_ELDER_MOSSLING_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_elder_mossling" satisfies KeyItemId;
 
 export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
   teleport_echo_harbor_union_bastion: {
@@ -51,6 +57,21 @@ export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
     id: "livestock_creature_duskhen",
     displayName: "Duskhen Discovery",
     description: "Registers Duskhens as a Livestock creature.",
+  },
+  livestock_creature_wolf: {
+    id: "livestock_creature_wolf",
+    displayName: "Wolf Pup Discovery",
+    description: "Registers Wolves as a Livestock creature.",
+  },
+  livestock_creature_iron_crawler: {
+    id: "livestock_creature_iron_crawler",
+    displayName: "Iron Crawler Discovery",
+    description: "Registers Iron Crawlers as a Livestock creature.",
+  },
+  livestock_creature_elder_mossling: {
+    id: "livestock_creature_elder_mossling",
+    displayName: "Elder Mossling Discovery",
+    description: "Registers Elder Mosslings as a Livestock creature.",
   },
 };
 

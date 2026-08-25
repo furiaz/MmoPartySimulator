@@ -343,6 +343,7 @@ const prototypeEnemyVisualAssets: Partial<Record<EnemyTypeId, SpriteVisualAsset>
   goblin_shaman: createStaticEnemySprite(`${prototypeEnemyBasePath}/thorn-shaman-se.png`),
   ash_wisp: createStaticEnemySprite(`${prototypeEnemyBasePath}/ash-wisp-se.png`),
   mossling: createStaticEnemySprite(`${prototypeEnemyBasePath}/mossling-se.png`),
+  wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/wolf.png`),
   ember_imp: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/ember_imp.png`),
   iron_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/iron_crawler.png`),
   briar_wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/briar_wolf.png`),

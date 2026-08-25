@@ -11,13 +11,16 @@ import {
 } from "./wallet";
 import {
   buyMerchantItem,
+  buyMerchantLivestockCreature,
   getFilteredMerchantBuyStock,
+  getMerchantLivestockStock,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
   getQuickExchangeItems,
   quickExchangeParts,
 } from "./merchant";
 import { createInitialQuestStates } from "./questSystem";
+import { LIVESTOCK_DUSKHEN_CREATURE_ID } from "./livestock";
 
 const MERCHANT_ID = "test-merchant";
 
@@ -634,6 +637,64 @@ describe("merchant buy", () => {
         maxLevelRequirement: 10,
       }).map((entry) => entry.itemId),
     ).toEqual([]);
+  });
+});
+
+describe("merchant livestock", () => {
+  it("sells one Duskhen at a time and scales price by owned count", () => {
+    let state = createMerchantState();
+    state = setCurrencyBalanceForDebug(state, "crowns", 500).state;
+
+    expect(getMerchantLivestockStock(state, MERCHANT_ID)[0]).toMatchObject({
+      creatureId: LIVESTOCK_DUSKHEN_CREATURE_ID,
+      ownedCount: 2,
+      priceCrowns: 200,
+    });
+
+    const firstPurchase = buyMerchantLivestockCreature(
+      state,
+      MERCHANT_ID,
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      1000,
+    );
+
+    expect(firstPurchase.result).toMatchObject({
+      status: "success",
+      creatureId: LIVESTOCK_DUSKHEN_CREATURE_ID,
+      priceCrowns: 200,
+      previousCrowns: 500,
+      newCrowns: 300,
+      ownedCount: 3,
+    });
+    expect(
+      firstPurchase.state.livestock?.ownedCreaturesById.duskhen,
+    ).toBe(3);
+    expect(firstPurchase.state.inventory.slots).toEqual([]);
+    expect(getMerchantLivestockStock(firstPurchase.state, MERCHANT_ID)[0])
+      .toMatchObject({
+        ownedCount: 3,
+        priceCrowns: 300,
+      });
+  });
+
+  it("fails Duskhen purchase without enough Crowns", () => {
+    const state = setCurrencyBalanceForDebug(createMerchantState(), "crowns", 50)
+      .state;
+
+    const purchase = buyMerchantLivestockCreature(
+      state,
+      MERCHANT_ID,
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      1000,
+    );
+
+    expect(purchase.result).toMatchObject({
+      status: "failed",
+      reason: "insufficient_crowns",
+      previousCrowns: 50,
+      newCrowns: 50,
+    });
+    expect(purchase.state.livestock?.ownedCreaturesById.duskhen).toBe(2);
   });
 });
 

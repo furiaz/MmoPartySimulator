@@ -40,6 +40,7 @@ import {
   ARMOR_FAMILY_LABELS,
   buyMerchantFarmSeed,
   buyMerchantItem,
+  buyMerchantLivestockCreature,
   canCompanionEnterFirstClassSelection,
   CLASS_DEFINITIONS,
   companionIds,
@@ -88,6 +89,7 @@ import {
   getFarmCropDefinition,
   getItemDefinition,
   getMerchantFarmSeedStock,
+  getMerchantLivestockStock,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
   hubCompanionStartPositions,
@@ -234,6 +236,7 @@ import {
   type MapVisualObject,
   type MerchantBuyFailureReason,
   type MerchantFarmSeedBuyFailureReason,
+  type MerchantLivestockBuyFailureReason,
   type MerchantStockEntry,
   type MerchantStockGroup,
   type NavigationClickAccessibility,
@@ -258,7 +261,11 @@ import {
   type WorldTravelTeleportFailureReason,
   type WorldWipeRecoveryChoice,
 } from "./game";
-import { FARM_CROP_ICON_SRC, INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
+import {
+  FARM_CROP_ICON_SRC,
+  INVENTORY_ITEM_ICON_SRC,
+  LIVESTOCK_CREATURE_ICON_SRC,
+} from "./assetIcons";
 import {
   deleteLocalSave,
   downloadSavedGame,
@@ -388,7 +395,7 @@ type NavigationClickAccessibilityCache = {
   map: GameMap;
 };
 
-type MerchantPanel = "buy" | "farm_seeds" | "sell";
+type MerchantPanel = "buy" | "farm_seeds" | "livestock" | "sell";
 type QuestGiverPanel = "available" | "current";
 type NpcInteractionKind =
   | "merchant"
@@ -565,6 +572,17 @@ const merchantFarmSeedFailureMessages: Record<
   currency_remove_failed: "Crowns could not be spent",
 };
 
+const merchantLivestockFailureMessages: Record<
+  MerchantLivestockBuyFailureReason,
+  string
+> = {
+  invalid_merchant: "Merchant unavailable",
+  merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+  item_not_in_stock: "Livestock creature is not in stock",
+  insufficient_crowns: "Not enough Crowns",
+  currency_remove_failed: "Crowns could not be spent",
+};
+
 const skillBookFailureMessages: Record<ReadSkillBookFailureReason, string> = {
   invalid_companion: "Companion unavailable",
   invalid_item: "Book unavailable",
@@ -716,13 +734,15 @@ function getLivestockFailureMessage(reason: string): string {
     case "not_near_livestock":
       return "Stand near Livestock.";
     case "no_available_creature":
-      return "No available Duskhens.";
+      return "No available Livestock creature.";
     case "occupied_cell":
       return "That ranch space is occupied.";
     case "out_of_bounds":
       return "That ranch space is outside the grid.";
     case "nothing_to_collect":
       return "No Livestock output to collect.";
+    case "collection_error":
+      return "Error at Collection";
     case "insufficient_feed":
       return "Not enough Pantry feed.";
     case "insufficient_crowns":
@@ -2137,6 +2157,92 @@ function MerchantFarmSeedPanel({
             </>
           ) : (
             <span className="merchant-empty-stock">Select a seed</span>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function MerchantLivestockPanel({
+  merchantNpcId,
+  state,
+  onBuy,
+}: {
+  merchantNpcId: string;
+  state: GameState;
+  onBuy: (creatureId: LivestockCreatureId) => void;
+}) {
+  const stock = getMerchantLivestockStock(state, merchantNpcId);
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <aside
+      className="merchant-detail-panel merchant-buy-panel"
+      aria-label="Merchant livestock"
+    >
+      <div className="merchant-buy-header">
+        <div>
+          <h2>Livestock</h2>
+          <span>Permanent creature ownership</span>
+        </div>
+        <strong>{formatCurrencyDisplay(state.wallet, "crowns")}</strong>
+      </div>
+      <div className="merchant-buy-layout">
+        <div className="merchant-stock-list" aria-label="Merchant livestock stock">
+          {stock.length > 0 ? (
+            stock.map((entry) => {
+              const canAffordCreature = crownBalance >= entry.priceCrowns;
+
+              return (
+                <button
+                  key={entry.creatureId}
+                  className={`merchant-stock-row${
+                    canAffordCreature ? "" : " unaffordable"
+                  }`}
+                  onClick={() => onBuy(entry.creatureId)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{entry.displayName}</strong>
+                    <small>
+                      Owned {entry.ownedCount} - {entry.sourceHint}
+                    </small>
+                  </span>
+                  <b>{entry.priceCrowns}</b>
+                </button>
+              );
+            })
+          ) : (
+            <span className="merchant-empty-stock">No creatures in stock</span>
+          )}
+        </div>
+        <div
+          className="merchant-buy-detail"
+          aria-label="Selected livestock details"
+        >
+          {stock[0] ? (
+            <>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="merchant-detail-item-icon"
+                src={
+                  LIVESTOCK_CREATURE_ICON_SRC[stock[0].creatureId] ??
+                  LIVESTOCK_CREATURE_ICON_SRC.locked
+                }
+              />
+              <div>
+                <span className="merchant-detail-kicker">Livestock</span>
+                <h3>{stock[0].displayName}</h3>
+                <p>
+                  Adds one owned {stock[0].creatureDisplayName}. Place it in
+                  the Livestock grid to use it.
+                </p>
+              </div>
+            </>
+          ) : (
+            <span className="merchant-empty-stock">Select a creature</span>
           )}
         </div>
       </div>
@@ -5234,7 +5340,7 @@ function App() {
 
     if (placed.ok) {
       queueSaveAfterStateChange("Livestock placement saved");
-      setLivestockResultMessage("Placed Duskhen.");
+      setLivestockResultMessage(`Placed ${placed.placement.creatureId}.`);
     } else {
       setLivestockResultMessage(getLivestockFailureMessage(placed.reason));
     }
@@ -5260,7 +5366,7 @@ function App() {
 
     if (moved.ok) {
       queueSaveAfterStateChange("Livestock placement saved");
-      setLivestockResultMessage("Moved Duskhen.");
+      setLivestockResultMessage(`Moved ${moved.placement.creatureId}.`);
     } else {
       setLivestockResultMessage(getLivestockFailureMessage(moved.reason));
     }
@@ -5278,7 +5384,7 @@ function App() {
 
     if (removed.ok) {
       queueSaveAfterStateChange("Livestock placement saved");
-      setLivestockResultMessage("Removed Duskhen.");
+      setLivestockResultMessage(`Removed ${removed.removedPlacement.creatureId}.`);
     } else {
       setLivestockResultMessage(getLivestockFailureMessage(removed.reason));
     }
@@ -5291,9 +5397,12 @@ function App() {
 
     if (collected.ok) {
       queueSaveAfterStateChange("Livestock collection saved");
-      const eggs = collected.collectedByOutputId.egg ?? 0;
+      const outputs = Object.entries(collected.collectedByOutputId)
+        .filter(([, quantity]) => (quantity ?? 0) > 0)
+        .map(([outputId, quantity]) => `${quantity} ${outputId}`)
+        .join(", ");
       setLivestockResultMessage(
-        `Collected ${eggs} Egg${eggs === 1 ? "" : "s"} to Pantry.`,
+        `Collected ${outputs || "Livestock output"}.`,
       );
     } else {
       setLivestockResultMessage(getLivestockFailureMessage(collected.reason));
@@ -5308,7 +5417,7 @@ function App() {
     if (fed.ok) {
       queueSaveAfterStateChange("Livestock feeding saved");
       setLivestockResultMessage(
-        `Fed ${fed.fedPlacementIds.length} hungry Duskhen${
+        `Fed ${fed.fedPlacementIds.length} hungry Livestock creature${
           fed.fedPlacementIds.length === 1 ? "" : "s"
         }.`,
       );
@@ -5333,7 +5442,7 @@ function App() {
     if (upgraded.ok) {
       queueSaveAfterStateChange("Livestock upgrade saved");
       setLivestockResultMessage(
-        `Upgraded Duskhen ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
+        `Upgraded ${creatureId} ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
       );
     } else {
       setLivestockResultMessage(getLivestockFailureMessage(upgraded.reason));
@@ -5536,6 +5645,32 @@ function App() {
     } else {
       setMerchantResultMessage(
         merchantFarmSeedFailureMessages[purchase.result.reason],
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function buyMerchantLivestockFromMenu(creatureId: LivestockCreatureId) {
+    if (!activeMerchantNpcId) {
+      return;
+    }
+
+    const purchase = buyMerchantLivestockCreature(
+      gameState,
+      activeMerchantNpcId,
+      creatureId,
+      currentTime,
+    );
+
+    if (purchase.result.status === "success") {
+      queueSaveAfterStateChange("Livestock purchase saved");
+      setMerchantResultMessage(
+        `Bought ${purchase.result.displayName} for ${purchase.result.priceCrowns} Crowns`,
+      );
+    } else {
+      setMerchantResultMessage(
+        merchantLivestockFailureMessages[purchase.result.reason],
       );
     }
 
@@ -6198,6 +6333,14 @@ function App() {
                 Farm Seeds
               </button>
               <button
+                className={activeMerchantPanel === "livestock" ? "active" : ""}
+                disabled={activeMerchantLocked}
+                onClick={() => selectMerchantPanel("livestock")}
+                type="button"
+              >
+                Livestock
+              </button>
+              <button
                 className={activeMerchantPanel === "sell" ? "active" : ""}
                 disabled={activeMerchantLocked}
                 onClick={() => selectMerchantPanel("sell")}
@@ -6224,6 +6367,12 @@ function App() {
                   merchantNpcId={activeMerchant.id}
                   state={gameState}
                   onBuy={buyMerchantFarmSeedFromMenu}
+                />
+              ) : activeMerchantPanel === "livestock" ? (
+                <MerchantLivestockPanel
+                  merchantNpcId={activeMerchant.id}
+                  state={gameState}
+                  onBuy={buyMerchantLivestockFromMenu}
                 />
               ) : (
                 <aside className="merchant-detail-panel">

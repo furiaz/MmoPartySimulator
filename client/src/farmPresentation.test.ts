@@ -17,6 +17,7 @@ describe("farm presentation", () => {
     expect(display.field.speedText).toBe("0%");
     expect(display.field.multiCropText).toBe("0%");
     expect(display.field.generationPerHourText).toBe("0");
+    expect(display.field.generationPerDayText).toBe("0");
     expect(display.field.speedTooltip).toBe("Faster Generation Lv 0/5");
     expect(display.field.multiCropTooltip).toBe("Fertilizer Lv 0/3");
     expect(display.field.holdingTooltip).toBe("Harvest Cap Lv 1/5");
@@ -84,6 +85,7 @@ describe("farm presentation", () => {
     expect(display.field.speedText).toBe("110%");
     expect(display.field.multiCropText).toBe("2%");
     expect(display.field.generationPerHourText).toBe("3.37");
+    expect(display.field.generationPerDayText).toBe("80.78");
     expect(display.totalCropsPerHourText).toBe("3.37");
     expect(display.field.generationPerHourTooltip).toBe(
       "Based on Faster Generation Lv 3/5 and Fertilizer Lv 2/3",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createCompanion, createNpc } from "./entities";
+import { createCompanion, createEnemy, createNpc } from "./entities";
 import {
+  addOwnedLivestockCreature,
   collectAllLivestockOutputs,
   createInitialLivestockState,
   feedHungryLivestockNow,
@@ -8,6 +9,8 @@ import {
   LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS,
   LIVESTOCK_DUSKHEN_FEED_PER_DAY,
   LIVESTOCK_EGG_HOLD_CAP,
+  LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
+  LIVESTOCK_ORE_SHARD_OUTPUT_ID,
   moveLivestockPlacement,
   placeLivestockCreature,
   purchaseLivestockAnimalUpgrade,
@@ -15,8 +18,13 @@ import {
   removeLivestockPlacement,
   sanitizeLivestockState,
   settleLivestockState,
+  tryUnlockLivestockCreatureFromEnemyDefeat,
 } from "./livestock";
-import { LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID } from "./keyItems";
+import { createEmptyPartyInventory, countInventoryItem } from "./inventory";
+import {
+  LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID,
+  LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID,
+} from "./keyItems";
 import { sanitizeGameStateForSave } from "./saveGame";
 import { createTestGameState } from "./testState";
 import type {
@@ -667,6 +675,122 @@ describe("Livestock MVP", () => {
     ).toBe(false);
   });
 
+  it("unlocks livestock creatures from enemy defeats with scaling repeated drop chances", () => {
+    const wolf = createEnemy("wolf", { x: 0, y: 0 }, "aggressive", {
+      enemyTypeId: "wolf",
+    });
+    const unlocked = tryUnlockLivestockCreatureFromEnemyDefeat(
+      createLivestockTestState(),
+      wolf,
+      NOW_MS,
+      () => 0.09,
+    );
+    const failedSecond = tryUnlockLivestockCreatureFromEnemyDefeat(
+      unlocked,
+      wolf,
+      NOW_MS + 1,
+      () => 0.06,
+    );
+    const passedSecond = tryUnlockLivestockCreatureFromEnemyDefeat(
+      failedSecond,
+      wolf,
+      NOW_MS + 2,
+      () => 0.04,
+    );
+
+    expect(unlocked.livestock?.ownedCreaturesById.wolf).toBe(1);
+    expect(unlocked.keyItemsById?.[LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID]).toBe(1);
+    expect(unlocked.newsBroadcasts?.at(-1)?.text).toBe("Dropped: Wolf Pup");
+    expect(failedSecond.livestock?.ownedCreaturesById.wolf).toBe(1);
+    expect(failedSecond.newsBroadcasts).toHaveLength(
+      unlocked.newsBroadcasts?.length ?? 0,
+    );
+    expect(passedSecond.livestock?.ownedCreaturesById.wolf).toBe(2);
+    expect(passedSecond.newsBroadcasts?.at(-1)?.text).toBe(
+      "Dropped: Wolf Pup",
+    );
+  });
+
+  it("places larger unlocked creatures and produces Iron Crawler Ore Shards", () => {
+    let state = createLivestockTestState({
+      pantryIngredients: { bittercap_mushroom: 10 },
+    });
+    state = addOwnedLivestockCreature(
+      state,
+      LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
+      "iron_crawler_defeat",
+      NOW_MS,
+    ).state;
+
+    const placed = placeLivestockCreature(
+      state,
+      LIVESTOCK_IRON_CRAWLER_CREATURE_ID,
+      0,
+      0,
+      "horizontal",
+      new Date(2026, 0, 1, 12).getTime(),
+    );
+
+    expect(placed.ok).toBe(true);
+    if (!placed.ok) {
+      return;
+    }
+
+    expect(
+      placed.state.innKitchen?.pantry.ingredientQuantitiesById
+        .bittercap_mushroom,
+    ).toBe(5);
+
+    const settled = settleLivestockState(
+      placed.state,
+      new Date(2026, 0, 1, 15).getTime(),
+    );
+    expect(
+      settled.livestock?.holdingQuantitiesByOutputId[
+        LIVESTOCK_ORE_SHARD_OUTPUT_ID
+      ],
+    ).toBe(1);
+  });
+
+  it("collects Ore Shards to inventory and blocks all collection if inventory transfer fails", () => {
+    const withOre = createLivestockTestState({
+      livestock: {
+        ...createInitialLivestockState(),
+        holdingQuantitiesByOutputId: { egg: 1, ore_shard: 1 },
+      },
+    });
+    const collected = collectAllLivestockOutputs(withOre, NOW_MS);
+
+    expect(collected.ok).toBe(true);
+    if (!collected.ok) {
+      return;
+    }
+
+    expect(collected.state.innKitchen?.pantry.ingredientQuantitiesById.egg).toBe(1);
+    expect(countInventoryItem(collected.state.inventory, "ore_shard")).toBe(1);
+    expect(collected.state.livestock?.holdingQuantitiesByOutputId).toMatchObject({
+      egg: 0,
+      ore_shard: 0,
+    });
+
+    const blocked = collectAllLivestockOutputs(
+      createLivestockTestState({
+        inventory: createEmptyPartyInventory(0),
+        livestock: {
+          ...createInitialLivestockState(),
+          holdingQuantitiesByOutputId: { egg: 1, ore_shard: 1 },
+        },
+      }),
+      NOW_MS,
+    );
+
+    expect(blocked).toMatchObject({ ok: false, reason: "collection_error" });
+    expect(blocked.state.livestock?.holdingQuantitiesByOutputId).toMatchObject({
+      egg: 1,
+      ore_shard: 1,
+    });
+  });
+
   it("preserves Livestock through save sanitization and restores the Duskhen discovery key item", () => {
     const placement = createPlacedDuskhen({
       id: "livestock_duskhen_1",
@@ -705,6 +829,8 @@ function createLivestockTestState({
   leaderPosition = { x: 10, y: 10 },
   livestock = createInitialLivestockState(),
   keyItemsById,
+  pantryIngredients = {},
+  inventory,
   pantryCarrots = 100,
   crowns = 0,
 }: {
@@ -712,6 +838,8 @@ function createLivestockTestState({
   leaderPosition?: Position;
   livestock?: LivestockState;
   keyItemsById?: Partial<Record<string, number>>;
+  pantryIngredients?: Record<string, number>;
+  inventory?: ReturnType<typeof createEmptyPartyInventory>;
   pantryCarrots?: number;
   crowns?: number;
 } = {}) {
@@ -739,6 +867,7 @@ function createLivestockTestState({
         crowns,
       },
     },
+    inventory: inventory ?? baseState.inventory,
     livestock,
     keyItemsById:
       keyItemsById === undefined
@@ -765,6 +894,7 @@ function createLivestockTestState({
         ingredientQuantitiesById: {
           ...baseKitchen.pantry.ingredientQuantitiesById,
           carrot: pantryCarrots,
+          ...pantryIngredients,
         },
       },
     },

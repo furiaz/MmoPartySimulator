@@ -17,6 +17,7 @@ describe("livestock presentation", () => {
     expect(display.height).toBe(3);
     expect(display.cells).toHaveLength(15);
     expect(display.totalOutputPerHourText).toBe("0");
+    expect(display.expectedDailyOutputText).toBe("No output expected");
     expect(display.totalFeedText).toBe("No feed needed");
     expect(display.outputs[0]).toMatchObject({
       outputId: "egg",
@@ -94,7 +95,6 @@ describe("livestock presentation", () => {
         canPurchase: false,
       },
     ]);
-    expect(display.pantryFeedText).toBe("Pantry Carrots 0");
     expect(display.feedingStatusText).toBe("Fed 0 / Hungry 0");
     expect(display.canFeedNow).toBe(false);
   });
@@ -143,6 +143,7 @@ describe("livestock presentation", () => {
     });
     expect(display.totalFeedText).toBe("Carrots 20/day");
     expect(display.totalOutputPerHourText).toBe("0.67");
+    expect(display.expectedDailyOutputText).toBe("Eggs 16/day");
     expect(display.outputs[0].holdText).toBe("Eggs 7/20");
     expect(display.canCollect).toBe(true);
   });
@@ -230,6 +231,7 @@ describe("livestock presentation", () => {
     });
     expect(display.totalFeedText).toBe("Carrots 8/day");
     expect(display.totalOutputPerHourText).toBe("0.40");
+    expect(display.expectedDailyOutputText).toBe("Eggs 9.60/day");
   });
 
   it("allows browsing while locked or far but disables execution actions", () => {
@@ -247,6 +249,28 @@ describe("livestock presentation", () => {
     expect(locked.collectActionText).toBe("Requires proximity");
     expect(far.isNearLivestockKeeper).toBe(false);
     expect(far.creatures[0].canHoldForPlacement).toBe(false);
+  });
+
+  it("filters locked creatures and shows source hints in All mode", () => {
+    const unlocked = getLivestockDisplay(createLivestockPresentationState(), 0);
+    const all = getLivestockDisplay(createLivestockPresentationState(), 0, "all");
+
+    expect(unlocked.creatures.map((creature) => creature.creatureId)).toEqual([
+      "duskhen",
+    ]);
+    expect(all.creatures.map((creature) => creature.creatureId)).toEqual([
+      "duskhen",
+      "wolf",
+      "iron_crawler",
+      "elder_mossling",
+    ]);
+    expect(all.creatures[1]).toMatchObject({
+      creatureId: "wolf",
+      isUnlocked: false,
+      sourceHint: "Rare drop from Wolves",
+      canHoldForPlacement: false,
+      upgrades: [],
+    });
   });
 });
 
