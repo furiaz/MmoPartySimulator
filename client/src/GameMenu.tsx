@@ -43,6 +43,8 @@ import type {
   FarmFieldId,
   FarmFieldUpgradeId,
   InnRoomUpgradeId,
+  LivestockAnimalUpgradeId,
+  LivestockBuildingUpgradeId,
   LivestockCreatureId,
   LivestockPlacementId,
   LivestockPlacementRotation,
@@ -121,6 +123,8 @@ export function GameMenu({
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
   onFeedHungryLivestockNow,
+  onPurchaseLivestockAnimalUpgrade,
+  onPurchaseLivestockBuildingUpgrade,
   onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
@@ -246,6 +250,13 @@ export function GameMenu({
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
   onFeedHungryLivestockNow: () => void;
+  onPurchaseLivestockAnimalUpgrade: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+  onPurchaseLivestockBuildingUpgrade: (
+    upgradeId: LivestockBuildingUpgradeId,
+  ) => void;
   onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
@@ -421,6 +432,12 @@ export function GameMenu({
                   onRemoveLivestockPlacement={onRemoveLivestockPlacement}
                   onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
                   onFeedHungryLivestockNow={onFeedHungryLivestockNow}
+                  onPurchaseLivestockAnimalUpgrade={
+                    onPurchaseLivestockAnimalUpgrade
+                  }
+                  onPurchaseLivestockBuildingUpgrade={
+                    onPurchaseLivestockBuildingUpgrade
+                  }
                   onOpenInnKitchenPantry={onOpenInnKitchenPantry}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
@@ -494,6 +511,8 @@ function AtlasPanel({
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
   onFeedHungryLivestockNow,
+  onPurchaseLivestockAnimalUpgrade,
+  onPurchaseLivestockBuildingUpgrade,
   onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
@@ -569,6 +588,13 @@ function AtlasPanel({
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
   onFeedHungryLivestockNow: () => void;
+  onPurchaseLivestockAnimalUpgrade: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+  onPurchaseLivestockBuildingUpgrade: (
+    upgradeId: LivestockBuildingUpgradeId,
+  ) => void;
   onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
@@ -693,6 +719,8 @@ function AtlasPanel({
           onRemoveLivestockPlacement={onRemoveLivestockPlacement}
           onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
           onFeedHungryLivestockNow={onFeedHungryLivestockNow}
+          onPurchaseLivestockAnimalUpgrade={onPurchaseLivestockAnimalUpgrade}
+          onPurchaseLivestockBuildingUpgrade={onPurchaseLivestockBuildingUpgrade}
           onOpenInnKitchenPantry={onOpenInnKitchenPantry}
         />
       ) : (

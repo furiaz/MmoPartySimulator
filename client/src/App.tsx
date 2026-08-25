@@ -152,6 +152,8 @@ import {
   purchaseGuildRecruitUpgrade,
   purchaseGuildSecondaryPartyUpgrade,
   purchaseFarmFieldUpgrade,
+  purchaseLivestockAnimalUpgrade,
+  purchaseLivestockBuildingUpgrade,
   recruitGuildCandidate,
   removeLivestockPlacement,
   rerollGuildNoticeBoard,
@@ -197,6 +199,8 @@ import {
   type FarmCropId,
   type FarmFieldId,
   type FarmFieldUpgradeId,
+  type LivestockAnimalUpgradeId,
+  type LivestockBuildingUpgradeId,
   type LivestockCreatureId,
   type LivestockPlacementId,
   type LivestockPlacementRotation,
@@ -664,6 +668,27 @@ function getFarmUpgradeResultLabel(upgradeId: FarmFieldUpgradeId): string {
   }
 }
 
+function getLivestockUpgradeResultLabel(
+  upgradeId: LivestockAnimalUpgradeId | LivestockBuildingUpgradeId,
+): string {
+  switch (upgradeId) {
+    case "speed":
+      return "Faster Production";
+    case "feedDiscount":
+      return "Feed Discount";
+    case "outputCap":
+      return "Egg Holding";
+    case "columns":
+      return "Expand Columns";
+    case "rows":
+      return "Expand Rows";
+    case "slotEfficiency":
+      return "Slot Efficiency";
+    default:
+      return "Upgrade";
+  }
+}
+
 function getFarmFailureMessage(reason: string): string {
   switch (reason) {
     case "locked_service":
@@ -700,8 +725,16 @@ function getLivestockFailureMessage(reason: string): string {
       return "No Livestock output to collect.";
     case "insufficient_feed":
       return "Not enough Pantry feed.";
+    case "insufficient_crowns":
+      return "Not enough Crowns.";
+    case "max_level":
+      return "Livestock upgrade is already maxed.";
+    case "upgrade_disabled":
+      return "Livestock upgrade coming soon.";
     case "no_hungry_animals":
       return "No hungry Livestock.";
+    case "invalid_upgrade":
+      return "Livestock upgrade unavailable.";
     case "invalid_creature":
       return "Livestock creature unavailable.";
     case "invalid_placement":
@@ -5286,6 +5319,50 @@ function App() {
     setGameState(fed.state);
   }
 
+  function purchaseLivestockAnimalUpgradeFromMenu(
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) {
+    const upgraded = purchaseLivestockAnimalUpgrade(
+      gameState,
+      creatureId,
+      upgradeId,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Livestock upgrade saved");
+      setLivestockResultMessage(
+        `Upgraded Duskhen ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
+  function purchaseLivestockBuildingUpgradeFromMenu(
+    upgradeId: LivestockBuildingUpgradeId,
+  ) {
+    const upgraded = purchaseLivestockBuildingUpgrade(
+      gameState,
+      upgradeId,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Livestock upgrade saved");
+      setLivestockResultMessage(
+        `Upgraded Livestock ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
   function openInnKitchenPantryFromFarmLivestock() {
     setActiveGameMenuTab("atlas");
     setActiveAtlasSubpage("guildTavern");
@@ -6541,6 +6618,12 @@ function App() {
               onRemoveLivestockPlacement={removeLivestockPlacementFromMenu}
               onCollectAllLivestockOutputs={collectAllLivestockOutputsFromMenu}
               onFeedHungryLivestockNow={feedHungryLivestockNowFromMenu}
+              onPurchaseLivestockAnimalUpgrade={
+                purchaseLivestockAnimalUpgradeFromMenu
+              }
+              onPurchaseLivestockBuildingUpgrade={
+                purchaseLivestockBuildingUpgradeFromMenu
+              }
               onOpenInnKitchenPantry={openInnKitchenPantryFromFarmLivestock}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)

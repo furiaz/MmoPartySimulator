@@ -1,22 +1,49 @@
 import {
   getAvailableLivestockCreatureCount,
+  getLivestockAnimalUpgradeLevels,
+  getLivestockBuildingUpgradeLevels,
   getLivestockCreatureDefinition,
   getLivestockCreatureDefinitions,
+  getLivestockEffectiveFeedQuantity,
   getLivestockExpectedOutputsPerHour,
   getLivestockFootprintCells,
+  getLivestockFeedDiscountPercent,
+  getLivestockOutputCapForLevel,
+  getLivestockOutputIntervalMs,
   getNextLivestockFeedAtMs,
   getLivestockState,
+  getLivestockUpgradeCostCrowns,
   isPartyLeaderNearLivestockKeeper,
   isTownServicesUnlocked,
+  LIVESTOCK_ANIMAL_UPGRADE_DEFINITIONS,
+  LIVESTOCK_ANIMAL_UPGRADE_IDS,
+  LIVESTOCK_BUILDING_UPGRADE_DEFINITIONS,
+  LIVESTOCK_BUILDING_UPGRADE_IDS,
   LIVESTOCK_EGG_HOLD_CAP,
   LIVESTOCK_EGG_OUTPUT_ID,
   type GameState,
+  type LivestockAnimalUpgradeId,
+  type LivestockBuildingUpgradeId,
   type LivestockCreatureId,
   type LivestockOutputId,
   type LivestockPlacedCreatureState,
   type LivestockPlacementId,
   type LivestockPlacementRotation,
 } from "./game";
+
+export type LivestockUpgradeDisplay<
+  TUpgradeId extends LivestockAnimalUpgradeId | LivestockBuildingUpgradeId,
+> = {
+  id: TUpgradeId;
+  displayName: string;
+  level: number;
+  maxLevel: number;
+  currentEffectText: string;
+  nextEffectText: string;
+  actionText: string;
+  canPurchase: boolean;
+  isEnabled: boolean;
+};
 
 export type LivestockGridCellDisplay = {
   x: number;
@@ -39,6 +66,7 @@ export type LivestockCreatureDisplay = {
   feedText: string;
   yieldText: string;
   expectedOutputPerHourText: string;
+  upgrades: Array<LivestockUpgradeDisplay<LivestockAnimalUpgradeId>>;
   fedCount: number;
   hungryCount: number;
   canHoldForPlacement: boolean;
@@ -72,6 +100,8 @@ export type LivestockDisplay = {
   feedNowActionText: string;
   canFeedNow: boolean;
   hasHungryAnimals: boolean;
+  gridSizeText: string;
+  buildingUpgrades: Array<LivestockUpgradeDisplay<LivestockBuildingUpgradeId>>;
 };
 
 export function getLivestockDisplay(
@@ -85,7 +115,10 @@ export function getLivestockDisplay(
   const placements = Object.values(livestock.placementsById).sort((a, b) =>
     a.id.localeCompare(b.id),
   );
+  const buildingUpgradeLevels = getLivestockBuildingUpgradeLevels(livestock);
   const creatures = getLivestockCreatureDefinitions().map((definition) => {
+    const upgradeLevels = getLivestockAnimalUpgradeLevels(livestock, definition.id);
+    const intervalMs = getLivestockOutputIntervalMs(livestock, definition);
     const placedCount = placements.filter(
       (placement) => placement.creatureId === definition.id,
     ).length;
@@ -101,8 +134,7 @@ export function getLivestockDisplay(
     );
     const expectedPerHour =
       fedCount *
-      ((60 * 60 * 1000 * definition.output.quantity) /
-        definition.output.intervalMs);
+      ((60 * 60 * 1000 * definition.output.quantity) / intervalMs);
 
     return {
       creatureId: definition.id,
@@ -115,11 +147,24 @@ export function getLivestockDisplay(
       feedText:
         definition.feedPerDay.length > 0
           ? definition.feedPerDay
-              .map((feed) => `${formatIngredientName(feed.cropId)} ${feed.quantity}/day`)
+              .map(
+                (feed) =>
+                  `${formatIngredientName(feed.cropId)} ${getLivestockEffectiveFeedQuantity(
+                    feed.quantity,
+                    upgradeLevels.feedDiscount,
+                  )}/day`,
+              )
               .join(", ")
           : "None",
-      yieldText: `${definition.output.displayName} ${definition.output.quantity} / ${formatDuration(definition.output.intervalMs)}`,
+      yieldText: `${definition.output.displayName} ${
+        definition.output.quantity
+      } / ${formatDuration(intervalMs)}`,
       expectedOutputPerHourText: formatRate(expectedPerHour),
+      upgrades: createAnimalUpgradeDisplays(
+        livestock,
+        definition.id,
+        canUseActions,
+      ),
       fedCount,
       hungryCount,
       canHoldForPlacement: canUseActions && availableCount > 0,
@@ -177,12 +222,18 @@ export function getLivestockDisplay(
           : "Requires proximity",
     canFeedNow: canUseActions && hungryCount > 0,
     hasHungryAnimals: hungryCount > 0,
+    gridSizeText: `${livestock.grid.width}x${livestock.grid.height}`,
+    buildingUpgrades: createBuildingUpgradeDisplays(
+      buildingUpgradeLevels,
+      canUseActions,
+    ),
   };
 }
 
 export function getLivestockPlacementTimeRemainingText(
   placement: LivestockPlacedCreatureState,
   nowMs: number,
+  state?: GameState,
 ): string {
   const definition = getLivestockCreatureDefinition(placement.creatureId);
 
@@ -190,14 +241,18 @@ export function getLivestockPlacementTimeRemainingText(
     return "Unknown";
   }
 
+  const intervalMs = state
+    ? getLivestockOutputIntervalMs(getLivestockState(state, nowMs), definition)
+    : definition.output.intervalMs;
+
   if (placement.isHungry) {
     return `Hungry (${formatDuration(
-      placement.pausedProductionRemainingMs ?? definition.output.intervalMs,
+      placement.pausedProductionRemainingMs ?? intervalMs,
     )} paused)`;
   }
 
   return formatDuration(
-    Math.max(0, definition.output.intervalMs - (nowMs - placement.lastProducedAtMs)),
+    Math.max(0, intervalMs - (nowMs - placement.lastProducedAtMs)),
   );
 }
 
@@ -205,6 +260,126 @@ export function getNextLivestockRotation(
   rotation: LivestockPlacementRotation,
 ): LivestockPlacementRotation {
   return rotation === "horizontal" ? "vertical" : "horizontal";
+}
+
+function createAnimalUpgradeDisplays(
+  livestock: ReturnType<typeof getLivestockState>,
+  creatureId: LivestockCreatureId,
+  canUseActions: boolean,
+): Array<LivestockUpgradeDisplay<LivestockAnimalUpgradeId>> {
+  const definition = getLivestockCreatureDefinition(creatureId);
+  const levels = getLivestockAnimalUpgradeLevels(livestock, creatureId);
+
+  if (!definition) {
+    return [];
+  }
+
+  return LIVESTOCK_ANIMAL_UPGRADE_IDS.map((upgradeId) => {
+    const upgrade = LIVESTOCK_ANIMAL_UPGRADE_DEFINITIONS[upgradeId];
+    const level = levels[upgradeId];
+    const nextLevel = Math.min(upgrade.maxLevel, level + 1);
+
+    return {
+      id: upgradeId,
+      displayName: upgrade.displayName,
+      level,
+      maxLevel: upgrade.maxLevel,
+      currentEffectText: getAnimalUpgradeEffectText(
+        livestock,
+        definition,
+        upgradeId,
+        level,
+      ),
+      nextEffectText:
+        level >= upgrade.maxLevel
+          ? ""
+          : getAnimalUpgradeEffectText(livestock, definition, upgradeId, nextLevel),
+      actionText:
+        level >= upgrade.maxLevel
+          ? "Max"
+          : `${getLivestockUpgradeCostCrowns(level)} Crowns`,
+      canPurchase: canUseActions && upgrade.isEnabled && level < upgrade.maxLevel,
+      isEnabled: upgrade.isEnabled,
+    };
+  });
+}
+
+function createBuildingUpgradeDisplays(
+  levels: ReturnType<typeof getLivestockBuildingUpgradeLevels>,
+  canUseActions: boolean,
+): Array<LivestockUpgradeDisplay<LivestockBuildingUpgradeId>> {
+  return LIVESTOCK_BUILDING_UPGRADE_IDS.map((upgradeId) => {
+    const upgrade = LIVESTOCK_BUILDING_UPGRADE_DEFINITIONS[upgradeId];
+    const level = levels[upgradeId];
+    const nextLevel = Math.min(upgrade.maxLevel, level + 1);
+
+    return {
+      id: upgradeId,
+      displayName: upgrade.displayName,
+      level,
+      maxLevel: upgrade.maxLevel,
+      currentEffectText: getBuildingUpgradeEffectText(upgradeId, level),
+      nextEffectText:
+        !upgrade.isEnabled || level >= upgrade.maxLevel
+          ? ""
+          : getBuildingUpgradeEffectText(upgradeId, nextLevel),
+      actionText: !upgrade.isEnabled
+        ? "Coming soon"
+        : level >= upgrade.maxLevel
+          ? "Max"
+          : `${getLivestockUpgradeCostCrowns(level)} Crowns`,
+      canPurchase: canUseActions && upgrade.isEnabled && level < upgrade.maxLevel,
+      isEnabled: upgrade.isEnabled,
+    };
+  });
+}
+
+function getAnimalUpgradeEffectText(
+  livestock: ReturnType<typeof getLivestockState>,
+  definition: NonNullable<ReturnType<typeof getLivestockCreatureDefinition>>,
+  upgradeId: LivestockAnimalUpgradeId,
+  level: number,
+): string {
+  switch (upgradeId) {
+    case "speed":
+      return formatDuration(
+        getLivestockOutputIntervalMs(
+          {
+            ...livestock,
+            animalUpgradeLevelsByCreatureId: {
+              ...livestock.animalUpgradeLevelsByCreatureId,
+              [definition.id]: {
+                ...getLivestockAnimalUpgradeLevels(livestock, definition.id),
+                speed: level,
+              },
+            },
+          },
+          definition,
+        ),
+      );
+    case "feedDiscount":
+      return `${getLivestockFeedDiscountPercent(level).toFixed(0)}% discount`;
+    case "outputCap":
+      return `Eggs ${getLivestockOutputCapForLevel(level)}`;
+    default:
+      return "";
+  }
+}
+
+function getBuildingUpgradeEffectText(
+  upgradeId: LivestockBuildingUpgradeId,
+  level: number,
+): string {
+  switch (upgradeId) {
+    case "columns":
+      return `${5 + level} columns`;
+    case "rows":
+      return `${3 + level} rows`;
+    case "slotEfficiency":
+      return "Bonus slots";
+    default:
+      return "";
+  }
 }
 
 function createGridCells(

@@ -877,6 +877,7 @@ export type CurrencyMutationSource =
   | "inn_upgrade"
   | "inn_kitchen"
   | "farm_upgrade"
+  | "livestock_upgrade"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2056,7 +2057,10 @@ export type DebugTelemetryEventType =
   | "livestock_feed_now_succeeded"
   | "livestock_feed_now_failed"
   | "livestock_became_hungry"
-  | "livestock_resumed_production";
+  | "livestock_resumed_production"
+  | "livestock_upgrade_attempt"
+  | "livestock_upgrade_succeeded"
+  | "livestock_upgrade_failed";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2337,6 +2341,9 @@ export type DebugTelemetryEvent = {
   livestockCapacity?: number;
   livestockGeneratedQuantity?: number;
   livestockFeedCost?: number;
+  livestockUpgradeId?: LivestockAnimalUpgradeId | LivestockBuildingUpgradeId;
+  previousLivestockUpgradeLevel?: number;
+  nextLivestockUpgradeLevel?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2887,6 +2894,23 @@ export type LivestockPlacementId = string;
 
 export type LivestockPlacementRotation = "horizontal" | "vertical";
 
+export type LivestockAnimalUpgradeId = "speed" | "feedDiscount" | "outputCap";
+
+export type LivestockBuildingUpgradeId =
+  | "columns"
+  | "rows"
+  | "slotEfficiency";
+
+export type LivestockAnimalUpgradeLevels = Record<
+  LivestockAnimalUpgradeId,
+  number
+>;
+
+export type LivestockBuildingUpgradeLevels = Record<
+  LivestockBuildingUpgradeId,
+  number
+>;
+
 export type LivestockGridState = {
   width: number;
   height: number;
@@ -2911,6 +2935,10 @@ export type LivestockState = {
   placementsById: Record<LivestockPlacementId, LivestockPlacedCreatureState>;
   placementSequence: number;
   lastFeedDayStartMs: number;
+  animalUpgradeLevelsByCreatureId: Partial<
+    Record<LivestockCreatureId, LivestockAnimalUpgradeLevels>
+  >;
+  buildingUpgradeLevels: LivestockBuildingUpgradeLevels;
   holdingQuantitiesByOutputId: Partial<Record<LivestockOutputId, number>>;
   holdingCapsByOutputId: Partial<Record<LivestockOutputId, number>>;
 };

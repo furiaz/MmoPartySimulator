@@ -5,6 +5,8 @@ import {
   type FarmFieldId,
   type FarmFieldUpgradeId,
   type GameState,
+  type LivestockAnimalUpgradeId,
+  type LivestockBuildingUpgradeId,
   type LivestockCreatureId,
   type LivestockPlacementId,
   type LivestockPlacementRotation,
@@ -20,6 +22,7 @@ import {
   getNextLivestockRotation,
   type LivestockCreatureDisplay,
   type LivestockGridCellDisplay,
+  type LivestockUpgradeDisplay,
 } from "./livestockPresentation";
 import { OverlayPanel } from "./OverlayPanel";
 
@@ -48,6 +51,13 @@ type FarmLivestockPanelProps = {
   onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
   onCollectAllLivestockOutputs: () => void;
   onFeedHungryLivestockNow: () => void;
+  onPurchaseLivestockAnimalUpgrade: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+  onPurchaseLivestockBuildingUpgrade: (
+    upgradeId: LivestockBuildingUpgradeId,
+  ) => void;
   onOpenInnKitchenPantry: () => void;
 };
 
@@ -65,6 +75,8 @@ export function FarmLivestockPanel({
   onRemoveLivestockPlacement,
   onCollectAllLivestockOutputs,
   onFeedHungryLivestockNow,
+  onPurchaseLivestockAnimalUpgrade,
+  onPurchaseLivestockBuildingUpgrade,
   onOpenInnKitchenPantry,
 }: FarmLivestockPanelProps) {
   const [cropFilter, setCropFilter] = useState<FarmCropFilter>("unlocked");
@@ -87,6 +99,10 @@ export function FarmLivestockPanel({
   const [livestockRotation, setLivestockRotation] =
     useState<LivestockPlacementRotation>("horizontal");
   const [isLivestockSummaryOpen, setLivestockSummaryOpen] = useState(false);
+  const [selectedLivestockUpgradeCreatureId, setSelectedLivestockUpgradeCreatureId] =
+    useState<LivestockCreatureId | null>(null);
+  const [isLivestockBuildingUpgradeOpen, setLivestockBuildingUpgradeOpen] =
+    useState(false);
   const selectedPlacement =
     livestockDisplay.placements.find(
       (placement) => placement.id === selectedPlacementId,
@@ -94,6 +110,10 @@ export function FarmLivestockPanel({
   const heldCreature = livestockDisplay.creatures.find(
     (creature) => creature.creatureId === heldCreatureId,
   );
+  const selectedLivestockUpgradeCreature =
+    livestockDisplay.creatures.find(
+      (creature) => creature.creatureId === selectedLivestockUpgradeCreatureId,
+    ) ?? null;
   const livestockCanRotate = false;
 
   function clearLivestockSelection() {
@@ -306,6 +326,13 @@ export function FarmLivestockPanel({
               <span>Costs & Yield</span>
               <small>{isLivestockSummaryOpen ? "Hide" : "Show"}</small>
             </button>
+            <button
+              onClick={() => setLivestockBuildingUpgradeOpen(true)}
+              type="button"
+            >
+              <span>Building Upgrades</span>
+              <small>{livestockDisplay.gridSizeText}</small>
+            </button>
           </div>
 
           {isLivestockSummaryOpen ? (
@@ -411,15 +438,36 @@ export function FarmLivestockPanel({
                 <h3>Available Creatures</h3>
                 <div>
                   {livestockDisplay.creatures.map((creature) => (
-                    <button
-                      disabled={!creature.canHoldForPlacement}
+                    <article
+                      className="livestock-creature-card"
                       key={creature.creatureId}
-                      onClick={() => selectAvailableCreature(creature)}
-                      type="button"
                     >
-                      <strong>{creature.displayName}</strong>
-                      <small>x{creature.availableCount}</small>
-                    </button>
+                      <button
+                        className="livestock-creature-select"
+                        disabled={!creature.canHoldForPlacement}
+                        onClick={() => selectAvailableCreature(creature)}
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="livestock-creature-icon-slot"
+                        />
+                        <strong>
+                          {creature.displayName} x{creature.availableCount}
+                        </strong>
+                      </button>
+                      <button
+                        className="livestock-creature-upgrade-button"
+                        onClick={() =>
+                          setSelectedLivestockUpgradeCreatureId(
+                            creature.creatureId,
+                          )
+                        }
+                        type="button"
+                      >
+                        Upgrade
+                      </button>
+                    </article>
                   ))}
                 </div>
               </div>
@@ -477,6 +525,7 @@ export function FarmLivestockPanel({
                         {getLivestockPlacementTimeRemainingText(
                           placement,
                           currentTime,
+                          state,
                         )}
                       </li>
                     ))}
@@ -503,6 +552,38 @@ export function FarmLivestockPanel({
             lockedMessage={lockedMessage}
             onClose={() => setSelectedUpgradeFieldId(null)}
             onPurchase={onPurchaseFarmUpgrade}
+          />
+        </OverlayPanel>
+      ) : null}
+      {selectedLivestockUpgradeCreature ? (
+        <OverlayPanel
+          ariaLabel={`${selectedLivestockUpgradeCreature.displayName} upgrades`}
+          className="farm-upgrade-overlay"
+          onClose={() => setSelectedLivestockUpgradeCreatureId(null)}
+        >
+          <LivestockAnimalUpgradeOverlayContent
+            creature={selectedLivestockUpgradeCreature}
+            isNearLivestockKeeper={livestockDisplay.isNearLivestockKeeper}
+            isUnlocked={livestockDisplay.isUnlocked}
+            lockedMessage={lockedMessage}
+            onClose={() => setSelectedLivestockUpgradeCreatureId(null)}
+            onPurchase={onPurchaseLivestockAnimalUpgrade}
+          />
+        </OverlayPanel>
+      ) : null}
+      {isLivestockBuildingUpgradeOpen ? (
+        <OverlayPanel
+          ariaLabel="Livestock building upgrades"
+          className="farm-upgrade-overlay"
+          onClose={() => setLivestockBuildingUpgradeOpen(false)}
+        >
+          <LivestockBuildingUpgradeOverlayContent
+            upgrades={livestockDisplay.buildingUpgrades}
+            isNearLivestockKeeper={livestockDisplay.isNearLivestockKeeper}
+            isUnlocked={livestockDisplay.isUnlocked}
+            lockedMessage={lockedMessage}
+            onClose={() => setLivestockBuildingUpgradeOpen(false)}
+            onPurchase={onPurchaseLivestockBuildingUpgrade}
           />
         </OverlayPanel>
       ) : null}
@@ -640,6 +721,144 @@ function FarmUpgradeOverlayContent({
         </button>
       </div>
     </>
+  );
+}
+
+function LivestockAnimalUpgradeOverlayContent({
+  creature,
+  isNearLivestockKeeper,
+  isUnlocked,
+  lockedMessage,
+  onClose,
+  onPurchase,
+}: {
+  creature: LivestockCreatureDisplay;
+  isNearLivestockKeeper: boolean;
+  isUnlocked: boolean;
+  lockedMessage: string | null;
+  onClose: () => void;
+  onPurchase: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+}) {
+  return (
+    <>
+      <div className="farm-upgrade-overlay-heading">
+        <span aria-hidden="true" className="livestock-creature-icon-slot" />
+        <h3>{creature.displayName}</h3>
+      </div>
+
+      <LivestockUpgradeRequirementMessage
+        isNearLivestockKeeper={isNearLivestockKeeper}
+        isUnlocked={isUnlocked}
+        lockedMessage={lockedMessage}
+      />
+
+      <LivestockUpgradeRowList
+        upgrades={creature.upgrades}
+        onPurchase={(upgradeId) => onPurchase(creature.creatureId, upgradeId)}
+      />
+
+      <div className="farm-upgrade-overlay-footer">
+        <button onClick={onClose} type="button">
+          Close
+        </button>
+      </div>
+    </>
+  );
+}
+
+function LivestockBuildingUpgradeOverlayContent({
+  upgrades,
+  isNearLivestockKeeper,
+  isUnlocked,
+  lockedMessage,
+  onClose,
+  onPurchase,
+}: {
+  upgrades: Array<LivestockUpgradeDisplay<LivestockBuildingUpgradeId>>;
+  isNearLivestockKeeper: boolean;
+  isUnlocked: boolean;
+  lockedMessage: string | null;
+  onClose: () => void;
+  onPurchase: (upgradeId: LivestockBuildingUpgradeId) => void;
+}) {
+  return (
+    <>
+      <div className="farm-upgrade-overlay-heading">
+        <span aria-hidden="true" className="livestock-creature-icon-slot" />
+        <h3>Livestock Building</h3>
+      </div>
+
+      <LivestockUpgradeRequirementMessage
+        isNearLivestockKeeper={isNearLivestockKeeper}
+        isUnlocked={isUnlocked}
+        lockedMessage={lockedMessage}
+      />
+
+      <LivestockUpgradeRowList upgrades={upgrades} onPurchase={onPurchase} />
+
+      <div className="farm-upgrade-overlay-footer">
+        <button onClick={onClose} type="button">
+          Close
+        </button>
+      </div>
+    </>
+  );
+}
+
+function LivestockUpgradeRequirementMessage({
+  isNearLivestockKeeper,
+  isUnlocked,
+  lockedMessage,
+}: {
+  isNearLivestockKeeper: boolean;
+  isUnlocked: boolean;
+  lockedMessage: string | null;
+}) {
+  return lockedMessage ? (
+    <p className="guild-requires-service">{lockedMessage}</p>
+  ) : !isNearLivestockKeeper && isUnlocked ? (
+    <p className="guild-requires-service">
+      Stand near Livestock to purchase upgrades.
+    </p>
+  ) : null;
+}
+
+function LivestockUpgradeRowList<
+  TUpgradeId extends LivestockAnimalUpgradeId | LivestockBuildingUpgradeId,
+>({
+  upgrades,
+  onPurchase,
+}: {
+  upgrades: Array<LivestockUpgradeDisplay<TUpgradeId>>;
+  onPurchase: (upgradeId: TUpgradeId) => void;
+}) {
+  return (
+    <div className="farm-upgrade-row-list">
+      {upgrades.map((upgrade) => (
+        <div className="farm-upgrade-row" key={upgrade.id}>
+          <div>
+            <strong>{upgrade.displayName}</strong>
+            <span>
+              Lv {upgrade.level}/{upgrade.maxLevel}
+            </span>
+          </div>
+          <small>
+            {upgrade.currentEffectText}
+            {upgrade.nextEffectText ? ` -> ${upgrade.nextEffectText}` : ""}
+          </small>
+          <button
+            disabled={!upgrade.canPurchase}
+            onClick={() => onPurchase(upgrade.id)}
+            type="button"
+          >
+            {upgrade.actionText}
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
 

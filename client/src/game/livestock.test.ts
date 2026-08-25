@@ -10,6 +10,8 @@ import {
   LIVESTOCK_EGG_HOLD_CAP,
   moveLivestockPlacement,
   placeLivestockCreature,
+  purchaseLivestockAnimalUpgrade,
+  purchaseLivestockBuildingUpgrade,
   removeLivestockPlacement,
   sanitizeLivestockState,
   settleLivestockState,
@@ -33,6 +35,10 @@ describe("Livestock MVP", () => {
       grid: { width: 5, height: 3 },
       ownedCreaturesById: { duskhen: 2 },
       placementsById: {},
+      animalUpgradeLevelsByCreatureId: {
+        duskhen: { speed: 1, feedDiscount: 0, outputCap: 1 },
+      },
+      buildingUpgradeLevels: { columns: 0, rows: 0, slotEfficiency: 0 },
       holdingQuantitiesByOutputId: { egg: 0 },
       holdingCapsByOutputId: { egg: 20 },
     });
@@ -68,6 +74,204 @@ describe("Livestock MVP", () => {
     expect(invalid.holdingQuantitiesByOutputId.egg).toBe(
       LIVESTOCK_EGG_HOLD_CAP,
     );
+    expect(invalid.animalUpgradeLevelsByCreatureId.duskhen).toEqual({
+      speed: 1,
+      feedDiscount: 0,
+      outputCap: 1,
+    });
+    expect(invalid.buildingUpgradeLevels).toEqual({
+      columns: 0,
+      rows: 0,
+      slotEfficiency: 0,
+    });
+  });
+
+  it("purchases animal upgrades, spends Crowns, and applies speed, feed, and cap effects", () => {
+    const speed = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({ crowns: 1_000 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "speed",
+      NOW_MS,
+    );
+
+    expect(speed.ok).toBe(true);
+    if (!speed.ok) {
+      return;
+    }
+
+    expect(speed.costCrowns).toBe(200);
+    expect(speed.state.wallet.balancesByCurrencyId.crowns).toBe(800);
+    expect(
+      speed.state.livestock?.animalUpgradeLevelsByCreatureId.duskhen?.speed,
+    ).toBe(2);
+
+    const fasterState = createLivestockTestState({
+      livestock: {
+        ...createInitialLivestockState(),
+        placementSequence: 1,
+        animalUpgradeLevelsByCreatureId: {
+          duskhen: { speed: 5, feedDiscount: 0, outputCap: 1 },
+        },
+        placementsById: {
+          livestock_duskhen_1: createPlacedDuskhen({
+            id: "livestock_duskhen_1",
+            x: 0,
+            y: 0,
+            lastProducedAtMs: 0,
+          }),
+        },
+      },
+    });
+    const fasterSettled = settleLivestockState(fasterState, 9_000_000);
+    expect(fasterSettled.livestock?.holdingQuantitiesByOutputId.egg).toBe(1);
+
+    const discountedPlaced = placeLivestockCreature(
+      createLivestockTestState({
+        pantryCarrots: 10,
+        livestock: {
+          ...createInitialLivestockState(),
+          animalUpgradeLevelsByCreatureId: {
+            duskhen: { speed: 1, feedDiscount: 3, outputCap: 1 },
+          },
+        },
+      }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      0,
+      0,
+      "horizontal",
+      new Date(2026, 0, 1, 12).getTime(),
+    );
+    expect(discountedPlaced.ok).toBe(true);
+    if (discountedPlaced.ok) {
+      expect(
+        discountedPlaced.state.innKitchen?.pantry.ingredientQuantitiesById.carrot,
+      ).toBe(6);
+    }
+
+    const capped = settleLivestockState(
+      createLivestockTestState({
+        livestock: {
+          ...createInitialLivestockState(),
+          animalUpgradeLevelsByCreatureId: {
+            duskhen: { speed: 1, feedDiscount: 0, outputCap: 5 },
+          },
+          placementsById: {
+            livestock_duskhen_1: createPlacedDuskhen({
+              id: "livestock_duskhen_1",
+              x: 0,
+              y: 0,
+              lastProducedAtMs: 0,
+            }),
+          },
+          holdingQuantitiesByOutputId: { egg: 35 },
+        },
+      }),
+      LIVESTOCK_DUSKHEN_EGG_INTERVAL_MS * 5,
+    );
+    expect(capped.livestock?.holdingCapsByOutputId.egg).toBe(36);
+    expect(capped.livestock?.holdingQuantitiesByOutputId.egg).toBe(36);
+  });
+
+  it("purchases building upgrades and allows placement in expanded grid cells", () => {
+    let state = createLivestockTestState({ crowns: 1_000 });
+    const columnUpgrade = purchaseLivestockBuildingUpgrade(state, "columns", NOW_MS);
+
+    expect(columnUpgrade.ok).toBe(true);
+    if (!columnUpgrade.ok) {
+      return;
+    }
+
+    state = columnUpgrade.state;
+    const rowUpgrade = purchaseLivestockBuildingUpgrade(state, "rows", NOW_MS);
+    expect(rowUpgrade.ok).toBe(true);
+    if (!rowUpgrade.ok) {
+      return;
+    }
+
+    state = rowUpgrade.state;
+    expect(state.livestock?.grid).toEqual({ width: 6, height: 4 });
+
+    const placedInNewColumn = placeLivestockCreature(
+      state,
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      5,
+      0,
+      "horizontal",
+      NOW_MS,
+    );
+    expect(placedInNewColumn.ok).toBe(true);
+    if (!placedInNewColumn.ok) {
+      return;
+    }
+
+    const placedInNewRow = placeLivestockCreature(
+      placedInNewColumn.state,
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      0,
+      3,
+      "horizontal",
+      NOW_MS,
+    );
+    expect(placedInNewRow.ok).toBe(true);
+  });
+
+  it("rejects invalid, locked, far, unaffordable, maxed, and disabled Livestock upgrades", () => {
+    const locked = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({ azureTrialCompleted: false, crowns: 1_000 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "speed",
+      NOW_MS,
+    );
+    const far = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({
+        leaderPosition: { x: 0, y: 0 },
+        crowns: 1_000,
+      }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "speed",
+      NOW_MS,
+    );
+    const insufficient = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({ crowns: 0 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "speed",
+      NOW_MS,
+    );
+    const maxed = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({
+        crowns: 1_000,
+        livestock: {
+          ...createInitialLivestockState(),
+          animalUpgradeLevelsByCreatureId: {
+            duskhen: { speed: 5, feedDiscount: 0, outputCap: 1 },
+          },
+        },
+      }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "speed",
+      NOW_MS,
+    );
+    const disabled = purchaseLivestockBuildingUpgrade(
+      createLivestockTestState({ crowns: 1_000 }),
+      "slotEfficiency",
+      NOW_MS,
+    );
+    const invalid = purchaseLivestockAnimalUpgrade(
+      createLivestockTestState({ crowns: 1_000 }),
+      LIVESTOCK_DUSKHEN_CREATURE_ID,
+      "invalid" as never,
+      NOW_MS,
+    );
+
+    expect(locked).toMatchObject({ ok: false, reason: "locked_service" });
+    expect(far).toMatchObject({ ok: false, reason: "not_near_livestock" });
+    expect(insufficient).toMatchObject({
+      ok: false,
+      reason: "insufficient_crowns",
+    });
+    expect(maxed).toMatchObject({ ok: false, reason: "max_level" });
+    expect(disabled).toMatchObject({ ok: false, reason: "upgrade_disabled" });
+    expect(invalid).toMatchObject({ ok: false, reason: "invalid_upgrade" });
   });
 
   it("places Duskhens and rejects locked, far, occupied, out-of-bounds, and unavailable placement", () => {
@@ -502,12 +706,14 @@ function createLivestockTestState({
   livestock = createInitialLivestockState(),
   keyItemsById,
   pantryCarrots = 100,
+  crowns = 0,
 }: {
   azureTrialCompleted?: boolean;
   leaderPosition?: Position;
   livestock?: LivestockState;
   keyItemsById?: Partial<Record<string, number>>;
   pantryCarrots?: number;
+  crowns?: number;
 } = {}) {
   const leader = createCompanion("leader", leaderPosition, "leader");
   const keeper = createNpc(
@@ -525,6 +731,13 @@ function createLivestockTestState({
     entities: {
       [leader.id]: leader,
       [keeper.id]: keeper,
+    },
+    wallet: {
+      ...baseState.wallet,
+      balancesByCurrencyId: {
+        ...baseState.wallet.balancesByCurrencyId,
+        crowns,
+      },
     },
     livestock,
     keyItemsById:

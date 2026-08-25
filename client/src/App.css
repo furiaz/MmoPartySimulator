@@ -1842,8 +1842,45 @@
   gap: 8px;
 }
 
-.livestock-available-list button {
-  min-width: 132px;
+.livestock-creature-card {
+  display: grid;
+  gap: 6px;
+  width: 142px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.livestock-creature-select,
+.livestock-creature-upgrade-button {
+  min-width: 0;
+  width: 100%;
+}
+
+.livestock-creature-select {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-height: 94px;
+  text-align: center;
+}
+
+.livestock-creature-icon-slot {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px dashed #4c666c;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.68);
+}
+
+.livestock-creature-select strong {
+  color: #dcebed;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .livestock-details {
