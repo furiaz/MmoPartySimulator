@@ -515,6 +515,10 @@ export type EquipmentItemId =
   | "frontline_legguards"
   | "frontline_gloves"
   | "frontline_boots"
+  | "bronze_pendant"
+  | "field_bronze_pendant"
+  | "reinforced_bronze_pendant"
+  | "polished_bronze_pendant"
   | "plain_charm";
 
 export type ConsumableItemId =

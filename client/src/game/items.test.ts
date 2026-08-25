@@ -107,6 +107,8 @@ const SCALED_EQUIPMENT_LEVEL_REQUIREMENTS: Partial<Record<ItemId, number>> = {
   frontline_legguards: 20,
   frontline_gloves: 20,
   frontline_boots: 20,
+  reinforced_bronze_pendant: 15,
+  polished_bronze_pendant: 15,
 };
 
 describe("prototype item definitions", () => {
@@ -226,7 +228,7 @@ describe("prototype item definitions", () => {
       SCALED_EQUIPMENT_LEVEL_REQUIREMENTS,
     );
 
-    expect(scaledEquipmentEntries).toHaveLength(104);
+    expect(scaledEquipmentEntries).toHaveLength(106);
 
     for (const [itemId, levelRequirement] of scaledEquipmentEntries) {
       const itemDefinition = ITEM_DEFINITIONS[itemId as ItemId];
@@ -240,6 +242,62 @@ describe("prototype item definitions", () => {
         maxStack: 1,
         levelRequirement,
       });
+    }
+  });
+
+  it("defines the bronze accessory progression as shared prototype equipment", () => {
+    expect(ITEM_DEFINITIONS.plain_charm).toMatchObject({
+      equipmentSlot: "accessory1",
+      equipmentKind: "accessory",
+      equipmentType: "accessory",
+      tier: 1,
+      levelRequirement: 1,
+      statModifiers: { maxHealth: 1, defense: 1 },
+    });
+
+    expect(ITEM_DEFINITIONS.bronze_pendant).toMatchObject({
+      equipmentSlot: "accessory1",
+      equipmentKind: "accessory",
+      equipmentType: "accessory",
+      tier: 1,
+      levelRequirement: 10,
+      statModifiers: { maxHealth: 3, defense: 1 },
+    });
+    expect(ITEM_DEFINITIONS.field_bronze_pendant).toMatchObject({
+      equipmentSlot: "accessory1",
+      equipmentKind: "accessory",
+      equipmentType: "accessory",
+      tier: 1,
+      levelRequirement: 10,
+      statModifiers: { maxHealth: 2, healingPower: 1, magicDefense: 1 },
+    });
+    expect(ITEM_DEFINITIONS.reinforced_bronze_pendant).toMatchObject({
+      equipmentSlot: "accessory1",
+      equipmentKind: "accessory",
+      equipmentType: "accessory",
+      rarity: "common",
+      tier: 2,
+      levelRequirement: 15,
+      statModifiers: { maxHealth: 5, defense: 2 },
+    });
+    expect(ITEM_DEFINITIONS.polished_bronze_pendant).toMatchObject({
+      equipmentSlot: "accessory1",
+      equipmentKind: "accessory",
+      equipmentType: "accessory",
+      rarity: "common",
+      tier: 2,
+      levelRequirement: 15,
+      statModifiers: { maxHealth: 3, healingPower: 2, magicDefense: 2 },
+    });
+
+    for (const itemId of [
+      "plain_charm",
+      "bronze_pendant",
+      "field_bronze_pendant",
+      "reinforced_bronze_pendant",
+      "polished_bronze_pendant",
+    ] as const) {
+      expect(ITEM_DEFINITIONS[itemId].allowedClassIds).toBeUndefined();
     }
   });
 

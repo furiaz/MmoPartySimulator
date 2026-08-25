@@ -701,6 +701,65 @@ describe("Smith crafting", () => {
     });
   });
 
+  it("defines bronze accessory recipes from Tin Ore and Copper Ore", () => {
+    expect(getCraftingRecipe("bronze_pendant")).toMatchObject({
+      outputItemId: "bronze_pendant",
+      outputQuantity: 1,
+      crownCost: 18,
+      costs: [
+        { kind: "item", itemId: "copper_ore", quantity: 6 },
+        { kind: "item", itemId: "tin_ore", quantity: 3 },
+        { kind: "item", itemId: "crawler_pebble_t1", quantity: 2 },
+        { kind: "item", itemId: "iron_nails", quantity: 2 },
+      ],
+    });
+    expect(getCraftingRecipe("field_bronze_pendant")).toMatchObject({
+      outputItemId: "field_bronze_pendant",
+      outputQuantity: 1,
+      crownCost: 18,
+      costs: [
+        { kind: "item", itemId: "copper_ore", quantity: 4 },
+        { kind: "item", itemId: "tin_ore", quantity: 3 },
+        { kind: "item", itemId: "field_herb", quantity: 3 },
+        { kind: "item", itemId: "crafting_string", quantity: 2 },
+      ],
+    });
+    expect(getCraftingRecipe("reinforced_bronze_pendant")).toMatchObject({
+      outputItemId: "reinforced_bronze_pendant",
+      outputQuantity: 1,
+      crownCost: 32,
+      costs: [
+        {
+          kind: "equipment",
+          equipmentType: "accessory",
+          levelRequirement: 10,
+          quantity: 1,
+        },
+        { kind: "item", itemId: "copper_ore", quantity: 10 },
+        { kind: "item", itemId: "tin_ore", quantity: 6 },
+        { kind: "item", itemId: "crawler_plate_t1", quantity: 2 },
+        { kind: "item", itemId: "iron_nails", quantity: 4 },
+      ],
+    });
+    expect(getCraftingRecipe("polished_bronze_pendant")).toMatchObject({
+      outputItemId: "polished_bronze_pendant",
+      outputQuantity: 1,
+      crownCost: 32,
+      costs: [
+        {
+          kind: "equipment",
+          equipmentType: "accessory",
+          levelRequirement: 10,
+          quantity: 1,
+        },
+        { kind: "item", itemId: "copper_ore", quantity: 8 },
+        { kind: "item", itemId: "tin_ore", quantity: 6 },
+        { kind: "item", itemId: "field_herb", quantity: 6 },
+        { kind: "item", itemId: "crafting_string", quantity: 4 },
+      ],
+    });
+  });
+
   it("adds previous-equipment requirements to every level 15 recipe", () => {
     for (const itemDefinition of Object.values(ITEM_DEFINITIONS)) {
       if (
@@ -762,6 +821,45 @@ describe("Smith crafting", () => {
     expect(countInventoryItem(result.state.inventory, "acolyte_hood")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "blessed_hood")).toBe(1);
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(20);
+  });
+
+  it("crafts level 15 accessories with any level 10 accessory", () => {
+    let state = createCraftingState();
+    state = addItems(state, [
+      ["bronze_pendant", 1],
+      ["copper_ore", 10],
+      ["tin_ore", 6],
+      ["crawler_plate_t1", 2],
+      ["iron_nails", 4],
+    ]);
+    state = setCurrencyBalanceForDebug(state, "crowns", 40).state;
+
+    const status = getCraftingRecipeStatus(
+      state,
+      getCraftingRecipe("reinforced_bronze_pendant")!,
+    );
+    const equipmentRequirement = status.requirements.find(
+      (requirement) => requirement.kind === "equipment",
+    );
+
+    expect(equipmentRequirement).toMatchObject({
+      displayName: "Any Level 10 Accessory",
+      ownedQuantity: 1,
+      isMet: true,
+    });
+
+    const result = craftRecipe(state, "reinforced_bronze_pendant");
+
+    expect(result.result.status).toBe("success");
+    expect(countInventoryItem(result.state.inventory, "bronze_pendant")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "copper_ore")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "tin_ore")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "crawler_plate_t1")).toBe(0);
+    expect(countInventoryItem(result.state.inventory, "iron_nails")).toBe(0);
+    expect(
+      countInventoryItem(result.state.inventory, "reinforced_bronze_pendant"),
+    ).toBe(1);
+    expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(8);
   });
 
   it("rejects level 15 armor previous gear with the wrong family, part, level, equipped state, bank state, or lock state", () => {

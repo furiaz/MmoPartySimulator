@@ -359,6 +359,26 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     6,
   ),
   equipmentRecipe(
+    "bronze_pendant",
+    [
+      itemCost("copper_ore", 6),
+      itemCost("tin_ore", 3),
+      itemCost("crawler_pebble_t1", 2),
+      itemCost("iron_nails", 2),
+    ],
+    18,
+  ),
+  equipmentRecipe(
+    "field_bronze_pendant",
+    [
+      itemCost("copper_ore", 4),
+      itemCost("tin_ore", 3),
+      itemCost("field_herb", 3),
+      itemCost("crafting_string", 2),
+    ],
+    18,
+  ),
+  equipmentRecipe(
     "guard_coif",
     [
       itemCost("copper_ore", 4),
@@ -771,6 +791,28 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     "wisp_ash_t2",
     "wisp_ember_t2",
     "iron_nails",
+  ),
+  equipmentRecipe(
+    "reinforced_bronze_pendant",
+    [
+      previousEquipmentCost("accessory", undefined, 10),
+      itemCost("copper_ore", 10),
+      itemCost("tin_ore", 6),
+      itemCost("crawler_plate_t1", 2),
+      itemCost("iron_nails", 4),
+    ],
+    32,
+  ),
+  equipmentRecipe(
+    "polished_bronze_pendant",
+    [
+      previousEquipmentCost("accessory", undefined, 10),
+      itemCost("copper_ore", 8),
+      itemCost("tin_ore", 6),
+      itemCost("field_herb", 6),
+      itemCost("crafting_string", 4),
+    ],
+    32,
   ),
   equipmentRecipe(
     "steel_sword",
