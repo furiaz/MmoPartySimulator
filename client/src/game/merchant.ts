@@ -1,6 +1,20 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { CLASS_DEFINITIONS } from "./classes";
 import {
+  FARM_POTATO_CROP_ID,
+  FARM_POTATO_SEED_PRICE_CROWNS,
+  getFarmCropDefinition,
+  isFarmCropUnlocked,
+  unlockFarmCrop,
+} from "./farm";
+import {
+  addOwnedLivestockCreature,
+  getLivestockCreatureDefinition,
+  getLivestockState,
+  LIVESTOCK_DUSKHEN_CREATURE_ID,
+  LIVESTOCK_DUSKHEN_MERCHANT_PRICE_PER_OWNED,
+} from "./livestock";
+import {
   addItemToInventoryState,
   getAvailableInventorySlots,
   getInventorySlotIndex,
@@ -27,14 +41,23 @@ import {
 import type {
   DebugTelemetryEventType,
   EquipmentSlot,
+  FarmCropId,
   InventoryRemoveResult,
   ItemDefinition,
   ItemId,
+  KeyItemId,
+  LivestockCreatureId,
   Companion,
   NpcEntity,
 } from "./types";
 
-export type MerchantMenuSelection = "buy" | "sell" | "quick_exchange_parts" | "leave";
+export type MerchantMenuSelection =
+  | "buy"
+  | "farm_seeds"
+  | "livestock"
+  | "sell"
+  | "quick_exchange_parts"
+  | "leave";
 
 export type MerchantStockGroup =
   | "flasks"
@@ -135,6 +158,84 @@ export type MerchantBuyResult =
       previousCrowns: number;
       newCrowns: number;
       reason: MerchantBuyFailureReason;
+    };
+
+export type MerchantFarmSeedStockEntry = {
+  cropId: FarmCropId;
+  seedKeyItemId: KeyItemId;
+  displayName: string;
+  cropDisplayName: string;
+  priceCrowns: number;
+  isOwned: boolean;
+  sourceHint: string;
+};
+
+export type MerchantFarmSeedBuyFailureReason =
+  | "invalid_merchant"
+  | "merchant_locked_for_quest"
+  | "item_not_in_stock"
+  | "already_owned"
+  | "insufficient_crowns"
+  | "currency_remove_failed";
+
+export type MerchantFarmSeedBuyResult =
+  | {
+      status: "success";
+      merchantNpcId: string;
+      cropId: FarmCropId;
+      displayName: string;
+      priceCrowns: number;
+      previousCrowns: number;
+      newCrowns: number;
+    }
+  | {
+      status: "failed";
+      merchantNpcId: string;
+      cropId: FarmCropId;
+      displayName?: string;
+      priceCrowns?: number;
+      previousCrowns: number;
+      newCrowns: number;
+      reason: MerchantFarmSeedBuyFailureReason;
+    };
+
+export type MerchantLivestockStockEntry = {
+  creatureId: LivestockCreatureId;
+  discoveryKeyItemId: KeyItemId;
+  displayName: string;
+  creatureDisplayName: string;
+  ownedCount: number;
+  priceCrowns: number;
+  sourceHint: string;
+};
+
+export type MerchantLivestockBuyFailureReason =
+  | "invalid_merchant"
+  | "merchant_locked_for_quest"
+  | "item_not_in_stock"
+  | "insufficient_crowns"
+  | "currency_remove_failed";
+
+export type MerchantLivestockBuyResult =
+  | {
+      status: "success";
+      merchantNpcId: string;
+      creatureId: LivestockCreatureId;
+      displayName: string;
+      priceCrowns: number;
+      previousCrowns: number;
+      newCrowns: number;
+      ownedCount: number;
+    }
+  | {
+      status: "failed";
+      merchantNpcId: string;
+      creatureId: LivestockCreatureId;
+      displayName?: string;
+      priceCrowns?: number;
+      previousCrowns: number;
+      newCrowns: number;
+      reason: MerchantLivestockBuyFailureReason;
     };
 
 type RemoveItemFromInventory = (
@@ -501,6 +602,332 @@ export function isMerchantStockEntryCompatibleWithParty(
       entity.kind === "companion" &&
       isMerchantEquipmentCompatibleWithCompanion(entity, itemDefinition),
   );
+}
+
+export function getMerchantFarmSeedStock(
+  state: GameState,
+  merchantNpcId: string,
+): MerchantFarmSeedStockEntry[] {
+  const merchant = state.entities[merchantNpcId];
+
+  if (!isMerchantNpc(merchant) || !isMerchantUnlockedForQuests(state)) {
+    return [];
+  }
+
+  const potato = getFarmCropDefinition(FARM_POTATO_CROP_ID);
+
+  return potato.seedKeyItemId
+    ? [
+        {
+          cropId: potato.id,
+          seedKeyItemId: potato.seedKeyItemId,
+          displayName: "Potato Seed",
+          cropDisplayName: potato.displayName,
+          priceCrowns: FARM_POTATO_SEED_PRICE_CROWNS,
+          isOwned: isFarmCropUnlocked(state, potato.id),
+          sourceHint: potato.sourceHint,
+        },
+      ]
+    : [];
+}
+
+export function buyMerchantFarmSeed(
+  state: GameState,
+  merchantNpcId: string,
+  cropId: FarmCropId,
+  nowMs = Date.now(),
+): { state: GameState; result: MerchantFarmSeedBuyResult } {
+  const previousCrowns = getCurrencyBalance(state.wallet, "crowns");
+  const merchant = state.entities[merchantNpcId];
+  const crop = getFarmCropDefinition(cropId);
+  const stockEntry = getMerchantFarmSeedStock(state, merchantNpcId).find(
+    (entry) => entry.cropId === cropId,
+  );
+
+  if (!isMerchantNpc(merchant)) {
+    return createMerchantFarmSeedBuyFailure(
+      state,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "invalid_merchant",
+      stockEntry,
+    );
+  }
+
+  if (!isMerchantUnlockedForQuests(state)) {
+    const lockedState = recordMerchantLockedForQuest(
+      state,
+      merchantNpcId,
+      "merchant_seed_buy_locked",
+    );
+
+    return createMerchantFarmSeedBuyFailure(
+      lockedState,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "merchant_locked_for_quest",
+      stockEntry,
+    );
+  }
+
+  if (!stockEntry || !crop.seedKeyItemId) {
+    return createMerchantFarmSeedBuyFailure(
+      state,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "item_not_in_stock",
+      stockEntry,
+    );
+  }
+
+  let nextState = appendMerchantFarmSeedTelemetry(
+    state,
+    "farm_seed_purchase_attempt",
+    merchantNpcId,
+    stockEntry,
+    {
+      result: "attempt",
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: previousCrowns,
+    },
+  );
+
+  if (isFarmCropUnlocked(nextState, cropId)) {
+    return createMerchantFarmSeedBuyFailure(
+      nextState,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "already_owned",
+      stockEntry,
+    );
+  }
+
+  if (!canAfford(nextState.wallet, "crowns", stockEntry.priceCrowns)) {
+    return createMerchantFarmSeedBuyFailure(
+      nextState,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "insufficient_crowns",
+      stockEntry,
+    );
+  }
+
+  const currencyResult = removeCurrencyFromWalletState(
+    nextState,
+    "crowns",
+    stockEntry.priceCrowns,
+    "merchant",
+  );
+
+  if (currencyResult.result.status !== "success") {
+    return createMerchantFarmSeedBuyFailure(
+      nextState,
+      merchantNpcId,
+      cropId,
+      previousCrowns,
+      "currency_remove_failed",
+      stockEntry,
+    );
+  }
+
+  const unlock = unlockFarmCrop(
+    currencyResult.state,
+    cropId,
+    "merchant",
+    nowMs,
+  );
+  nextState = appendMerchantFarmSeedTelemetry(
+    unlock.state,
+    "farm_seed_purchase_succeeded",
+    merchantNpcId,
+    stockEntry,
+    {
+      result: "success",
+      currencyAmount: stockEntry.priceCrowns,
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: currencyResult.result.newBalance,
+    },
+  );
+
+  return {
+    state: nextState,
+    result: {
+      status: "success",
+      merchantNpcId,
+      cropId,
+      displayName: stockEntry.displayName,
+      priceCrowns: stockEntry.priceCrowns,
+      previousCrowns,
+      newCrowns: currencyResult.result.newBalance,
+    },
+  };
+}
+
+export function getMerchantLivestockStock(
+  state: GameState,
+  merchantNpcId: string,
+): MerchantLivestockStockEntry[] {
+  const merchant = state.entities[merchantNpcId];
+
+  if (!isMerchantNpc(merchant) || !isMerchantUnlockedForQuests(state)) {
+    return [];
+  }
+
+  const duskhen = getLivestockCreatureDefinition(LIVESTOCK_DUSKHEN_CREATURE_ID);
+
+  if (!duskhen) {
+    return [];
+  }
+
+  const ownedCount =
+    getLivestockState(state).ownedCreaturesById[LIVESTOCK_DUSKHEN_CREATURE_ID] ??
+    0;
+
+  return [
+    {
+      creatureId: duskhen.id,
+      discoveryKeyItemId: duskhen.discoveryKeyItemId,
+      displayName: "Duskhen Egg",
+      creatureDisplayName: duskhen.displayName,
+      ownedCount,
+      priceCrowns:
+        Math.max(1, ownedCount) * LIVESTOCK_DUSKHEN_MERCHANT_PRICE_PER_OWNED,
+      sourceHint: "Permanent Duskhen ownership",
+    },
+  ];
+}
+
+export function buyMerchantLivestockCreature(
+  state: GameState,
+  merchantNpcId: string,
+  creatureId: LivestockCreatureId,
+  nowMs = Date.now(),
+): { state: GameState; result: MerchantLivestockBuyResult } {
+  const previousCrowns = getCurrencyBalance(state.wallet, "crowns");
+  const merchant = state.entities[merchantNpcId];
+  const stockEntry = getMerchantLivestockStock(state, merchantNpcId).find(
+    (entry) => entry.creatureId === creatureId,
+  );
+
+  if (!isMerchantNpc(merchant)) {
+    return createMerchantLivestockBuyFailure(
+      state,
+      merchantNpcId,
+      creatureId,
+      previousCrowns,
+      "invalid_merchant",
+      stockEntry,
+    );
+  }
+
+  if (!isMerchantUnlockedForQuests(state)) {
+    const lockedState = recordMerchantLockedForQuest(
+      state,
+      merchantNpcId,
+      "merchant_livestock_buy_locked",
+    );
+
+    return createMerchantLivestockBuyFailure(
+      lockedState,
+      merchantNpcId,
+      creatureId,
+      previousCrowns,
+      "merchant_locked_for_quest",
+      stockEntry,
+    );
+  }
+
+  if (!stockEntry) {
+    return createMerchantLivestockBuyFailure(
+      state,
+      merchantNpcId,
+      creatureId,
+      previousCrowns,
+      "item_not_in_stock",
+      stockEntry,
+    );
+  }
+
+  let nextState = appendMerchantLivestockTelemetry(
+    state,
+    "livestock_creature_purchase_attempt",
+    merchantNpcId,
+    stockEntry,
+    {
+      result: "attempt",
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: previousCrowns,
+    },
+  );
+
+  if (!canAfford(nextState.wallet, "crowns", stockEntry.priceCrowns)) {
+    return createMerchantLivestockBuyFailure(
+      nextState,
+      merchantNpcId,
+      creatureId,
+      previousCrowns,
+      "insufficient_crowns",
+      stockEntry,
+    );
+  }
+
+  const currencyResult = removeCurrencyFromWalletState(
+    nextState,
+    "crowns",
+    stockEntry.priceCrowns,
+    "merchant",
+  );
+
+  if (currencyResult.result.status !== "success") {
+    return createMerchantLivestockBuyFailure(
+      nextState,
+      merchantNpcId,
+      creatureId,
+      previousCrowns,
+      "currency_remove_failed",
+      stockEntry,
+    );
+  }
+
+  const unlock = addOwnedLivestockCreature(
+    currencyResult.state,
+    creatureId,
+    "merchant",
+    nowMs,
+  );
+  nextState = appendMerchantLivestockTelemetry(
+    unlock.state,
+    "livestock_creature_purchase_succeeded",
+    merchantNpcId,
+    stockEntry,
+    {
+      result: "success",
+      currencyAmount: stockEntry.priceCrowns,
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: currencyResult.result.newBalance,
+    },
+  );
+
+  return {
+    state: nextState,
+    result: {
+      status: "success",
+      merchantNpcId,
+      creatureId,
+      displayName: stockEntry.displayName,
+      priceCrowns: stockEntry.priceCrowns,
+      previousCrowns,
+      newCrowns: currencyResult.result.newBalance,
+      ownedCount:
+        nextState.livestock?.ownedCreaturesById[creatureId] ??
+        stockEntry.ownedCount + 1,
+    },
+  };
 }
 
 export function buyMerchantItem(
@@ -1213,6 +1640,97 @@ function createMerchantBuyFailure(
   };
 }
 
+function createMerchantFarmSeedBuyFailure(
+  state: GameState,
+  merchantNpcId: string,
+  cropId: FarmCropId,
+  previousCrowns: number,
+  reason: MerchantFarmSeedBuyFailureReason,
+  stockEntry?: MerchantFarmSeedStockEntry,
+): { state: GameState; result: MerchantFarmSeedBuyResult } {
+  const fallbackCrop = getFarmCropDefinition(cropId);
+  const failedState = appendMerchantFarmSeedTelemetry(
+    state,
+    "farm_seed_purchase_failed",
+    merchantNpcId,
+    stockEntry ?? {
+      cropId,
+      seedKeyItemId: fallbackCrop.seedKeyItemId ?? "farm_seed_potato",
+      displayName: fallbackCrop.singularName,
+      cropDisplayName: fallbackCrop.displayName,
+      priceCrowns: 0,
+      isOwned: isFarmCropUnlocked(state, cropId),
+      sourceHint: fallbackCrop.sourceHint,
+    },
+    {
+      result: "failed",
+      reason,
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: previousCrowns,
+    },
+  );
+
+  return {
+    state: failedState,
+    result: {
+      status: "failed",
+      merchantNpcId,
+      cropId,
+      displayName: stockEntry?.displayName,
+      priceCrowns: stockEntry?.priceCrowns,
+      previousCrowns,
+      newCrowns: previousCrowns,
+      reason,
+    },
+  };
+}
+
+function createMerchantLivestockBuyFailure(
+  state: GameState,
+  merchantNpcId: string,
+  creatureId: LivestockCreatureId,
+  previousCrowns: number,
+  reason: MerchantLivestockBuyFailureReason,
+  stockEntry?: MerchantLivestockStockEntry,
+): { state: GameState; result: MerchantLivestockBuyResult } {
+  const fallbackCreature = getLivestockCreatureDefinition(creatureId);
+  const failedState = appendMerchantLivestockTelemetry(
+    state,
+    "livestock_creature_purchase_failed",
+    merchantNpcId,
+    stockEntry ?? {
+      creatureId,
+      discoveryKeyItemId:
+        fallbackCreature?.discoveryKeyItemId ?? "livestock_creature_duskhen",
+      displayName: fallbackCreature?.displayName ?? "Livestock Creature",
+      creatureDisplayName: fallbackCreature?.displayName ?? "Livestock Creature",
+      ownedCount: 0,
+      priceCrowns: 0,
+      sourceHint: fallbackCreature?.sourceHint ?? "Unavailable",
+    },
+    {
+      result: "failed",
+      reason,
+      previousCurrencyBalance: previousCrowns,
+      nextCurrencyBalance: previousCrowns,
+    },
+  );
+
+  return {
+    state: failedState,
+    result: {
+      status: "failed",
+      merchantNpcId,
+      creatureId,
+      displayName: stockEntry?.displayName,
+      priceCrowns: stockEntry?.priceCrowns,
+      previousCrowns,
+      newCrowns: previousCrowns,
+      reason,
+    },
+  };
+}
+
 function appendMerchantBuyTelemetry(
   state: GameState,
   type: DebugTelemetryEventType,
@@ -1241,6 +1759,65 @@ function appendMerchantBuyTelemetry(
     nextCurrencyBalance: event.nextCurrencyBalance,
     inventoryUsedSlots: state.inventory.slots.length,
     inventoryCapacity: state.inventory.capacity,
+    result: event.result,
+    reason: event.reason,
+  });
+}
+
+function appendMerchantFarmSeedTelemetry(
+  state: GameState,
+  type: DebugTelemetryEventType,
+  merchantNpcId: string,
+  stockEntry: MerchantFarmSeedStockEntry,
+  event: {
+    result: string;
+    reason?: string;
+    currencyAmount?: number;
+    previousCurrencyBalance: number;
+    nextCurrencyBalance: number;
+  },
+): GameState {
+  return appendMerchantTelemetry(state, type, merchantNpcId, {
+    farmCropId: stockEntry.cropId,
+    keyItemId: stockEntry.seedKeyItemId,
+    keyItemDisplayName: stockEntry.displayName,
+    farmUnlockSource: "merchant",
+    crownCost: stockEntry.priceCrowns,
+    currencyId: "crowns",
+    currencyAmount: event.currencyAmount ?? stockEntry.priceCrowns,
+    previousCurrencyBalance: event.previousCurrencyBalance,
+    nextCurrencyBalance: event.nextCurrencyBalance,
+    result: event.result,
+    reason: event.reason,
+  });
+}
+
+function appendMerchantLivestockTelemetry(
+  state: GameState,
+  type: DebugTelemetryEventType,
+  merchantNpcId: string,
+  stockEntry: MerchantLivestockStockEntry,
+  event: {
+    result: string;
+    reason?: string;
+    currencyAmount?: number;
+    previousCurrencyBalance: number;
+    nextCurrencyBalance: number;
+  },
+): GameState {
+  return appendMerchantTelemetry(state, type, merchantNpcId, {
+    livestockCreatureId: stockEntry.creatureId,
+    keyItemId: stockEntry.discoveryKeyItemId,
+    keyItemDisplayName: stockEntry.displayName,
+    livestockUnlockSource: "merchant",
+    livestockQuantityBefore: stockEntry.ownedCount,
+    livestockQuantityAfter:
+      event.result === "success" ? stockEntry.ownedCount + 1 : stockEntry.ownedCount,
+    crownCost: stockEntry.priceCrowns,
+    currencyId: "crowns",
+    currencyAmount: event.currencyAmount ?? stockEntry.priceCrowns,
+    previousCurrencyBalance: event.previousCurrencyBalance,
+    nextCurrencyBalance: event.nextCurrencyBalance,
     result: event.result,
     reason: event.reason,
   });

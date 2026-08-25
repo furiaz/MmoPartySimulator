@@ -5,6 +5,22 @@ export const TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID =
   "teleport_echo_harbor_union_bastion" satisfies KeyItemId;
 export const TELEPORT_ECHO_SLIMEWARD_CAMP_KEY_ITEM_ID =
   "teleport_echo_slimeward_camp" satisfies KeyItemId;
+export const FARM_POTATO_SEED_KEY_ITEM_ID =
+  "farm_seed_potato" satisfies KeyItemId;
+export const FARM_MOONLEAF_SEED_KEY_ITEM_ID =
+  "farm_seed_moonleaf" satisfies KeyItemId;
+export const FARM_BITTERCAP_MUSHROOM_SEED_KEY_ITEM_ID =
+  "farm_seed_bittercap_mushroom" satisfies KeyItemId;
+export const FARM_ASHPEPPER_SEED_KEY_ITEM_ID =
+  "farm_seed_ashpepper" satisfies KeyItemId;
+export const LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_duskhen" satisfies KeyItemId;
+export const LIVESTOCK_WOLF_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_wolf" satisfies KeyItemId;
+export const LIVESTOCK_TIN_CRAWLER_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_tin_crawler" satisfies KeyItemId;
+export const LIVESTOCK_ELDER_MOSSLING_DISCOVERY_KEY_ITEM_ID =
+  "livestock_creature_elder_mossling" satisfies KeyItemId;
 
 export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
   teleport_echo_harbor_union_bastion: {
@@ -16,6 +32,46 @@ export const KEY_ITEM_DEFINITIONS: Record<KeyItemId, KeyItemDefinition> = {
     id: "teleport_echo_slimeward_camp",
     displayName: "Teleportation Echo - Slimeward Camp",
     description: "Unlocks free World Travel teleport to Slimeward Camp.",
+  },
+  farm_seed_potato: {
+    id: "farm_seed_potato",
+    displayName: "Potato Seed",
+    description: "Unlocks the Potato plot at the Farm.",
+  },
+  farm_seed_moonleaf: {
+    id: "farm_seed_moonleaf",
+    displayName: "Moonleaf Seed",
+    description: "Unlocks the Moonleaf plot at the Farm.",
+  },
+  farm_seed_bittercap_mushroom: {
+    id: "farm_seed_bittercap_mushroom",
+    displayName: "Bittercap Mushroom Spores",
+    description: "Unlocks the Bittercap Mushroom plot at the Farm.",
+  },
+  farm_seed_ashpepper: {
+    id: "farm_seed_ashpepper",
+    displayName: "Ashpepper Seed",
+    description: "Unlocks the Ashpepper plot at the Farm.",
+  },
+  livestock_creature_duskhen: {
+    id: "livestock_creature_duskhen",
+    displayName: "Duskhen Discovery",
+    description: "Registers Duskhens as a Livestock creature.",
+  },
+  livestock_creature_wolf: {
+    id: "livestock_creature_wolf",
+    displayName: "Wolf Pup Discovery",
+    description: "Registers Wolves as a Livestock creature.",
+  },
+  livestock_creature_tin_crawler: {
+    id: "livestock_creature_tin_crawler",
+    displayName: "Tin Crawler Discovery",
+    description: "Registers Tin Crawlers as a Livestock creature.",
+  },
+  livestock_creature_elder_mossling: {
+    id: "livestock_creature_elder_mossling",
+    displayName: "Elder Mossling Discovery",
+    description: "Registers Elder Mosslings as a Livestock creature.",
   },
 };
 

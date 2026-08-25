@@ -1088,6 +1088,10 @@
 }
 
 .atlas-subtabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 92px;
   padding: 8px 10px;
   font-weight: 800;
@@ -1097,6 +1101,13 @@
   border-color: #7aa6ad;
   background: rgba(58, 90, 96, 0.62);
   color: #ffffff;
+}
+
+.atlas-warning-label {
+  color: #ff9b9b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .afk-estimate-panel {
@@ -1301,24 +1312,36 @@
 
 .guild-tavern-section-nav {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
 }
 
 .guild-tavern-section-nav button {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
   min-width: 0;
-  width: 38px;
-  height: 34px;
-  padding: 0;
-  font-size: 18px;
+  width: 100%;
+  height: 46px;
+  padding: 6px 8px;
+}
+
+.guild-tavern-section-nav button.active {
+  border-color: #65aac0;
+  background: rgba(23, 55, 66, 0.78);
 }
 
 .guild-tavern-section-nav strong {
-  justify-self: center;
   color: #ffffff;
   font-size: 14px;
   font-weight: 900;
+}
+
+.guild-tavern-section-nav small {
+  color: #92a8ad;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .guild-tavern-section {
@@ -1535,6 +1558,476 @@
 
 .guild-requires-service {
   color: #d9827d !important;
+}
+
+.farm-field-card {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(9, 19, 24, 0.56);
+}
+
+.farm-crop-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.farm-crop-filter {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  gap: 4px;
+  align-items: center;
+}
+
+.farm-crop-filter button {
+  min-height: 28px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.72);
+  color: #dcebed;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.farm-crop-filter button.active {
+  border-color: #b7944b;
+  color: #ffe3a0;
+}
+
+.farm-crop-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-crop-row.locked {
+  opacity: 0.78;
+}
+
+.farm-crop-row-main,
+.farm-crop-row-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 160px);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.farm-crop-heading {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.farm-crop-heading h3 {
+  margin: 0;
+}
+
+.farm-crop-heading span {
+  color: #f3df93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.farm-crop-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.farm-crop-icon.locked {
+  filter: grayscale(1) brightness(0.72);
+}
+
+.farm-crop-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.farm-crop-metrics span,
+.farm-crop-row-stats strong {
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  padding: 6px 8px;
+  border: 1px solid #263c42;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.58);
+  color: #dcebed;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.farm-crop-row-stats strong {
+  justify-self: stretch;
+}
+
+.farm-actions button {
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 132px);
+}
+
+.farm-actions button small {
+  grid-column: 2;
+}
+
+.farm-livestock-placeholder {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 10px 12px;
+  border: 1px dashed #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.36);
+}
+
+.farm-livestock-placeholder p {
+  margin: 0;
+  color: #92a8ad;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.livestock-section {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.livestock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.livestock-actions button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  flex: 0 1 180px;
+  min-height: 46px;
+  text-align: center;
+}
+
+.livestock-actions button small {
+  grid-column: 1;
+  text-align: center;
+}
+
+.livestock-summary-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(8, 16, 20, 0.42);
+}
+
+.livestock-summary-panel div,
+.livestock-details article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.livestock-summary-panel span,
+.livestock-details span,
+.livestock-details dt,
+.livestock-details p,
+.livestock-details li {
+  color: #9fb6bb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.livestock-summary-panel strong,
+.livestock-details dd {
+  color: #f3df93;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.livestock-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.livestock-grid-column {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.livestock-grid {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.livestock-grid-cell {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  aspect-ratio: 1 / 1;
+  border: 1px solid #2e4a51;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.62);
+  color: #9fb6bb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.livestock-grid-cell.occupied {
+  border-color: #9d7b3f;
+  background: rgba(83, 58, 27, 0.62);
+  color: #f5d986;
+}
+
+.livestock-grid-cell.hungry {
+  border-color: #e15f5f;
+  box-shadow: 0 0 0 2px rgba(225, 95, 95, 0.35);
+  color: #ffd4d4;
+}
+
+.livestock-grid-cell.selected {
+  border-color: #65aac0;
+  background: rgba(23, 55, 66, 0.72);
+}
+
+.livestock-grid-cell.available-target {
+  outline: 2px solid #f3df93;
+  outline-offset: 2px;
+}
+
+.livestock-grid-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.livestock-grid-controls span {
+  flex: 1 1 180px;
+  min-width: 0;
+  color: #dcebed;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.livestock-available-list {
+  display: grid;
+  gap: 8px;
+}
+
+.livestock-available-list h3,
+.livestock-details h3 {
+  margin: 0;
+}
+
+.livestock-available-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.livestock-creature-card {
+  display: grid;
+  gap: 6px;
+  width: 142px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.livestock-creature-card.locked {
+  opacity: 0.78;
+}
+
+.livestock-creature-select,
+.livestock-creature-upgrade-button {
+  min-width: 0;
+  width: 100%;
+}
+
+.livestock-creature-select {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-height: 94px;
+  text-align: center;
+}
+
+.livestock-creature-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  border: 1px dashed #4c666c;
+  border-radius: 6px;
+  background: rgba(6, 14, 18, 0.68);
+}
+
+.livestock-creature-icon.locked {
+  filter: grayscale(1) brightness(0.42);
+  opacity: 0.72;
+}
+
+.livestock-creature-select strong {
+  color: #dcebed;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.livestock-creature-select small {
+  color: #93a9ad;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.livestock-details {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.livestock-details article {
+  padding: 10px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.livestock-details dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.livestock-details dl div {
+  display: grid;
+  grid-template-columns: minmax(82px, 1fr) minmax(0, 1.4fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.livestock-details dt,
+.livestock-details dd {
+  margin: 0;
+}
+
+.livestock-details ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 760px) {
+  .livestock-summary-panel,
+  .livestock-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.overlay-panel-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.overlay-panel {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 520px);
+  max-height: min(86vh, 720px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid #3e5f66;
+  border-radius: 6px;
+  background: #0b171c;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+.farm-upgrade-overlay-heading {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.farm-upgrade-overlay-heading h3 {
+  margin: 0;
+}
+
+.farm-upgrade-row-list {
+  display: grid;
+  gap: 8px;
+}
+
+.farm-upgrade-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(138px, 170px);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid #334a50;
+  border-radius: 6px;
+  background: rgba(5, 11, 14, 0.42);
+}
+
+.farm-upgrade-row > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.farm-upgrade-row strong,
+.farm-upgrade-row span,
+.farm-upgrade-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.farm-upgrade-row strong {
+  color: #f3df93;
+}
+
+.farm-upgrade-row span,
+.farm-upgrade-row small {
+  color: #9fb6bb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.farm-upgrade-row small {
+  grid-column: 1 / -1;
+}
+
+.farm-upgrade-row button {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.farm-upgrade-overlay-footer {
+  display: flex;
+  justify-content: center;
 }
 
 .guild-recruit-details > button {

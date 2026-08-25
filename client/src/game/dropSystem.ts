@@ -1,7 +1,9 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { getLootTierForLevel, rollEnemyDropTable } from "./dropTables";
 import { getEnemyDropArchetypeId } from "./enemyArchetypes";
+import { tryUnlockFarmCropFromEnemyDefeat } from "./farm";
 import { addItemToInventoryState } from "./inventory";
+import { tryUnlockLivestockCreatureFromEnemyDefeat } from "./livestock";
 import { getItemDefinition, getItemDisplayName } from "./items";
 import {
   awardKeyItemIfMissing,
@@ -105,7 +107,19 @@ export function handleEnemyDefeatedDrops(
     });
   }
 
-  return nextState;
+  const farmUnlockState = tryUnlockFarmCropFromEnemyDefeat(
+    nextState,
+    enemy,
+    now,
+    random,
+  );
+
+  return tryUnlockLivestockCreatureFromEnemyDefeat(
+    farmUnlockState,
+    enemy,
+    now,
+    random,
+  );
 }
 
 function awardAzureMassTeleportEchoIfMissing(

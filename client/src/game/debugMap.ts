@@ -375,6 +375,18 @@ export const hubNpcStartData = [
     displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
   },
+  {
+    id: "hub-farmer",
+    position: { x: 18, y: 46 },
+    displayName: "Farmer",
+    npcRole: "farmer",
+  },
+  {
+    id: "hub-livestock-keeper",
+    position: { x: 18, y: 27 },
+    displayName: "Livestock",
+    npcRole: "livestock_keeper",
+  },
 ] as const;
 
 export const classMentorNpcStartData = {
@@ -438,6 +450,18 @@ export const hubTwoNpcStartData = [
     position: { x: 117, y: 60 },
     displayName: "Inn Keeper",
     npcRole: "tavern_keeper",
+  },
+  {
+    id: "hub-2-farmer",
+    position: { x: 18, y: 43 },
+    displayName: "Farmer",
+    npcRole: "farmer",
+  },
+  {
+    id: "hub-2-livestock-keeper",
+    position: { x: 119, y: 43 },
+    displayName: "Livestock",
+    npcRole: "livestock_keeper",
   },
 ] as const;
 
@@ -829,7 +853,7 @@ const mapFiveSourceSubzones: ZoneSubzone[] = [
     displayName: "Burrows",
     bounds: { x: 53, y: 1, width: 52, height: 55 },
     levelRange: { min: 14, max: 14 },
-    enemyTypeIds: ["iron_crawler"],
+    enemyTypeIds: ["tin_crawler"],
     encounterAreas: [
       { id: "burrows-north-shells", subzoneId: "burrows", center: { x: 79, y: 16 }, radius: 22, leashRadius: 24 },
       { id: "burrows-south-shells", subzoneId: "burrows", center: { x: 80, y: 42 }, radius: 22, leashRadius: 24 },
@@ -1276,12 +1300,12 @@ const mapFiveProgressionEnemyStartData: EnemyStartData[] = [
   { id: enemyIds[3], position: { x: 18, y: 42 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
   { id: enemyIds[4], position: { x: 31, y: 48 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
   { id: enemyIds[5], position: { x: 43, y: 39 }, enemyTypeId: "ember_imp", subzoneId: "crossing", encounterAreaId: "crossing-south-sparks" },
-  { id: enemyIds[6], position: { x: 64, y: 12 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
-  { id: enemyIds[7], position: { x: 79, y: 8 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
-  { id: enemyIds[8], position: { x: 96, y: 16 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
-  { id: enemyIds[9], position: { x: 66, y: 42 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
-  { id: enemyIds[10], position: { x: 82, y: 48 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
-  { id: enemyIds[11], position: { x: 99, y: 39 }, enemyTypeId: "iron_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[6], position: { x: 64, y: 12 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[7], position: { x: 79, y: 8 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[8], position: { x: 96, y: 16 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-north-shells" },
+  { id: enemyIds[9], position: { x: 66, y: 42 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[10], position: { x: 82, y: 48 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
+  { id: enemyIds[11], position: { x: 99, y: 39 }, enemyTypeId: "tin_crawler", subzoneId: "burrows", encounterAreaId: "burrows-south-shells" },
   { id: enemyIds[12], position: { x: 116, y: 12 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
   { id: enemyIds[13], position: { x: 132, y: 8 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
   { id: enemyIds[14], position: { x: 151, y: 16 }, enemyTypeId: "briar_wolf", subzoneId: "thornfield", encounterAreaId: "thornfield-north-pack" },
@@ -1633,6 +1657,22 @@ const HUB_VISUAL_OBJECTS: MapVisualObject[] = [
     heightCells: 13,
     anchorY: 1,
   },
+  {
+    id: "hub-farm",
+    visualId: "farm_building",
+    position: { x: 18, y: 44 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
+  {
+    id: "hub-livestock",
+    visualId: "livestock_building",
+    position: { x: 18, y: 25 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
 ];
 
 const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
@@ -1708,6 +1748,22 @@ const HUB_TWO_VISUAL_OBJECTS: MapVisualObject[] = [
     heightCells: 13,
     anchorY: 1,
   },
+  {
+    id: "hub-2-farm",
+    visualId: "farm_building",
+    position: { x: 18, y: 42 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
+  {
+    id: "hub-2-livestock",
+    visualId: "livestock_building",
+    position: { x: 119, y: 42 },
+    widthCells: 14,
+    heightCells: 11,
+    anchorY: 1,
+  },
 ];
 
 const HUB_WALLS = dedupeWalls([
@@ -1732,6 +1788,9 @@ const HUB_TWO_STRUCTURE_COLLISION_WALLS = dedupeWalls([
   ...createBottomCenteredWallOutline({ x: 90, y: 41 }, 7, 6),
   ...createBottomCenteredWallOutline({ x: 54, y: 58 }, 7, 6),
   ...createBottomCenteredWallOutline({ x: 83, y: 58 }, 7, 6),
+  ...createBottomCenteredWallOutline({ x: 112, y: 58 }, 10, 7),
+  ...createBottomCenteredWallOutline({ x: 18, y: 42 }, 8, 6),
+  ...createBottomCenteredWallOutline({ x: 119, y: 42 }, 8, 6),
 ]);
 
 const MAP_ONE_WALLS = dedupeWalls([

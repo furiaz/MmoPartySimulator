@@ -57,7 +57,7 @@ export type EnemyTypeId =
   | "wolf"
   | "orc"
   | "ember_imp"
-  | "iron_crawler"
+  | "tin_crawler"
   | "briar_wolf"
   | "mire_spider"
   | "night_bat"
@@ -191,7 +191,8 @@ export type ResourceItemId =
   | "field_herb"
   | "hardwood"
   | "iron_ore"
-  | "redleaf_herb";
+  | "redleaf_herb"
+  | "tin_ore";
 
 export type CraftingSupplyItemId =
   | "crafting_string"
@@ -604,7 +605,15 @@ export type ItemId =
 
 export type KeyItemId =
   | "teleport_echo_harbor_union_bastion"
-  | "teleport_echo_slimeward_camp";
+  | "teleport_echo_slimeward_camp"
+  | "farm_seed_potato"
+  | "farm_seed_moonleaf"
+  | "farm_seed_bittercap_mushroom"
+  | "farm_seed_ashpepper"
+  | "livestock_creature_duskhen"
+  | "livestock_creature_wolf"
+  | "livestock_creature_tin_crawler"
+  | "livestock_creature_elder_mossling";
 
 export type KeyItemDefinition = {
   id: KeyItemId;
@@ -860,6 +869,7 @@ export type InventoryMutationSource =
   | "skill_book"
   | "chest"
   | "bank"
+  | "livestock"
   | "unknown";
 
 export type CurrencyMutationSource =
@@ -871,6 +881,8 @@ export type CurrencyMutationSource =
   | "guild_upgrade"
   | "inn_upgrade"
   | "inn_kitchen"
+  | "farm_upgrade"
+  | "livestock_upgrade"
   | "world_wipe_recovery"
   | "unknown";
 
@@ -2015,7 +2027,52 @@ export type DebugTelemetryEventType =
   | "flask_fountain_refilled"
   | "flask_recharge_kill_progress"
   | "flask_charge_gained"
-  | "flask_recharge_noop_capped";
+  | "flask_recharge_noop_capped"
+  | "farm_upgrade_attempt"
+  | "farm_upgrade_succeeded"
+  | "farm_upgrade_failed"
+  | "farm_crop_generated"
+  | "farm_generation_blocked_cap"
+  | "farm_harvest_all_succeeded"
+  | "farm_harvest_all_failed"
+  | "farm_pantry_transfer"
+  | "farm_crop_unlock_roll"
+  | "farm_crop_unlocked"
+  | "farm_crop_unlock_duplicate"
+  | "farm_seed_purchase_attempt"
+  | "farm_seed_purchase_succeeded"
+  | "farm_seed_purchase_failed"
+  | "livestock_creature_unlock_roll"
+  | "livestock_creature_unlocked"
+  | "livestock_creature_unlock_duplicate"
+  | "livestock_creature_purchase_attempt"
+  | "livestock_creature_purchase_succeeded"
+  | "livestock_creature_purchase_failed"
+  | "livestock_place_attempt"
+  | "livestock_place_succeeded"
+  | "livestock_place_failed"
+  | "livestock_move_attempt"
+  | "livestock_move_succeeded"
+  | "livestock_move_failed"
+  | "livestock_remove_attempt"
+  | "livestock_remove_succeeded"
+  | "livestock_remove_failed"
+  | "livestock_output_generated"
+  | "livestock_generation_blocked_cap"
+  | "livestock_collect_all_succeeded"
+  | "livestock_collect_all_failed"
+  | "livestock_pantry_transfer"
+  | "livestock_inventory_transfer"
+  | "livestock_feed_paid"
+  | "livestock_feed_failed"
+  | "livestock_midnight_feed"
+  | "livestock_feed_now_succeeded"
+  | "livestock_feed_now_failed"
+  | "livestock_became_hungry"
+  | "livestock_resumed_production"
+  | "livestock_upgrade_attempt"
+  | "livestock_upgrade_succeeded"
+  | "livestock_upgrade_failed";
 
 export type ResurrectionCancelReason =
   | "attacked"
@@ -2208,6 +2265,8 @@ export type DebugTelemetryEvent = {
   itemId?: ItemId;
   itemDisplayName?: string;
   itemCategory?: ItemCategory;
+  keyItemId?: KeyItemId;
+  keyItemDisplayName?: string;
   flaskChargesBefore?: number;
   flaskChargesAfter?: number;
   flaskMaxCharges?: number;
@@ -2259,6 +2318,51 @@ export type DebugTelemetryEvent = {
   craftingRequirements?: DebugCraftingRequirementTelemetryRow[];
   consumedCraftingItems?: DebugCraftingConsumedItemTelemetryRow[];
   crownCost?: number;
+  farmFieldId?: FarmFieldId;
+  farmCropId?: FarmCropId;
+  farmUpgradeId?: FarmFieldUpgradeId;
+  cropQuantityBefore?: number;
+  cropQuantityAfter?: number;
+  cropCapacity?: number;
+  previousFarmFieldLevel?: number;
+  nextFarmFieldLevel?: number;
+  previousFarmUpgradeLevel?: number;
+  nextFarmUpgradeLevel?: number;
+  farmSpeedMultiplier?: number;
+  farmFertilizerDoubleCropChancePercent?: number;
+  farmGeneratedQuantity?: number;
+  farmDoubleCropRolls?: number;
+  farmUnlockSource?:
+    | "base"
+    | "merchant"
+    | "herb_gathering"
+    | "wood_gathering"
+    | "ash_wisp_defeat";
+  farmUnlockChance?: number;
+  farmUnlockRoll?: number;
+  livestockCreatureId?: LivestockCreatureId;
+  livestockPlacementId?: LivestockPlacementId;
+  livestockOutputId?: LivestockOutputId;
+  livestockUnlockSource?:
+    | "merchant"
+    | "wolf_defeat"
+    | "tin_crawler_defeat"
+    | "elder_mossling_defeat";
+  livestockUnlockChance?: number;
+  livestockUnlockRoll?: number;
+  livestockGridX?: number;
+  livestockGridY?: number;
+  livestockRotation?: LivestockPlacementRotation;
+  livestockFootprintWidth?: number;
+  livestockFootprintHeight?: number;
+  livestockQuantityBefore?: number;
+  livestockQuantityAfter?: number;
+  livestockCapacity?: number;
+  livestockGeneratedQuantity?: number;
+  livestockFeedCost?: number;
+  livestockUpgradeId?: LivestockAnimalUpgradeId | LivestockBuildingUpgradeId;
+  previousLivestockUpgradeLevel?: number;
+  nextLivestockUpgradeLevel?: number;
   inventoryFreeSlotsBefore?: number;
   inventoryFreeSlotsAfter?: number;
   eligibleItemCount?: number;
@@ -2345,6 +2449,8 @@ export type MapVisualObjectId =
   | "hub_cabin"
   | "hub_tent"
   | "guild_tavern_building"
+  | "farm_building"
+  | "livestock_building"
   | "guild_notice_board_new_quest_sign"
   | "hub_dock_shore_connector"
   | "passage_gate_closed"
@@ -2767,6 +2873,101 @@ export type InnKitchenState = {
   autoCookFailuresByCompanionId: Record<string, InnKitchenAutoCookFailureState>;
 };
 
+export type FarmCropId =
+  | "carrot"
+  | "potato"
+  | "moonleaf"
+  | "bittercap_mushroom"
+  | "ashpepper";
+
+export type FarmFieldId =
+  | "carrot_field"
+  | "potato_field"
+  | "moonleaf_field"
+  | "bittercap_mushroom_field"
+  | "ashpepper_field";
+
+export type FarmFieldUpgradeId = "speed" | "cap" | "fertilizer";
+
+export type FarmFieldUpgradeLevels = Record<FarmFieldUpgradeId, number>;
+
+export type FarmFieldState = {
+  id: FarmFieldId;
+  cropId: FarmCropId;
+  upgradeLevels: FarmFieldUpgradeLevels;
+  heldQuantity: number;
+  lastGeneratedAtMs: number;
+};
+
+export type FarmState = {
+  fieldsById: {
+    carrot_field: FarmFieldState;
+  } & Partial<Record<FarmFieldId, FarmFieldState>>;
+};
+
+export type LivestockCreatureId =
+  | "duskhen"
+  | "wolf"
+  | "tin_crawler"
+  | "elder_mossling";
+
+export type LivestockOutputId = "egg" | "tin_ore";
+
+export type LivestockFeedIngredientId = FarmCropId | LivestockOutputId;
+
+export type LivestockPlacementId = string;
+
+export type LivestockPlacementRotation = "horizontal" | "vertical";
+
+export type LivestockAnimalUpgradeId = "speed" | "feedDiscount" | "outputCap";
+
+export type LivestockBuildingUpgradeId =
+  | "columns"
+  | "rows"
+  | "slotEfficiency";
+
+export type LivestockAnimalUpgradeLevels = Record<
+  LivestockAnimalUpgradeId,
+  number
+>;
+
+export type LivestockBuildingUpgradeLevels = Record<
+  LivestockBuildingUpgradeId,
+  number
+>;
+
+export type LivestockGridState = {
+  width: number;
+  height: number;
+};
+
+export type LivestockPlacedCreatureState = {
+  id: LivestockPlacementId;
+  creatureId: LivestockCreatureId;
+  x: number;
+  y: number;
+  rotation: LivestockPlacementRotation;
+  placedAtMs: number;
+  lastProducedAtMs: number;
+  isHungry?: boolean;
+  hungrySinceMs?: number;
+  pausedProductionRemainingMs?: number;
+};
+
+export type LivestockState = {
+  grid: LivestockGridState;
+  ownedCreaturesById: Partial<Record<LivestockCreatureId, number>>;
+  placementsById: Record<LivestockPlacementId, LivestockPlacedCreatureState>;
+  placementSequence: number;
+  lastFeedDayStartMs: number;
+  animalUpgradeLevelsByCreatureId: Partial<
+    Record<LivestockCreatureId, LivestockAnimalUpgradeLevels>
+  >;
+  buildingUpgradeLevels: LivestockBuildingUpgradeLevels;
+  holdingQuantitiesByOutputId: Partial<Record<LivestockOutputId, number>>;
+  holdingCapsByOutputId: Partial<Record<LivestockOutputId, number>>;
+};
+
 export type GuildNoticeBoardState = {
   slots: Array<GuildNoticeBoardQuest | null>;
   nextRefreshAtMs: number;
@@ -2798,6 +2999,8 @@ export type NpcEntity = BaseEntity & {
     | "smith"
     | "guild_coordinator"
     | "tavern_keeper"
+    | "farmer"
+    | "livestock_keeper"
     | "bank_chest"
     | "dog"
     | "test_blade"

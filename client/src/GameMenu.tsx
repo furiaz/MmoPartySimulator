@@ -3,6 +3,8 @@ import { QuestsPanel } from "./QuestPanels";
 import { WorldPanel } from "./WorldPanel";
 import { BankPanel } from "./BankPanel";
 import { GuildTavernPanel } from "./GuildTavernPanel";
+import { FarmLivestockPanel } from "./FarmLivestockPanel";
+import { getLivestockDisplay } from "./livestockPresentation";
 import type {
   AtlasSubpage,
   GameMenuTab,
@@ -38,7 +40,14 @@ import type {
   GuildRosterSlotRef,
   GuildSecondaryPartyRedeemSummary,
   GuildSecondaryPartyUpgradeId,
+  FarmFieldId,
+  FarmFieldUpgradeId,
   InnRoomUpgradeId,
+  LivestockAnimalUpgradeId,
+  LivestockBuildingUpgradeId,
+  LivestockCreatureId,
+  LivestockPlacementId,
+  LivestockPlacementRotation,
 } from "./game";
 
 export type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
@@ -66,6 +75,9 @@ export function GameMenu({
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   innKitchenResultMessage,
+  farmResultMessage,
+  livestockResultMessage,
+  guildTavernPantryRequestId,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   highestCharacterLevelEver,
@@ -104,6 +116,16 @@ export function GameMenu({
   onSelectInnKitchenRecipe,
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
+  onHarvestAllFarmCrops,
+  onPurchaseFarmUpgrade,
+  onPlaceLivestockCreature,
+  onMoveLivestockPlacement,
+  onRemoveLivestockPlacement,
+  onCollectAllLivestockOutputs,
+  onFeedHungryLivestockNow,
+  onPurchaseLivestockAnimalUpgrade,
+  onPurchaseLivestockBuildingUpgrade,
+  onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
@@ -138,6 +160,9 @@ export function GameMenu({
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   innKitchenResultMessage?: string | null;
+  farmResultMessage?: string | null;
+  livestockResultMessage?: string | null;
+  guildTavernPantryRequestId: number;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   highestCharacterLevelEver: number;
@@ -205,6 +230,34 @@ export function GameMenu({
   ) => void;
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
+  onHarvestAllFarmCrops: () => void;
+  onPurchaseFarmUpgrade: (
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) => void;
+  onPlaceLivestockCreature: (
+    creatureId: LivestockCreatureId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => boolean;
+  onMoveLivestockPlacement: (
+    placementId: LivestockPlacementId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => boolean;
+  onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
+  onCollectAllLivestockOutputs: () => void;
+  onFeedHungryLivestockNow: () => void;
+  onPurchaseLivestockAnimalUpgrade: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+  onPurchaseLivestockBuildingUpgrade: (
+    upgradeId: LivestockBuildingUpgradeId,
+  ) => void;
+  onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
@@ -225,6 +278,10 @@ export function GameMenu({
           : ""
       }${
         activeTab === "atlas" && activeAtlasSubpage === "guildTavern"
+          ? " guild-tavern-menu-panel"
+          : ""
+      }${
+        activeTab === "atlas" && activeAtlasSubpage === "farmLivestock"
           ? " guild-tavern-menu-panel"
           : ""
       }`}
@@ -331,6 +388,9 @@ export function GameMenu({
                   guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
                   guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
                   innKitchenResultMessage={innKitchenResultMessage}
+                  farmResultMessage={farmResultMessage}
+                  livestockResultMessage={livestockResultMessage}
+                  guildTavernPantryRequestId={guildTavernPantryRequestId}
                   guildSecondaryPartyRedeemSummary={
                     guildSecondaryPartyRedeemSummary
                   }
@@ -365,6 +425,20 @@ export function GameMenu({
                   onSelectInnKitchenRecipe={onSelectInnKitchenRecipe}
                   onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
                   onBulkCookInnMeals={onBulkCookInnMeals}
+                  onHarvestAllFarmCrops={onHarvestAllFarmCrops}
+                  onPurchaseFarmUpgrade={onPurchaseFarmUpgrade}
+                  onPlaceLivestockCreature={onPlaceLivestockCreature}
+                  onMoveLivestockPlacement={onMoveLivestockPlacement}
+                  onRemoveLivestockPlacement={onRemoveLivestockPlacement}
+                  onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
+                  onFeedHungryLivestockNow={onFeedHungryLivestockNow}
+                  onPurchaseLivestockAnimalUpgrade={
+                    onPurchaseLivestockAnimalUpgrade
+                  }
+                  onPurchaseLivestockBuildingUpgrade={
+                    onPurchaseLivestockBuildingUpgrade
+                  }
+                  onOpenInnKitchenPantry={onOpenInnKitchenPantry}
                   onClearGuildSecondaryPartySummary={
                     onClearGuildSecondaryPartySummary
                   }
@@ -403,6 +477,9 @@ function AtlasPanel({
   guildNoticeBoardResultMessage,
   guildSecondaryPartyResultMessage,
   innKitchenResultMessage,
+  farmResultMessage,
+  livestockResultMessage,
+  guildTavernPantryRequestId,
   guildSecondaryPartyRedeemSummary,
   canUseGuildTavern,
   gameState,
@@ -427,6 +504,16 @@ function AtlasPanel({
   onSelectInnKitchenRecipe,
   onCycleInnKitchenAutoCook,
   onBulkCookInnMeals,
+  onHarvestAllFarmCrops,
+  onPurchaseFarmUpgrade,
+  onPlaceLivestockCreature,
+  onMoveLivestockPlacement,
+  onRemoveLivestockPlacement,
+  onCollectAllLivestockOutputs,
+  onFeedHungryLivestockNow,
+  onPurchaseLivestockAnimalUpgrade,
+  onPurchaseLivestockBuildingUpgrade,
+  onOpenInnKitchenPantry,
   onClearGuildSecondaryPartySummary,
   onSelectQuest,
   onSelectSubpage,
@@ -439,6 +526,9 @@ function AtlasPanel({
   guildNoticeBoardResultMessage?: string | null;
   guildSecondaryPartyResultMessage?: string | null;
   innKitchenResultMessage?: string | null;
+  farmResultMessage?: string | null;
+  livestockResultMessage?: string | null;
+  guildTavernPantryRequestId: number;
   guildSecondaryPartyRedeemSummary?: GuildSecondaryPartyRedeemSummaryState | null;
   canUseGuildTavern: boolean;
   gameState: GameState;
@@ -478,10 +568,40 @@ function AtlasPanel({
   ) => void;
   onCycleInnKitchenAutoCook: (companionId: string) => void;
   onBulkCookInnMeals: (companionIds: string[], label: string) => void;
+  onHarvestAllFarmCrops: () => void;
+  onPurchaseFarmUpgrade: (
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) => void;
+  onPlaceLivestockCreature: (
+    creatureId: LivestockCreatureId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => boolean;
+  onMoveLivestockPlacement: (
+    placementId: LivestockPlacementId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ) => boolean;
+  onRemoveLivestockPlacement: (placementId: LivestockPlacementId) => void;
+  onCollectAllLivestockOutputs: () => void;
+  onFeedHungryLivestockNow: () => void;
+  onPurchaseLivestockAnimalUpgrade: (
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) => void;
+  onPurchaseLivestockBuildingUpgrade: (
+    upgradeId: LivestockBuildingUpgradeId,
+  ) => void;
+  onOpenInnKitchenPantry: () => void;
   onClearGuildSecondaryPartySummary: () => void;
   onSelectQuest: (questId: QuestId) => void;
   onSelectSubpage: (subpage: AtlasSubpage) => void;
 }) {
+  const livestockDisplay = getLivestockDisplay(gameState, currentTime);
+
   return (
     <section className="atlas-panel" aria-label="Atlas">
       <nav className="atlas-subtabs" aria-label="Atlas pages">
@@ -512,6 +632,16 @@ function AtlasPanel({
           type="button"
         >
           Guild & Inn
+        </button>
+        <button
+          className={activeSubpage === "farmLivestock" ? "active" : ""}
+          onClick={() => onSelectSubpage("farmLivestock")}
+          type="button"
+        >
+          <span>Farm & Livestock</span>
+          {livestockDisplay.hasHungryAnimals ? (
+            <small className="atlas-warning-label">Hungry</small>
+          ) : null}
         </button>
         <button
           className={activeSubpage === "afkEstimate" ? "active" : ""}
@@ -549,6 +679,7 @@ function AtlasPanel({
           noticeBoardResultMessage={guildNoticeBoardResultMessage}
           secondaryPartyResultMessage={guildSecondaryPartyResultMessage}
           innKitchenResultMessage={innKitchenResultMessage}
+          pantryRequestId={guildTavernPantryRequestId}
           secondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
           state={gameState}
           onCancelNoticeBoardQuest={onCancelGuildNoticeBoardQuest}
@@ -574,6 +705,23 @@ function AtlasPanel({
           onCycleInnKitchenAutoCook={onCycleInnKitchenAutoCook}
           onBulkCookInnMeals={onBulkCookInnMeals}
           onClearSecondaryPartySummary={onClearGuildSecondaryPartySummary}
+        />
+      ) : activeSubpage === "farmLivestock" ? (
+        <FarmLivestockPanel
+          currentTime={currentTime}
+          farmResultMessage={farmResultMessage}
+          livestockResultMessage={livestockResultMessage}
+          state={gameState}
+          onHarvestAll={onHarvestAllFarmCrops}
+          onPurchaseFarmUpgrade={onPurchaseFarmUpgrade}
+          onPlaceLivestockCreature={onPlaceLivestockCreature}
+          onMoveLivestockPlacement={onMoveLivestockPlacement}
+          onRemoveLivestockPlacement={onRemoveLivestockPlacement}
+          onCollectAllLivestockOutputs={onCollectAllLivestockOutputs}
+          onFeedHungryLivestockNow={onFeedHungryLivestockNow}
+          onPurchaseLivestockAnimalUpgrade={onPurchaseLivestockAnimalUpgrade}
+          onPurchaseLivestockBuildingUpgrade={onPurchaseLivestockBuildingUpgrade}
+          onOpenInnKitchenPantry={onOpenInnKitchenPantry}
         />
       ) : (
         <AfkEstimatePanel state={gameState} />

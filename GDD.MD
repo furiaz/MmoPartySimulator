@@ -1293,6 +1293,7 @@ Current Atlas pages may include:
 - Bank storage
 - AFK Estimate
 - Guild & Inn
+- Farm & Livestock
 
 Atlas pages may be viewed remotely when supported.
 
@@ -1301,19 +1302,63 @@ Service actions remain gated by their owning system:
 - Smith crafting requires Smith proximity
 - Bank transfers require Bank Chest proximity
 - Guild & Inn service actions require Guild & Inn proximity
+- Farm service actions require Farmer proximity
+- Livestock service actions require Livestock proximity
 
 Guild & Inn remote viewing may show current state, upgrades, rooms, recipes, quests, recruits, Field Teams, and timers without allowing gated service actions.
+
+Farm & Livestock remote viewing may show current plots, crop holding, crop rates, livestock grid state, creature ownership, feed requirements, production estimates, upgrades, helper bonuses, and timers without allowing gated service actions.
+
+Guild & Inn, Farm, and Livestock are current town services. Their service actions unlock after The Azure Trial is completed.
 
 Current Guild & Inn behavior:
 
 - the shared service is opened through the Atlas or by interacting with the Guild Coordinator or Inn Keeper
 - Guild Recruit shows generated recruit candidates, refresh timing, recruitment upgrades, and destination preview
-- Guild Notice Board shows available, taken, and done board quests, quest refresh timing, Scout rerolls, rewards, and unseen update sign state
+- Guild Notice Board shows available, taken, and done board quests, quest refresh timing, Scout and Wolf-helper rerolls, source breakdown tooltips, rewards, and unseen update sign state
 - Guild Field Teams manage inactive companion assignment, roster movement, upgrades, AFK assignments, redeeming rewards, and return-to-hub behavior
 - Inn Rooms show every recruited companion as occupying a room slot, including active party, Inn reserve, and Field Team companions
-- Inn Kitchen cooks per-companion meals, manages selected recipes and auto-cook preferences, spends Hearth's Fire, and exposes Recipe Book, Pantry placeholder, and Kitchen upgrades
+- Inn Kitchen cooks per-companion meals, manages selected recipes and auto-cook preferences, spends Hearth's Fire, and exposes Recipe Book, Pantry, and Kitchen upgrades
 
-Guild & Inn MVP systems are current prototype town services. They are not final interiors, full dialogue, final recruitment economy, production housing, full kitchen economy, or a completed town-management system.
+Current Farm behavior:
+
+- Farm is opened through the Atlas or by interacting with the Farmer
+- crops are permanent plot discoveries and production outputs, not normal inventory clutter
+- Carrots start unlocked at level 0 production
+- Potato, Moonleaf, Bittercap Mushroom, and Ashpepper plots unlock from seed/key-item sources
+- Potato Seed is currently a Merchant purchase
+- Moonleaf Seed is currently a rare find from tier 1 herb gathering
+- Bittercap Mushroom Spores are currently a rare find from tier 1 wood gathering
+- Ashpepper Seed is currently a rare find from Ash Wisp defeats
+- unlocked plots start at level 0 production and generate automatically only after their Speed upgrade reaches level 1
+- current baseline crop production is 1 crop every 20 minutes at Speed level 1 before upgrades and helper bonuses
+- Farm crop output waits in Farm holding until Harvest All transfers it into the Inn Kitchen Pantry
+- Farm holding starts at 20 per crop, can be increased by Harvest Cap upgrades, and does not create hidden overflow
+- Harvest All collects only currently held crops and does not reset crop generation timers
+- per-crop upgrades are Speed, Harvest Cap, and Fertilizer
+- placed and fed Elder Mosslings in Livestock add 10% Farm generation speed each
+
+Current Livestock behavior:
+
+- Livestock is opened through the Atlas or by interacting with the Livestock keeper
+- Livestock uses a ranch grid with owned unplaced creatures and placed creatures
+- current creatures are Duskhen, Wolf, Tin Crawler, and Elder Mossling
+- current creature footprints are Duskhen 1x1, Wolf 2x1, Tin Crawler 2x2, and Elder Mossling 2x2
+- two Duskhens are initially owned but unplaced
+- Duskhen produces Eggs for the Inn Kitchen Pantry
+- Tin Crawler produces Tin Ore into shared inventory until the Smithy rework provides a better production destination
+- current Duskhen and Tin Crawler baseline production is 1 output every 3 hours before upgrades
+- Wolf and Elder Mossling are helper creatures with no direct output in the current prototype
+- Livestock Collect All routes each held output to its current destination
+- Livestock feeding consumes whole ingredients from the Inn Kitchen Pantry only
+- feeding happens on placement, at local midnight, and through Feed Now for hungry creatures
+- hungry creatures pause production and helper bonuses until fed again
+- current feed requirements are 10 per day from Duskhen: Carrots, Wolf: Eggs, Tin Crawler: Bittercap Mushrooms, and Elder Mossling: Moonleaf
+- current Livestock holding starts at 20 per produced output and does not create hidden overflow
+- animal upgrades currently cover production speed, feed discount, and output holding cap where the creature has an output
+- building upgrades currently expand rows and columns; Slot Efficiency is visible as Coming Soon
+
+Guild & Inn, Farm, and Livestock MVP systems are current prototype town services. They are not final interiors, full dialogue, final recruitment economy, production housing, full kitchen economy, full ranch economy, full crop economy, creature adjacency/star bonuses, final Smithy production routing, or a completed town-management system.
 
 ### World Travel Menu
 
@@ -2553,6 +2598,7 @@ Temporary debug tools may include:
 - inspect flask assignment, flask use, auto-flask behavior, and flask recharge behavior
 - inspect AFK estimate output, offline reward summaries, and pending offline loot
 - inspect Guild & Inn state, Guild Recruit, Notice Board, Field Teams, Inn Rooms, Inn Kitchen, Hearth's Fire, and related upgrade state
+- inspect Farm and Livestock state, crop and creature unlocks, production, feeding, helper bonuses, upgrade state, pantry/inventory transfers, and related telemetry
 - inspect healing fountain health restoration and flask refill behavior
 - inspect enemy archetype, combat style, target preference, attack range, and target decision behavior
 - inspect enemy scaling, respawn, subzone, and encounter area behavior
@@ -2560,6 +2606,7 @@ Temporary debug tools may include:
 - inspect interrupted POI restore behavior
 - inspect quest guide escort behavior
 - inspect PixiJS world rendering behavior
+- teleport directly between Harbor Union Bastion and Forward Bastion for prototype hub testing
 - add prototype flasks to shared inventory
 - add prototype crafting materials and enemy drops to shared inventory
 

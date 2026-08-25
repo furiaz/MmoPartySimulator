@@ -343,8 +343,9 @@ const prototypeEnemyVisualAssets: Partial<Record<EnemyTypeId, SpriteVisualAsset>
   goblin_shaman: createStaticEnemySprite(`${prototypeEnemyBasePath}/thorn-shaman-se.png`),
   ash_wisp: createStaticEnemySprite(`${prototypeEnemyBasePath}/ash-wisp-se.png`),
   mossling: createStaticEnemySprite(`${prototypeEnemyBasePath}/mossling-se.png`),
+  wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/wolf.png`),
   ember_imp: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/ember_imp.png`),
-  iron_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/iron_crawler.png`),
+  tin_crawler: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/tin_crawler.png`),
   briar_wolf: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/briar_wolf.png`),
   mire_spider: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/mire_spider.png`),
   night_bat: createStaticEnemySprite(`${generatedEnemyPlaceholderPath}/night_bat.png`),
@@ -529,6 +530,22 @@ export const entityVisualAssets = {
       height: 132,
     },
   },
+  farmer: {
+    kind: "image",
+    src: NPC_ICON_SRC.farmer ?? "",
+    naturalSize: {
+      width: 88,
+      height: 132,
+    },
+  },
+  livestockKeeper: {
+    kind: "image",
+    src: NPC_ICON_SRC.livestock_keeper ?? "",
+    naturalSize: {
+      width: 77,
+      height: 132,
+    },
+  },
 } satisfies {
   beginnerCharacter: SpriteVisualAsset;
   testCharacter: SpriteVisualAsset;
@@ -543,6 +560,8 @@ export const entityVisualAssets = {
   classMentor: ImageVisualAsset;
   guildCoordinator: ImageVisualAsset;
   tavernKeeper: ImageVisualAsset;
+  farmer: ImageVisualAsset;
+  livestockKeeper: ImageVisualAsset;
 };
 
 export const mapTileVisualAssets = {
@@ -586,6 +605,14 @@ export function getEntityVisualAsset(
 
     if (entity.npcRole === "tavern_keeper") {
       return entityVisualAssets.tavernKeeper;
+    }
+
+    if (entity.npcRole === "farmer") {
+      return entityVisualAssets.farmer;
+    }
+
+    if (entity.npcRole === "livestock_keeper") {
+      return entityVisualAssets.livestockKeeper;
     }
 
     const npcIconSrc = NPC_ICON_SRC[entity.npcRole];

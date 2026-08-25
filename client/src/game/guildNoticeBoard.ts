@@ -7,6 +7,7 @@ import {
   getGuildNoticeBoardRewardPercent,
   getGuildNoticeBoardSlotCount,
 } from "./guildRecruitUpgrades";
+import { getLivestockHelperBonusSummary } from "./livestockHelperBonuses";
 import {
   SKILL_BOOK_ITEM_IDS_BY_SKILL_ID,
   isSkillBookItemDefinition,
@@ -66,6 +67,14 @@ export type GuildNoticeBoardRerollDisplayState = {
   usedToday: number;
   remaining: number;
   nextResetAtMs: number;
+  sourceTooltipText: string;
+};
+
+export type GuildNoticeBoardRerollLimitBreakdown = {
+  guildLimit: number;
+  livestockLimit: number;
+  dailyLimit: number;
+  sourceTooltipText: string;
 };
 
 const questTemplates: GuildNoticeBoardTemplate[] = [
@@ -285,7 +294,8 @@ export function rerollGuildNoticeBoard(
     getGuildNoticeBoardState(nextState, nowMs),
     nowMs,
   );
-  const dailyLimit = getGuildNoticeBoardDailyRerollLimit(nextState);
+  const rerollLimit = getGuildNoticeBoardRerollLimitBreakdown(nextState);
+  const dailyLimit = rerollLimit.dailyLimit;
 
   if (dailyLimit <= 0) {
     return {
@@ -349,13 +359,36 @@ export function getGuildNoticeBoardRerollDisplayState(
     getGuildNoticeBoardState(state, nowMs),
     nowMs,
   );
-  const dailyLimit = getGuildNoticeBoardDailyRerollLimit(state);
+  const rerollLimit = getGuildNoticeBoardRerollLimitBreakdown(state);
   return {
-    isUnlocked: dailyLimit > 0,
-    dailyLimit,
-    usedToday: Math.min(board.rerollsUsedToday, dailyLimit),
-    remaining: Math.max(0, dailyLimit - board.rerollsUsedToday),
+    isUnlocked: rerollLimit.dailyLimit > 0,
+    dailyLimit: rerollLimit.dailyLimit,
+    usedToday: Math.min(board.rerollsUsedToday, rerollLimit.dailyLimit),
+    remaining: Math.max(0, rerollLimit.dailyLimit - board.rerollsUsedToday),
     nextResetAtMs: getNextLocalDayStartMs(nowMs),
+    sourceTooltipText: rerollLimit.sourceTooltipText,
+  };
+}
+
+export function getGuildNoticeBoardRerollLimitBreakdown(
+  state: GameState,
+): GuildNoticeBoardRerollLimitBreakdown {
+  const guildLimit = getGuildNoticeBoardDailyRerollLimit(state);
+  const livestockBonus = getLivestockHelperBonusSummary(state);
+  const livestockLimit = livestockBonus.noticeBoardRerollBonus;
+  const sourceParts = [
+    guildLimit > 0 ? `${guildLimit} from Guild (Scouts)` : null,
+    livestockBonus.noticeBoardLivestockSourceText,
+  ].filter((source): source is string => source !== null);
+
+  return {
+    guildLimit,
+    livestockLimit,
+    dailyLimit: guildLimit + livestockLimit,
+    sourceTooltipText:
+      sourceParts.length > 0
+        ? sourceParts.join(", ")
+        : "Unlock Scouts or place a fed Wolf.",
   };
 }
 

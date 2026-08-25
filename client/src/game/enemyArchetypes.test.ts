@@ -25,7 +25,7 @@ const EXPECTED_ENEMY_COMBAT_BODY_RADII = {
   wolf: 0.6,
   orc: 0.6,
   ember_imp: 0.6,
-  iron_crawler: 0.8,
+  tin_crawler: 0.8,
   briar_wolf: 0.65,
   mire_spider: 0.8,
   night_bat: 0.75,

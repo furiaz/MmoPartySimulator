@@ -25,6 +25,12 @@ import { addItemToInventoryState } from "./inventory";
 import { sanitizeGuildRecruitState } from "./guildRecruit";
 import { sanitizeGuildUpgradesState } from "./guildRecruitUpgrades";
 import { sanitizeGuildSecondaryPartiesState } from "./guildSecondaryParties";
+import { sanitizeFarmState, settleFarmState } from "./farm";
+import {
+  ensureInitialLivestockKeyItems,
+  sanitizeLivestockState,
+  settleLivestockState,
+} from "./livestock";
 import { sanitizeInnKitchenState } from "./innKitchen";
 import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
 import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
@@ -190,14 +196,20 @@ export function restoreGameStateFromSave(value: unknown): RestoreSaveResult {
   const currentMapId = validation.save.state.currentMapId ?? "hub";
   const map = createDebugMapForQuestState(currentMapId, validation.save.state.quests);
 
+  const sanitizedState = sanitizeGameStateForSave({
+    ...validation.save.state,
+    currentMapId,
+    map,
+  });
+  const restoredAtMs = Date.now();
+
   return {
     ok: true,
     savedAtMs: validation.save.savedAtMs,
-    state: sanitizeGameStateForSave({
-      ...validation.save.state,
-      currentMapId,
-      map,
-    }),
+    state: settleLivestockState(
+      settleFarmState(sanitizedState, restoredAtMs),
+      restoredAtMs,
+    ),
   };
 }
 
@@ -479,6 +491,8 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     entities,
     restingCompanionsById,
   }, undefined, { settleHearthFire: false });
+  const farm = sanitizeFarmState(state.farm);
+  const livestock = sanitizeLivestockState(state.livestock);
   const worldDiscovery = sanitizeWorldDiscoveryState(
     state.worldDiscovery,
     {
@@ -500,11 +514,15 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     guildSecondaryParties,
     innUpgrades,
     innKitchen,
+    farm,
+    livestock,
     worldDiscovery,
     inventory: sanitizeObsoleteFoodFromInventory(
       sanitizePartyInventory(state.inventory),
     ),
-    keyItemsById: sanitizeKeyItemsById(state.keyItemsById),
+    keyItemsById: sanitizeKeyItemsById(
+      ensureInitialLivestockKeyItems(state.keyItemsById),
+    ),
     bank: {
       ...sanitizePartyBank(state.bank),
       autoRoutingMode: sanitizeBankAutoRoutingMode(

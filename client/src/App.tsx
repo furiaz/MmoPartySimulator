@@ -38,7 +38,9 @@ import type { PixiRendererPerformanceSample } from "./worldRenderer/PixiWorldRen
 import {
   allocateCompanionStatPoint,
   ARMOR_FAMILY_LABELS,
+  buyMerchantFarmSeed,
   buyMerchantItem,
+  buyMerchantLivestockCreature,
   canCompanionEnterFirstClassSelection,
   CLASS_DEFINITIONS,
   companionIds,
@@ -64,6 +66,7 @@ import {
   debugResetSlimewardDungeon,
   debugResurrectEnemy,
   debugRestorePartyHealth,
+  debugTeleportToHub,
   debugToggleCompanionInfiniteHealth,
   debugToggleCompanionOneHunterClass,
   debugToggleSuperExp,
@@ -83,7 +86,10 @@ import {
   getFilteredMerchantBuyStock,
   getActiveQuest,
   getActiveCompanions,
+  getFarmCropDefinition,
   getItemDefinition,
+  getMerchantFarmSeedStock,
+  getMerchantLivestockStock,
   getMerchantBuyStock,
   getMerchantSecondaryFilterOptions,
   hubCompanionStartPositions,
@@ -124,8 +130,14 @@ import {
   isBankChestNpc,
   isPartyLeaderNearBankChest,
   isPartyLeaderNearGuildTavern,
+  isTownServicesUnlocked,
   isCompanionHubEligibleForInnKitchen,
+  collectAllLivestockOutputs,
+  feedHungryLivestockNow,
+  harvestAllFarmCrops,
+  moveLivestockPlacement,
   openGuildNoticeBoard,
+  placeLivestockCreature,
   bulkCookInnMealsForCompanions,
   cookInnMealForCompanion,
   getInnKitchenPreference,
@@ -141,7 +153,11 @@ import {
   purchaseGuildNoticeBoardUpgrade,
   purchaseGuildRecruitUpgrade,
   purchaseGuildSecondaryPartyUpgrade,
+  purchaseFarmFieldUpgrade,
+  purchaseLivestockAnimalUpgrade,
+  purchaseLivestockBuildingUpgrade,
   recruitGuildCandidate,
+  removeLivestockPlacement,
   rerollGuildNoticeBoard,
   moveGuildRosterCompanion,
   refreshGuildNoticeBoardState,
@@ -182,6 +198,14 @@ import {
   type CompanionAoeChannelState,
   type CraftingFailureReason,
   type CraftingRecipeId,
+  type FarmCropId,
+  type FarmFieldId,
+  type FarmFieldUpgradeId,
+  type LivestockAnimalUpgradeId,
+  type LivestockBuildingUpgradeId,
+  type LivestockCreatureId,
+  type LivestockPlacementId,
+  type LivestockPlacementRotation,
   type DirectCompanionCommand,
   type CompanionDirectCommandInput,
   type ConsumableBehaviorUpdate,
@@ -211,6 +235,8 @@ import {
   type ItemId,
   type MapVisualObject,
   type MerchantBuyFailureReason,
+  type MerchantFarmSeedBuyFailureReason,
+  type MerchantLivestockBuyFailureReason,
   type MerchantStockEntry,
   type MerchantStockGroup,
   type NavigationClickAccessibility,
@@ -235,7 +261,11 @@ import {
   type WorldTravelTeleportFailureReason,
   type WorldWipeRecoveryChoice,
 } from "./game";
-import { INVENTORY_ITEM_ICON_SRC } from "./assetIcons";
+import {
+  FARM_CROP_ICON_SRC,
+  INVENTORY_ITEM_ICON_SRC,
+  LIVESTOCK_CREATURE_ICON_SRC,
+} from "./assetIcons";
 import {
   deleteLocalSave,
   downloadSavedGame,
@@ -365,14 +395,15 @@ type NavigationClickAccessibilityCache = {
   map: GameMap;
 };
 
-type MerchantPanel = "buy" | "sell";
+type MerchantPanel = "buy" | "farm_seeds" | "livestock" | "sell";
 type QuestGiverPanel = "available" | "current";
 type NpcInteractionKind =
   | "merchant"
   | "quest_giver"
   | "smith"
   | "bank_chest"
-  | "guild_tavern";
+  | "guild_tavern"
+  | "farm_livestock";
 type ClassMentorFlowScreen =
   | { type: "companions" }
   | { type: "paths"; companionId: string }
@@ -496,6 +527,8 @@ const npcRoleLabels: Record<NpcEntity["npcRole"], string> = {
   smith: "Smith",
   guild_coordinator: "Guild Coordinator",
   tavern_keeper: "Inn Keeper",
+  farmer: "Farmer",
+  livestock_keeper: "Livestock",
   bank_chest: "Bank Chest",
   dog: "Dog",
   test_blade: "Test Blade",
@@ -525,6 +558,29 @@ const merchantBuyFailureMessages: Record<MerchantBuyFailureReason, string> = {
   inventory_add_failed: "Inventory could not receive the item",
   currency_remove_failed: "Crowns could not be spent",
   merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+};
+
+const merchantFarmSeedFailureMessages: Record<
+  MerchantFarmSeedBuyFailureReason,
+  string
+> = {
+  invalid_merchant: "Merchant unavailable",
+  merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+  item_not_in_stock: "Seed is not in stock",
+  already_owned: "Seed already owned",
+  insufficient_crowns: "Not enough Crowns",
+  currency_remove_failed: "Crowns could not be spent",
+};
+
+const merchantLivestockFailureMessages: Record<
+  MerchantLivestockBuyFailureReason,
+  string
+> = {
+  invalid_merchant: "Merchant unavailable",
+  merchant_locked_for_quest: "Merchant unlocks during Outfit the Expedition",
+  item_not_in_stock: "Livestock creature is not in stock",
+  insufficient_crowns: "Not enough Crowns",
+  currency_remove_failed: "Crowns could not be spent",
 };
 
 const skillBookFailureMessages: Record<ReadSkillBookFailureReason, string> = {
@@ -616,6 +672,96 @@ function getGuildSecondaryPartyAssignmentFailureMessage(reason: string): string 
 }
 
 type GuildSecondaryPartyRedeemSummaryState = GuildSecondaryPartyRedeemSummary;
+
+function getFarmUpgradeResultLabel(upgradeId: FarmFieldUpgradeId): string {
+  switch (upgradeId) {
+    case "speed":
+      return "Faster Generation";
+    case "cap":
+      return "Harvest Cap";
+    case "fertilizer":
+      return "Fertilizer";
+    default:
+      return "Upgrade";
+  }
+}
+
+function getLivestockUpgradeResultLabel(
+  upgradeId: LivestockAnimalUpgradeId | LivestockBuildingUpgradeId,
+): string {
+  switch (upgradeId) {
+    case "speed":
+      return "Faster Production";
+    case "feedDiscount":
+      return "Feed Discount";
+    case "outputCap":
+      return "Output Holding";
+    case "columns":
+      return "Expand Columns";
+    case "rows":
+      return "Expand Rows";
+    case "slotEfficiency":
+      return "Slot Efficiency";
+    default:
+      return "Upgrade";
+  }
+}
+
+function getFarmFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_service":
+      return "Complete The Azure Trial to unlock town services.";
+    case "not_near_farmer":
+      return "Stand near the Farmer.";
+    case "insufficient_crowns":
+      return "Not enough Crowns.";
+    case "max_level":
+      return "Field is already maxed.";
+    case "nothing_to_harvest":
+      return "No crops to harvest.";
+    case "invalid_upgrade":
+      return "Farm upgrade unavailable.";
+    case "invalid_field":
+    default:
+      return "Farm action unavailable.";
+  }
+}
+
+function getLivestockFailureMessage(reason: string): string {
+  switch (reason) {
+    case "locked_service":
+      return "Complete The Azure Trial to unlock town services.";
+    case "not_near_livestock":
+      return "Stand near Livestock.";
+    case "no_available_creature":
+      return "No available Livestock creature.";
+    case "occupied_cell":
+      return "That ranch space is occupied.";
+    case "out_of_bounds":
+      return "That ranch space is outside the grid.";
+    case "nothing_to_collect":
+      return "No Livestock output to collect.";
+    case "collection_error":
+      return "Error at Collection";
+    case "insufficient_feed":
+      return "Not enough Pantry feed.";
+    case "insufficient_crowns":
+      return "Not enough Crowns.";
+    case "max_level":
+      return "Livestock upgrade is already maxed.";
+    case "upgrade_disabled":
+      return "Livestock upgrade coming soon.";
+    case "no_hungry_animals":
+      return "No hungry Livestock.";
+    case "invalid_upgrade":
+      return "Livestock upgrade unavailable.";
+    case "invalid_creature":
+      return "Livestock creature unavailable.";
+    case "invalid_placement":
+    default:
+      return "Livestock action unavailable.";
+  }
+}
 
 function getWorldTravelTeleportFailureMessage(
   reason: WorldTravelTeleportFailureReason,
@@ -804,6 +950,10 @@ function getNpcInteractionKind(npc: NpcEntity): NpcInteractionKind | null {
     npc.npcRole === "tavern_keeper"
   ) {
     return "guild_tavern";
+  }
+
+  if (npc.npcRole === "farmer" || npc.npcRole === "livestock_keeper") {
+    return "farm_livestock";
   }
 
   if (npc.npcRole === "quest_giver" || npc.npcRole === "class_mentor") {
@@ -1933,6 +2083,173 @@ function MerchantBuyPanel({
   );
 }
 
+function MerchantFarmSeedPanel({
+  merchantNpcId,
+  state,
+  onBuy,
+}: {
+  merchantNpcId: string;
+  state: GameState;
+  onBuy: (cropId: FarmCropId) => void;
+}) {
+  const stock = getMerchantFarmSeedStock(state, merchantNpcId);
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <aside
+      className="merchant-detail-panel merchant-buy-panel"
+      aria-label="Merchant farm seeds"
+    >
+      <div className="merchant-buy-header">
+        <div>
+          <h2>Farm Seeds</h2>
+          <span>Permanent crop unlocks</span>
+        </div>
+        <strong>{formatCurrencyDisplay(state.wallet, "crowns")}</strong>
+      </div>
+      <div className="merchant-buy-layout">
+        <div className="merchant-stock-list" aria-label="Merchant seed stock">
+          {stock.length > 0 ? (
+            stock.map((entry) => {
+              const canAffordSeed = crownBalance >= entry.priceCrowns;
+
+              return (
+                <button
+                  key={entry.cropId}
+                  className={`merchant-stock-row${
+                    canAffordSeed || entry.isOwned ? "" : " unaffordable"
+                  }`}
+                  disabled={entry.isOwned}
+                  onClick={() => onBuy(entry.cropId)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{entry.displayName}</strong>
+                    <small>{entry.isOwned ? "Owned" : entry.sourceHint}</small>
+                  </span>
+                  <b>{entry.isOwned ? "Sold out" : entry.priceCrowns}</b>
+                </button>
+              );
+            })
+          ) : (
+            <span className="merchant-empty-stock">No seeds in stock</span>
+          )}
+        </div>
+        <div className="merchant-buy-detail" aria-label="Selected seed details">
+          {stock[0] ? (
+            <>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="merchant-detail-item-icon"
+                src={
+                  FARM_CROP_ICON_SRC[stock[0].cropId] ?? FARM_CROP_ICON_SRC.locked
+                }
+              />
+              <div>
+                <span className="merchant-detail-kicker">Farm Seed</span>
+                <h3>{stock[0].displayName}</h3>
+                <p>
+                  Unlocks the {stock[0].cropDisplayName} plot at level 0
+                  production.
+                </p>
+              </div>
+            </>
+          ) : (
+            <span className="merchant-empty-stock">Select a seed</span>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function MerchantLivestockPanel({
+  merchantNpcId,
+  state,
+  onBuy,
+}: {
+  merchantNpcId: string;
+  state: GameState;
+  onBuy: (creatureId: LivestockCreatureId) => void;
+}) {
+  const stock = getMerchantLivestockStock(state, merchantNpcId);
+  const crownBalance = getCurrencyBalance(state.wallet, "crowns");
+
+  return (
+    <aside
+      className="merchant-detail-panel merchant-buy-panel"
+      aria-label="Merchant livestock"
+    >
+      <div className="merchant-buy-header">
+        <div>
+          <h2>Livestock</h2>
+          <span>Permanent creature ownership</span>
+        </div>
+        <strong>{formatCurrencyDisplay(state.wallet, "crowns")}</strong>
+      </div>
+      <div className="merchant-buy-layout">
+        <div className="merchant-stock-list" aria-label="Merchant livestock stock">
+          {stock.length > 0 ? (
+            stock.map((entry) => {
+              const canAffordCreature = crownBalance >= entry.priceCrowns;
+
+              return (
+                <button
+                  key={entry.creatureId}
+                  className={`merchant-stock-row${
+                    canAffordCreature ? "" : " unaffordable"
+                  }`}
+                  onClick={() => onBuy(entry.creatureId)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{entry.displayName}</strong>
+                    <small>
+                      Owned {entry.ownedCount} - {entry.sourceHint}
+                    </small>
+                  </span>
+                  <b>{entry.priceCrowns}</b>
+                </button>
+              );
+            })
+          ) : (
+            <span className="merchant-empty-stock">No creatures in stock</span>
+          )}
+        </div>
+        <div
+          className="merchant-buy-detail"
+          aria-label="Selected livestock details"
+        >
+          {stock[0] ? (
+            <>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="merchant-detail-item-icon"
+                src={
+                  LIVESTOCK_CREATURE_ICON_SRC[stock[0].creatureId] ??
+                  LIVESTOCK_CREATURE_ICON_SRC.locked
+                }
+              />
+              <div>
+                <span className="merchant-detail-kicker">Livestock</span>
+                <h3>{stock[0].displayName}</h3>
+                <p>
+                  Adds one owned {stock[0].creatureDisplayName}. Place it in
+                  the Livestock grid to use it.
+                </p>
+              </div>
+            </>
+          ) : (
+            <span className="merchant-empty-stock">Select a creature</span>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function QuestGiverDetailPanel({
   quest,
   canAccept,
@@ -2667,6 +2984,12 @@ function App() {
     useState<string | null>(null);
   const [innKitchenResultMessage, setInnKitchenResultMessage] =
     useState<string | null>(null);
+  const [farmResultMessage, setFarmResultMessage] =
+    useState<string | null>(null);
+  const [livestockResultMessage, setLivestockResultMessage] =
+    useState<string | null>(null);
+  const [guildTavernPantryRequestId, setGuildTavernPantryRequestId] =
+    useState(0);
   const [
     guildSecondaryPartyRedeemSummary,
     setGuildSecondaryPartyRedeemSummary,
@@ -3074,7 +3397,9 @@ function App() {
       : null;
   const activeBankCanManage =
     Boolean(activeBankChest) && isPartyLeaderNearBankChest(gameState);
-  const canUseGuildTavern = isPartyLeaderNearGuildTavern(gameState);
+  const canUseGuildTavern =
+    isTownServicesUnlocked(gameState) &&
+    isPartyLeaderNearGuildTavern(gameState);
   const activeMerchantLocked =
     Boolean(activeMerchant) && !isMerchantUnlockedForQuests(gameState);
   const activeQuestGiver =
@@ -3251,6 +3576,33 @@ function App() {
     void npc;
   }, []);
 
+  const openFarmLivestockInteraction = useCallback((npc: NpcEntity) => {
+    setPendingNpcInteractionId(null);
+    setActiveBankChestNpcId(null);
+    setBankResultMessage(null);
+    setActiveMerchantNpcId(null);
+    setActiveMerchantPanel(null);
+    setMerchantResultMessage(null);
+    setActiveQuestGiverNpcId(null);
+    setActiveQuestGiverPanel(null);
+    setSelectedQuestGiverQuestId(null);
+    setQuestGiverResultMessage(null);
+    setClassMentorFlow([]);
+    setClassMentorResultMessage(null);
+    setFarmResultMessage(null);
+    setCraftingResultMessage(null);
+    setGuildRecruitResultMessage(null);
+    setGuildUpgradeResultMessage(null);
+    setGuildNoticeBoardResultMessage(null);
+    setGuildSecondaryPartyResultMessage(null);
+    setInnKitchenResultMessage(null);
+    setFarmResultMessage(null);
+    setIsGameMenuOpen(true);
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("farmLivestock");
+    void npc;
+  }, []);
+
   const openNpcInteraction = useCallback((npc: NpcEntity) => {
     const interactionKind = getNpcInteractionKind(npc);
 
@@ -3276,9 +3628,15 @@ function App() {
 
     if (interactionKind === "guild_tavern") {
       openGuildTavernInteraction(npc);
+      return;
+    }
+
+    if (interactionKind === "farm_livestock") {
+      openFarmLivestockInteraction(npc);
     }
   }, [
     openBankChestInteraction,
+    openFarmLivestockInteraction,
     openGuildTavernInteraction,
     openMerchantInteraction,
     openQuestGiverInteraction,
@@ -4408,6 +4766,10 @@ function App() {
       setInnKitchenResultMessage(null);
       setGuildSecondaryPartyRedeemSummary(null);
     }
+    if (subpage !== "farmLivestock") {
+      setFarmResultMessage(null);
+      setLivestockResultMessage(null);
+    }
   }
 
   function recruitGuildCompanion(candidateId?: string) {
@@ -4662,7 +5024,7 @@ function App() {
     } else {
       setGuildNoticeBoardResultMessage(
         rerolled.reason === "locked"
-          ? "Unlock Scouts to reroll postings."
+          ? "Unlock Scouts or place a fed Wolf to reroll postings."
           : "No rerolls remaining today.",
       );
     }
@@ -4921,6 +5283,201 @@ function App() {
     setGameState(cooked.state);
   }
 
+  function purchaseFarmUpgradeFromMenu(
+    fieldId: FarmFieldId,
+    upgradeId: FarmFieldUpgradeId,
+  ) {
+    const upgraded = purchaseFarmFieldUpgrade(
+      gameState,
+      fieldId,
+      upgradeId,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Farm upgrade saved");
+      setFarmResultMessage(
+        `${getFarmCropDefinition(upgraded.field.cropId).displayName} ${getFarmUpgradeResultLabel(upgraded.upgradeId)} upgraded to Lv ${upgraded.nextLevel}.`,
+      );
+    } else {
+      setFarmResultMessage(getFarmFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
+  function harvestAllFarmCropsFromMenu() {
+    const harvested = harvestAllFarmCrops(gameState, currentTime);
+
+    if (harvested.ok) {
+      queueSaveAfterStateChange("Farm harvest saved");
+      setFarmResultMessage(
+        `Harvested ${harvested.harvestedByCropId.carrot} carrot${
+          harvested.harvestedByCropId.carrot === 1 ? "" : "s"
+        } to Pantry.`,
+      );
+    } else {
+      setFarmResultMessage(getFarmFailureMessage(harvested.reason));
+    }
+
+    setGameState(harvested.state);
+  }
+
+  function placeLivestockCreatureFromMenu(
+    creatureId: LivestockCreatureId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ): boolean {
+    const placed = placeLivestockCreature(
+      gameState,
+      creatureId,
+      x,
+      y,
+      rotation,
+      currentTime,
+    );
+
+    if (placed.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage(`Placed ${placed.placement.creatureId}.`);
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(placed.reason));
+    }
+
+    setGameState(placed.state);
+    return placed.ok;
+  }
+
+  function moveLivestockPlacementFromMenu(
+    placementId: LivestockPlacementId,
+    x: number,
+    y: number,
+    rotation: LivestockPlacementRotation,
+  ): boolean {
+    const moved = moveLivestockPlacement(
+      gameState,
+      placementId,
+      x,
+      y,
+      rotation,
+      currentTime,
+    );
+
+    if (moved.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage(`Moved ${moved.placement.creatureId}.`);
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(moved.reason));
+    }
+
+    setGameState(moved.state);
+    return moved.ok;
+  }
+
+  function removeLivestockPlacementFromMenu(placementId: LivestockPlacementId) {
+    const removed = removeLivestockPlacement(
+      gameState,
+      placementId,
+      currentTime,
+    );
+
+    if (removed.ok) {
+      queueSaveAfterStateChange("Livestock placement saved");
+      setLivestockResultMessage(`Removed ${removed.removedPlacement.creatureId}.`);
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(removed.reason));
+    }
+
+    setGameState(removed.state);
+  }
+
+  function collectAllLivestockOutputsFromMenu() {
+    const collected = collectAllLivestockOutputs(gameState, currentTime);
+
+    if (collected.ok) {
+      queueSaveAfterStateChange("Livestock collection saved");
+      const outputs = Object.entries(collected.collectedByOutputId)
+        .filter(([, quantity]) => (quantity ?? 0) > 0)
+        .map(([outputId, quantity]) => `${quantity} ${outputId}`)
+        .join(", ");
+      setLivestockResultMessage(
+        `Collected ${outputs || "Livestock output"}.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(collected.reason));
+    }
+
+    setGameState(collected.state);
+  }
+
+  function feedHungryLivestockNowFromMenu() {
+    const fed = feedHungryLivestockNow(gameState, currentTime);
+
+    if (fed.ok) {
+      queueSaveAfterStateChange("Livestock feeding saved");
+      setLivestockResultMessage(
+        `Fed ${fed.fedPlacementIds.length} hungry Livestock creature${
+          fed.fedPlacementIds.length === 1 ? "" : "s"
+        }.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(fed.reason));
+    }
+
+    setGameState(fed.state);
+  }
+
+  function purchaseLivestockAnimalUpgradeFromMenu(
+    creatureId: LivestockCreatureId,
+    upgradeId: LivestockAnimalUpgradeId,
+  ) {
+    const upgraded = purchaseLivestockAnimalUpgrade(
+      gameState,
+      creatureId,
+      upgradeId,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Livestock upgrade saved");
+      setLivestockResultMessage(
+        `Upgraded ${creatureId} ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
+  function purchaseLivestockBuildingUpgradeFromMenu(
+    upgradeId: LivestockBuildingUpgradeId,
+  ) {
+    const upgraded = purchaseLivestockBuildingUpgrade(
+      gameState,
+      upgradeId,
+      currentTime,
+    );
+
+    if (upgraded.ok) {
+      queueSaveAfterStateChange("Livestock upgrade saved");
+      setLivestockResultMessage(
+        `Upgraded Livestock ${getLivestockUpgradeResultLabel(upgradeId)} to Lv ${upgraded.nextLevel}.`,
+      );
+    } else {
+      setLivestockResultMessage(getLivestockFailureMessage(upgraded.reason));
+    }
+
+    setGameState(upgraded.state);
+  }
+
+  function openInnKitchenPantryFromFarmLivestock() {
+    setActiveGameMenuTab("atlas");
+    setActiveAtlasSubpage("guildTavern");
+    setGuildTavernPantryRequestId((requestId) => requestId + 1);
+  }
+
   function craftSelectedRecipe(recipeId: CraftingRecipeId) {
     const crafting = craftRecipe(gameState, recipeId);
 
@@ -4965,6 +5522,18 @@ function App() {
     setSaveStatusMessage(
       getWorldTravelTeleportFailureMessage(teleport.result.reason),
     );
+  }
+
+  function debugTeleportToHubOne() {
+    queueSaveAfterStateChange("Debug hub teleport saved");
+    setSaveStatusMessage("Debug teleported to Harbor Union Bastion.");
+    setGameState((state) => debugTeleportToHub(state, HUB_MAP_ID));
+  }
+
+  function debugTeleportToHubTwo() {
+    queueSaveAfterStateChange("Debug hub teleport saved");
+    setSaveStatusMessage("Debug teleported to Forward Bastion.");
+    setGameState((state) => debugTeleportToHub(state, HUB_TWO_MAP_ID));
   }
 
   function openEquipmentManagementFromInventory() {
@@ -5051,6 +5620,58 @@ function App() {
       );
     } else {
       setMerchantResultMessage(merchantBuyFailureMessages[purchase.result.reason]);
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function buyMerchantFarmSeedFromMenu(cropId: FarmCropId) {
+    if (!activeMerchantNpcId) {
+      return;
+    }
+
+    const purchase = buyMerchantFarmSeed(
+      gameState,
+      activeMerchantNpcId,
+      cropId,
+      currentTime,
+    );
+
+    if (purchase.result.status === "success") {
+      queueSaveAfterStateChange("Farm seed purchase saved");
+      setMerchantResultMessage(
+        `Bought ${purchase.result.displayName} for ${purchase.result.priceCrowns} Crowns`,
+      );
+    } else {
+      setMerchantResultMessage(
+        merchantFarmSeedFailureMessages[purchase.result.reason],
+      );
+    }
+
+    setGameState(purchase.state);
+  }
+
+  function buyMerchantLivestockFromMenu(creatureId: LivestockCreatureId) {
+    if (!activeMerchantNpcId) {
+      return;
+    }
+
+    const purchase = buyMerchantLivestockCreature(
+      gameState,
+      activeMerchantNpcId,
+      creatureId,
+      currentTime,
+    );
+
+    if (purchase.result.status === "success") {
+      queueSaveAfterStateChange("Livestock purchase saved");
+      setMerchantResultMessage(
+        `Bought ${purchase.result.displayName} for ${purchase.result.priceCrowns} Crowns`,
+      );
+    } else {
+      setMerchantResultMessage(
+        merchantLivestockFailureMessages[purchase.result.reason],
+      );
     }
 
     setGameState(purchase.state);
@@ -5704,6 +6325,22 @@ function App() {
                 Buy
               </button>
               <button
+                className={activeMerchantPanel === "farm_seeds" ? "active" : ""}
+                disabled={activeMerchantLocked}
+                onClick={() => selectMerchantPanel("farm_seeds")}
+                type="button"
+              >
+                Farm Seeds
+              </button>
+              <button
+                className={activeMerchantPanel === "livestock" ? "active" : ""}
+                disabled={activeMerchantLocked}
+                onClick={() => selectMerchantPanel("livestock")}
+                type="button"
+              >
+                Livestock
+              </button>
+              <button
                 className={activeMerchantPanel === "sell" ? "active" : ""}
                 disabled={activeMerchantLocked}
                 onClick={() => selectMerchantPanel("sell")}
@@ -5724,6 +6361,18 @@ function App() {
                   merchantNpcId={activeMerchant.id}
                   state={gameState}
                   onBuy={buyMerchantStockItem}
+                />
+              ) : activeMerchantPanel === "farm_seeds" ? (
+                <MerchantFarmSeedPanel
+                  merchantNpcId={activeMerchant.id}
+                  state={gameState}
+                  onBuy={buyMerchantFarmSeedFromMenu}
+                />
+              ) : activeMerchantPanel === "livestock" ? (
+                <MerchantLivestockPanel
+                  merchantNpcId={activeMerchant.id}
+                  state={gameState}
+                  onBuy={buyMerchantLivestockFromMenu}
                 />
               ) : (
                 <aside className="merchant-detail-panel">
@@ -6062,6 +6711,9 @@ function App() {
               guildNoticeBoardResultMessage={guildNoticeBoardResultMessage}
               guildSecondaryPartyResultMessage={guildSecondaryPartyResultMessage}
               innKitchenResultMessage={innKitchenResultMessage}
+              farmResultMessage={farmResultMessage}
+              livestockResultMessage={livestockResultMessage}
+              guildTavernPantryRequestId={guildTavernPantryRequestId}
               guildSecondaryPartyRedeemSummary={guildSecondaryPartyRedeemSummary}
               canUseGuildTavern={canUseGuildTavern}
               highestCharacterLevelEver={highestCharacterLevelEver}
@@ -6108,6 +6760,20 @@ function App() {
               onSelectInnKitchenRecipe={selectInnKitchenRecipeFromMenu}
               onCycleInnKitchenAutoCook={cycleInnKitchenAutoCookFromMenu}
               onBulkCookInnMeals={bulkCookInnMealsFromMenu}
+              onHarvestAllFarmCrops={harvestAllFarmCropsFromMenu}
+              onPurchaseFarmUpgrade={purchaseFarmUpgradeFromMenu}
+              onPlaceLivestockCreature={placeLivestockCreatureFromMenu}
+              onMoveLivestockPlacement={moveLivestockPlacementFromMenu}
+              onRemoveLivestockPlacement={removeLivestockPlacementFromMenu}
+              onCollectAllLivestockOutputs={collectAllLivestockOutputsFromMenu}
+              onFeedHungryLivestockNow={feedHungryLivestockNowFromMenu}
+              onPurchaseLivestockAnimalUpgrade={
+                purchaseLivestockAnimalUpgradeFromMenu
+              }
+              onPurchaseLivestockBuildingUpgrade={
+                purchaseLivestockBuildingUpgradeFromMenu
+              }
+              onOpenInnKitchenPantry={openInnKitchenPantryFromFarmLivestock}
               onClearGuildSecondaryPartySummary={() =>
                 setGuildSecondaryPartyRedeemSummary(null)
               }
@@ -6210,6 +6876,12 @@ function App() {
                   </button>
                   <button onClick={turnInCurrentQuestForDebug}>
                     Turn In Current Quest
+                  </button>
+                  <button onClick={debugTeleportToHubOne}>
+                    Teleport Hub 1
+                  </button>
+                  <button onClick={debugTeleportToHubTwo}>
+                    Teleport Hub 2
                   </button>
                   <button onClick={killOneCompanion}>Kill One Companion</button>
                   <button onClick={forceSuperiorEnemy}>

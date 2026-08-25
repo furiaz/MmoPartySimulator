@@ -88,6 +88,16 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
     stackable: true,
     maxStack: 250,
   },
+  tin_ore: {
+    id: "tin_ore",
+    displayName: "Tin Ore",
+    category: "material",
+    description: "Tier 1 ore-family material produced by Tin Crawlers.",
+    rarity: "common",
+    tier: 1,
+    stackable: true,
+    maxStack: 250,
+  },
   crafting_string: {
     id: "crafting_string",
     displayName: "String",
