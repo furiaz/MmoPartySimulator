@@ -1,5 +1,7 @@
 import {
   debugMapDefinitions,
+  HUB_MAP_ID,
+  HUB_TWO_MAP_ID,
   MAP_FIVE_ID,
   MAP_FOUR_ID,
   MAP_ONE_ID,
@@ -50,7 +52,7 @@ export function sanitizeWorldDiscoveryState(
   const visitedSubzonesByMapId: WorldDiscoveryState["visitedSubzonesByMapId"] = {};
 
   for (const mapId of worldDiscovery?.visitedMapIds ?? []) {
-    if (isAssignmentWildMapId(mapId)) {
+    if (isRouteDiscoverableMapId(mapId)) {
       visitedMapIds.add(mapId);
     }
   }
@@ -146,7 +148,18 @@ function recordCurrentSubzoneVisited(
   worldDiscovery: WorldDiscoveryState,
   state?: Pick<GameState, "currentMapId" | "map" | "partyLeaderId" | "entities">,
 ): WorldDiscoveryState {
-  if (!state?.currentMapId || !isAssignmentWildMapId(state.currentMapId) || !state.map) {
+  if (!state?.currentMapId || !isRouteDiscoverableMapId(state.currentMapId)) {
+    return worldDiscovery;
+  }
+
+  if (!isAssignmentWildMapId(state.currentMapId)) {
+    return {
+      ...worldDiscovery,
+      visitedMapIds: [...new Set([...worldDiscovery.visitedMapIds, state.currentMapId])],
+    };
+  }
+
+  if (!state.map) {
     return worldDiscovery;
   }
 
@@ -178,4 +191,12 @@ function recordCurrentSubzoneVisited(
 
 function isAssignmentWildMapId(mapId: string): mapId is DebugMapId {
   return ASSIGNMENT_WILD_MAP_IDS.includes(mapId as DebugMapId);
+}
+
+function isRouteDiscoverableMapId(mapId: string): mapId is DebugMapId {
+  return (
+    mapId === HUB_MAP_ID ||
+    mapId === HUB_TWO_MAP_ID ||
+    isAssignmentWildMapId(mapId)
+  );
 }

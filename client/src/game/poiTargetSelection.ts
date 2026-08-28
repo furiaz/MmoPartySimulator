@@ -16,7 +16,8 @@ import {
   getNavigationPositionKey,
   toNavigationNode,
 } from "./navigation";
-import { getPartyLeader } from "./partySystem";
+import { getPartyLeader, getPartyMembers } from "./partySystem";
+import { isActivePartyThreat } from "./partyThreatSystem";
 import {
   getPoiSearchScope,
   type GameState,
@@ -120,6 +121,132 @@ export function selectPoiTarget(
     localTarget: selectedTarget?.localTarget ?? null,
     consideredTargets,
     skippedReasons,
+  };
+}
+
+export function selectQuestGuidePoiTarget(state: GameState): PoiSelectionResult {
+  const activeQuest = getActiveQuest(state);
+
+  if (!activeQuest || activeQuest.status !== "active") {
+    return createEmptyPoiSelection();
+  }
+
+  const objective = getTargetableQuestObjectives(state, activeQuest.questId).find(
+    (candidate) =>
+      candidate.type === "guide_npc_to_poi" &&
+      (candidate.targetMapId ?? state.currentMapId) === state.currentMapId,
+  );
+
+  if (!objective) {
+    return createEmptyPoiSelection();
+  }
+
+  const skippedReasons: Record<string, string> = {};
+  const option: PoiTargetOption = {
+    poi: createGuideObjectivePoi(state, activeQuest.questId, objective),
+    priority: 8,
+    reason: "active quest guide objective",
+    questId: activeQuest.questId,
+    objectiveId: objective.id,
+  };
+  const scoredTargets = selectScoredPoiTargets(state, [option], skippedReasons);
+  const selectedTarget = selectStablePoiTarget(state, scoredTargets);
+  const consideredTargets = getPoiConsiderations(scoredTargets, selectedTarget);
+
+  return {
+    localTarget: selectedTarget?.localTarget ?? null,
+    consideredTargets,
+    skippedReasons,
+  };
+}
+
+export function selectAutoCombatPoiTarget(
+  state: GameState,
+  gathererReservations: GathererResourceReservations,
+): PoiSelectionResult {
+  const candidates = buildPoiCandidates(state, gathererReservations);
+  const activeThreatSelection = selectAutoCombatActiveThreatTarget(
+    state,
+    candidates,
+  );
+
+  if (activeThreatSelection.localTarget) {
+    return activeThreatSelection;
+  }
+
+  const leader = getPartyLeader(state);
+  const leaderSubzone = getLeaderSubzoneRestriction(state);
+  const fallbackOptions = getWildFallbackOptions(
+    state,
+    filterPoisToLeaderSubzone(candidates, leaderSubzone),
+    leader?.role === "gatherer",
+    { skipCompletedQuestEnemies: false },
+  );
+  const skippedReasons: Record<string, string> = {};
+  const scoredTargets = selectScoredPoiTargets(
+    state,
+    fallbackOptions,
+    skippedReasons,
+  );
+  const selectedTarget = selectStablePoiTarget(state, scoredTargets);
+
+  return {
+    localTarget: selectedTarget?.localTarget ?? null,
+    consideredTargets: getPoiConsiderations(scoredTargets, selectedTarget),
+    skippedReasons,
+  };
+}
+
+function selectAutoCombatActiveThreatTarget(
+  state: GameState,
+  candidates: PointOfInterest[],
+): PoiSelectionResult {
+  const skippedReasons: Record<string, string> = {};
+  const options = candidates
+    .filter(isActivePartyThreatPoi(state))
+    .map((poi) => ({
+      poi,
+      priority: 1,
+      scoreBase: 0,
+      reason: "active party threat",
+    }));
+  const scoredTargets = scorePoiTargets(
+    state,
+    options,
+    createPoiDistanceMap(state, options),
+    skippedReasons,
+  );
+  const selectedTarget = selectStablePoiTarget(state, scoredTargets);
+
+  return {
+    localTarget: selectedTarget?.localTarget ?? null,
+    consideredTargets: getPoiConsiderations(scoredTargets, selectedTarget),
+    skippedReasons,
+  };
+}
+
+function isActivePartyThreatPoi(state: GameState) {
+  const partyMemberIds = new Set(getPartyMembers(state).map((member) => member.id));
+
+  return (poi: PointOfInterest): boolean => {
+    if (poi.category !== "combat" || !poi.targetEntityId) {
+      return false;
+    }
+
+    const entity = state.entities[poi.targetEntityId];
+
+    return (
+      isActivePartyThreat(state, entity) &&
+      Boolean(entity.currentTargetId && partyMemberIds.has(entity.currentTargetId))
+    );
+  };
+}
+
+function createEmptyPoiSelection(): PoiSelectionResult {
+  return {
+    localTarget: null,
+    consideredTargets: [],
+    skippedReasons: {},
   };
 }
 
@@ -232,10 +359,15 @@ function filterPoisToLeaderSubzone(
   );
 }
 
+type WildFallbackOptions = {
+  skipCompletedQuestEnemies?: boolean;
+};
+
 function getWildFallbackOptions(
   state: GameState,
   candidates: PointOfInterest[],
   prioritizeResources = false,
+  options: WildFallbackOptions = { skipCompletedQuestEnemies: true },
 ): PoiTargetOption[] {
   const combatPriority = prioritizeResources
     ? FALLBACK_POI_PRIORITY + 1
@@ -249,7 +381,8 @@ function getWildFallbackOptions(
       .filter(
         (poi) =>
           poi.category === "combat" &&
-          !isCompletedActiveQuestDefeatEnemyPoi(state, poi),
+          (!options.skipCompletedQuestEnemies ||
+            !isCompletedActiveQuestDefeatEnemyPoi(state, poi)),
       )
       .map((poi) => ({
         poi,

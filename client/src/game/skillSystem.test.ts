@@ -1371,6 +1371,12 @@ describe("beginner skill system", () => {
     const nextState = updateSkillSystem(
       createSkillState([fighter, enemy], {
         map: createSkillMap(),
+        leaderIntent: {
+          type: "attack",
+          targetId: enemy.id,
+          targetPosition: enemy.position,
+          source: "ai",
+        },
         ...createActiveSelfBuff(fighter.id),
       }),
       1000,
@@ -1387,12 +1393,35 @@ describe("beginner skill system", () => {
     );
   });
 
+  it("does not use offensive Quick Step without combat context", () => {
+    const fighter = createBeginner("fighter", "fighter", { x: 1, y: 3 });
+    const enemy = createEnemy("enemy", { x: 7, y: 3 });
+    const nextState = updateSkillSystem(
+      createSkillState([fighter, enemy], {
+        map: createSkillMap(),
+        ...createActiveSelfBuff(fighter.id),
+      }),
+      1000,
+    );
+
+    expect(nextState.entities.fighter.position).toEqual(fighter.position);
+    expect(
+      nextState.skillCooldownsByCompanionId?.fighter?.quick_step,
+    ).toBeUndefined();
+  });
+
   it("uses Quick Step offensively by default even for non-frontline roles", () => {
     const support = createBeginner("support", "support", { x: 1, y: 3 });
     const enemy = createEnemy("enemy", { x: 7, y: 3 });
     const nextState = updateSkillSystem(
       createSkillState([support, enemy], {
         map: createSkillMap(),
+        leaderIntent: {
+          type: "attack",
+          targetId: enemy.id,
+          targetPosition: enemy.position,
+          source: "ai",
+        },
         ...createActiveSelfBuff(support.id),
         ...createActiveShield(support.id),
       }),
@@ -1744,6 +1773,12 @@ describe("beginner skill system", () => {
     const offensiveState = updateSkillSystem(
       createSkillState([offensiveBlade, offensiveEnemy], {
         map: createSkillMap(),
+        leaderIntent: {
+          type: "attack",
+          targetId: offensiveEnemy.id,
+          targetPosition: offensiveEnemy.position,
+          source: "ai",
+        },
         skillSelfBuffsByCompanionId: {
           blade: { companionId: "blade", bonusDamage: 1, expiresAt: 65000 },
         },
@@ -1854,6 +1889,12 @@ describe("beginner skill system", () => {
     const offensiveState = updateSkillSystem(
       createSkillState([offensiveAegis, offensiveEnemy], {
         map: createSkillMap(),
+        leaderIntent: {
+          type: "attack",
+          targetId: offensiveEnemy.id,
+          targetPosition: offensiveEnemy.position,
+          source: "ai",
+        },
         ...createAegisEarlierSkillCooldowns("aegis"),
       }),
       1000,

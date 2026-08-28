@@ -295,7 +295,9 @@ export {
   clearExpiredSkillRuntimeState,
   getEntityById,
   getPoiSearchScope,
+  setAutoCombatOnArrivalEnabled,
   setAutoModeEnabled,
+  setAutoRouteRuntime,
   setCompanionDefendPosition,
   setCompanionRole,
   setPartyLeader,
@@ -837,6 +839,19 @@ export {
   updateNewsBroadcasts,
 } from "./newsBroadcast";
 export { updatePoiSystem } from "./poiSystem";
+export {
+  AUTO_COMBAT_ON_ARRIVAL_DELAY_MS,
+  AUTO_ROUTE_CALM_TIME_MS,
+  AUTO_ROUTE_COHESION_DISTANCE,
+  AUTO_ROUTE_INTERRUPT_COOLDOWN_MS,
+  clearAutoRoute,
+  isAutoRouteActive,
+  isAutoRouteDestinationKnown,
+  startAutoRoute,
+  updateAutoRouteRuntime,
+  type AutoRouteStartFailureReason,
+  type AutoRouteStartResult,
+} from "./autoRouteSystem";
 export {
   RESURRECTION_RANGE,
   RESURRECTION_REQUIRED_MS,

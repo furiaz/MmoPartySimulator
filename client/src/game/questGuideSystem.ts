@@ -23,15 +23,15 @@ export const QUEST_GUIDE_NPC_ID = "map-1-route-worker";
 export const QUEST_GUIDE_START_POSITION: Position = { x: 110, y: 29 };
 export const QUEST_GUIDE_TARGET_POI_ID = "lower-shore-route-blockage";
 export const QUEST_GUIDE_TARGET_POSITION: Position = { x: 153, y: 29 };
-export const QUEST_GUIDE_COMPANION_ESCORT_RANGE = 3;
+export const QUEST_GUIDE_COMPANION_ESCORT_RANGE = 5;
 export const QUEST_GUIDE_ENEMY_PAUSE_RANGE = 3;
 export const QUEST_GUIDE_MOVE_SPEED_MULTIPLIER = 1;
 export const QUEST_GUIDE_OBJECTIVE_ID = "escort_lower_shore_worker";
 
-const QUEST_GUIDE_CONTACT_RANGE = 2.5;
 const QUEST_GUIDE_COMPLETION_RANGE = 1.5;
 export const QUEST_REPAIR_RANGE = 2;
 const QUEST_RESCUE_SAFE_RANGE = 8;
+const QUEST_RESCUE_COMPLETION_RANGE = 5;
 const QUEST_DEFENSE_DEFAULT_RADIUS = 14;
 
 type ActiveObjectiveContext = {
@@ -182,7 +182,7 @@ function updateEscortObjective(
 
   if (
     guide.state !== "follow" &&
-    getDistance(leader.position, guide.position) <= QUEST_GUIDE_CONTACT_RANGE
+    isAnyCompanionWithinEscortRange(nextState, guide.position)
   ) {
     guide = {
       ...guide,
@@ -235,7 +235,7 @@ function updateRescueObjective(
     return nextState;
   }
 
-  return getDistance(leader.position, guide.position) <= QUEST_REPAIR_RANGE
+  return getDistance(leader.position, guide.position) <= QUEST_RESCUE_COMPLETION_RANGE
     ? recordQuestPoiReachedForQuests(
         nextState,
         context.objective.targetPoiId ?? context.objective.id,

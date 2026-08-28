@@ -95,10 +95,12 @@ export function createInitialGameState(): GameState {
     activeTeleport: null,
     teleportStatesById: {},
     autoModeEnabled: false,
+    autoCombatOnArrivalEnabled: false,
+    autoRoute: undefined,
     worldTravelTargetMapId: null,
     poiPreferences: {
       stayInMap: false,
-      searchScope: "free_travel",
+      searchScope: "zone_only",
     },
     simulationTick: 0,
     simulationFrame: 0,

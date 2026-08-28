@@ -1026,6 +1026,12 @@ export type PartyIntent = PartyIntentSnapshot & {
   recoveryIntent?: PartyRecoveryIntent | null;
 };
 
+export type AutoRouteRuntimeState = {
+  resumeAfterMs?: number;
+  interruptCooldownUntilMs?: number;
+  autoCombatEnableAtMs?: number;
+};
+
 export type CombatFeedbackType =
   | "attack"
   | "damage"

@@ -129,6 +129,7 @@ export function GameMenu({
   onClearGuildSecondaryPartySummary,
   onSetWorldTravelRoute,
   onClearWorldTravelRoute,
+  onToggleAutoCombatOnArrival,
   onTeleportWorldTravelDestination,
   onUnequipEquipment,
   onUnequipFlask,
@@ -261,6 +262,7 @@ export function GameMenu({
   onClearGuildSecondaryPartySummary: () => void;
   onSetWorldTravelRoute: (targetMapId: DebugMapId) => void;
   onClearWorldTravelRoute: () => void;
+  onToggleAutoCombatOnArrival: () => void;
   onTeleportWorldTravelDestination: (targetMapId: DebugMapId) => void;
   onUnequipEquipment: (companionId: string, targetSlot: EquipmentSlot) => void;
   onUnequipFlask: (companionId: string) => void;
@@ -437,6 +439,7 @@ export function GameMenu({
                   worldTravelTargetMapId={worldTravelTargetMapId}
                   onClearRoute={onClearWorldTravelRoute}
                   onSetRoute={onSetWorldTravelRoute}
+                  onToggleAutoCombatOnArrival={onToggleAutoCombatOnArrival}
                   onTeleport={onTeleportWorldTravelDestination}
                 />
               ) : (

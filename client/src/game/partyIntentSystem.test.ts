@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCompanion, createEnemy } from "./entities";
 import { updatePartyIntentSelfDefenseSystem } from "./partyIntentSystem";
+import { applyStatusEffect } from "./statusEffects";
 import { createTestGameState } from "./testState";
 
 describe("party intent self-defense", () => {
@@ -227,6 +228,119 @@ describe("party intent self-defense", () => {
       state: "follow",
       currentTargetId: leader.id,
       commandPriority: "direct",
+    });
+  });
+
+  it("interrupts Auto Route when a party member is body blocked near a hostile for 1000 ms", () => {
+    const leader = createCompanion("leader", { x: 0, y: 0 }, "leader", "fighter");
+    const blocker = createEnemy("body-blocker", { x: 2, y: 0 }, "passive");
+    const state = createTestGameState({
+      entities: {
+        [leader.id]: leader,
+        [blocker.id]: blocker,
+      },
+      partyLeaderId: leader.id,
+      worldTravelTargetMapId: "map-2",
+      movementFailureMsByEntityId: {
+        [leader.id]: 1000,
+      },
+    });
+
+    const nextState = updatePartyIntentSelfDefenseSystem(state);
+
+    expect(nextState.partyIntent?.executionIntent).toMatchObject({
+      type: "attack",
+      targetId: blocker.id,
+    });
+    expect(nextState.interruptedPoiTarget?.worldTravelTargetMapId).toBe("map-2");
+  });
+
+  it("does not interrupt Auto Route for body block detection during route cooldown", () => {
+    const leader = createCompanion("leader", { x: 0, y: 0 }, "leader", "fighter");
+    const blocker = createEnemy("body-blocker", { x: 2, y: 0 }, "passive");
+    const state = createTestGameState({
+      autoRoute: {
+        interruptCooldownUntilMs: 2500,
+      },
+      entities: {
+        [leader.id]: leader,
+        [blocker.id]: blocker,
+      },
+      partyLeaderId: leader.id,
+      simulationTimeMs: 2000,
+      worldTravelTargetMapId: "map-2",
+      movementFailureMsByEntityId: {
+        [leader.id]: 1000,
+      },
+    });
+
+    const nextState = updatePartyIntentSelfDefenseSystem(state);
+
+    expect(nextState.partyIntent).toBeNull();
+  });
+
+  it("lets movement-blocking status bypass Auto Route interrupt cooldown", () => {
+    const leader = createCompanion("leader", { x: 0, y: 0 }, "leader", "fighter");
+    const attacker = {
+      ...createEnemy("immobilizer", { x: 4, y: 0 }, "aggressive"),
+      state: "attack" as const,
+      currentTargetId: leader.id,
+    };
+    const state = applyStatusEffect(
+      createTestGameState({
+        autoRoute: {
+          interruptCooldownUntilMs: 2500,
+        },
+        entities: {
+          [leader.id]: leader,
+          [attacker.id]: attacker,
+        },
+        partyLeaderId: leader.id,
+        simulationTimeMs: 2000,
+        worldTravelTargetMapId: "map-2",
+      }),
+      {
+        type: "immobilized",
+        targetId: leader.id,
+        sourceId: attacker.id,
+        durationMs: 1000,
+      },
+      2000,
+    );
+
+    const nextState = updatePartyIntentSelfDefenseSystem(state);
+
+    expect(nextState.partyIntent?.executionIntent).toMatchObject({
+      type: "attack",
+      targetId: attacker.id,
+    });
+  });
+
+  it("lets low health near a hostile bypass Auto Route interrupt cooldown", () => {
+    const leader = {
+      ...createCompanion("leader", { x: 0, y: 0 }, "leader", "fighter"),
+      health: 49,
+      maxHealth: 100,
+    };
+    const hostile = createEnemy("hostile", { x: 5, y: 0 }, "passive");
+    const state = createTestGameState({
+      autoRoute: {
+        interruptCooldownUntilMs: 2500,
+      },
+      entities: {
+        [leader.id]: leader,
+        [hostile.id]: hostile,
+      },
+      partyLeaderId: leader.id,
+      simulationTimeMs: 2000,
+      worldTravelTargetMapId: "map-2",
+    });
+
+    const nextState = updatePartyIntentSelfDefenseSystem(state);
+
+    expect(nextState.partyIntent?.executionIntent).toMatchObject({
+      type: "attack",
+      targetId: hostile.id,
     });
   });
 });

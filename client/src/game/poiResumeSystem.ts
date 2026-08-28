@@ -1,4 +1,9 @@
 import { isCombatEntity, isResourceEntity } from "./entities";
+import {
+  beginAutoRouteCalmPeriod,
+  finishAutoRouteCalmPeriod,
+  hasAutoRouteResumeCohesion,
+} from "./autoRouteSystem";
 import { isPartyMember, getPartyMembers } from "./partySystem";
 import type {
   GameState,
@@ -29,7 +34,11 @@ export function captureInterruptedPoiTarget(
   if (
     state.interruptedPoiTarget ||
     isSameAttackIntent(executionIntent, interruptingEnemy.id) ||
-    (!executionIntent && !state.globalPoiIntent && !state.localPoiTarget && !fallbackExecutionIntent)
+    (!executionIntent &&
+      !state.globalPoiIntent &&
+      !state.localPoiTarget &&
+      !fallbackExecutionIntent &&
+      !state.worldTravelTargetMapId)
   ) {
     return state;
   }
@@ -42,6 +51,7 @@ export function captureInterruptedPoiTarget(
       leaderIntent: clonePartyExecutionIntent(executionIntent ?? fallbackExecutionIntent),
       globalPoiIntent: state.globalPoiIntent ? { ...state.globalPoiIntent } : null,
       localPoiTarget: cloneLocalPoiTarget(state.localPoiTarget),
+      worldTravelTargetMapId: state.worldTravelTargetMapId,
       lastPoiDecision: clonePoiDecision(state.lastPoiDecision),
     },
   };
@@ -66,6 +76,19 @@ export function restoreInterruptedPoiTarget(state: GameState): GameState {
     return state;
   }
 
+  if (interruptedTarget.worldTravelTargetMapId) {
+    const nowMs = state.simulationTimeMs ?? 0;
+    const resumeAfterMs = state.autoRoute?.resumeAfterMs;
+
+    if (!resumeAfterMs || resumeAfterMs > nowMs) {
+      return beginAutoRouteCalmPeriod(state);
+    }
+
+    if (!hasAutoRouteResumeCohesion(state)) {
+      return state;
+    }
+  }
+
   const restoredState = setPartyIntent(state, {
     mode: getPartyBehaviorModeForIntent(interruptedTarget.leaderIntent),
     source: interruptedTarget.leaderIntent?.source ?? "ai",
@@ -80,10 +103,14 @@ export function restoreInterruptedPoiTarget(state: GameState): GameState {
     recoveryIntent: state.partyIntent?.recoveryIntent ?? null,
   });
 
-  return {
+  const resumedState = {
     ...restoredState,
     interruptedPoiTarget: null,
   };
+
+  return interruptedTarget.worldTravelTargetMapId
+    ? finishAutoRouteCalmPeriod(resumedState)
+    : resumedState;
 }
 
 export function clearInterruptedPoiTarget(state: GameState): GameState {

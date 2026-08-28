@@ -10,6 +10,7 @@ import {
   MAP_THREE_ID,
   MAP_TWO_ID,
   getWorldTravelTeleportStatus,
+  isAutoRouteDestinationKnown,
   type DebugMapId,
   type GameState,
 } from "./game";
@@ -32,6 +33,7 @@ export function WorldPanel({
   worldTravelTargetMapId,
   onClearRoute,
   onSetRoute,
+  onToggleAutoCombatOnArrival,
   onTeleport,
 }: {
   currentMapId?: DebugMapId;
@@ -39,6 +41,7 @@ export function WorldPanel({
   worldTravelTargetMapId: DebugMapId | null;
   onClearRoute: () => void;
   onSetRoute: (targetMapId: DebugMapId) => void;
+  onToggleAutoCombatOnArrival: () => void;
   onTeleport: (targetMapId: DebugMapId) => void;
 }) {
   const activeRouteName = worldTravelTargetMapId
@@ -60,11 +63,23 @@ export function WorldPanel({
           <strong>Prototype Region</strong>
           {activeRouteName ? <span>Route: {activeRouteName}</span> : null}
         </div>
+        <label className="world-route-toggle">
+          <input
+            checked={Boolean(gameState.autoCombatOnArrivalEnabled)}
+            onChange={onToggleAutoCombatOnArrival}
+            type="checkbox"
+          />
+          <span>Auto Combat on arrival</span>
+        </label>
         <div className="world-map-list">
           {prototypeRegionMapIds.map((mapId) => {
             const mapDefinition = debugMapDefinitions[mapId];
             const isCurrentMap = mapId === currentMapId;
             const isActiveRoute = mapId === worldTravelTargetMapId;
+            const isKnownDestination = isAutoRouteDestinationKnown(
+              gameState,
+              mapId,
+            );
             const teleportStatus = getWorldTravelTeleportStatus(
               gameState,
               mapId,
@@ -84,11 +99,16 @@ export function WorldPanel({
                 <div className="world-map-actions">
                   <button
                     className={isCurrentMap || isActiveRoute ? "active" : ""}
-                    disabled={isCurrentMap}
+                    disabled={isCurrentMap || !isKnownDestination}
                     onClick={() => onSetRoute(mapId)}
+                    title={
+                      isKnownDestination
+                        ? undefined
+                        : "Visit this zone before routing to it."
+                    }
                     type="button"
                   >
-                    {actionLabel}
+                    {isKnownDestination ? actionLabel : "Unvisited"}
                   </button>
                   <button
                     className={teleportStatus?.canTeleport ? "" : "locked"}

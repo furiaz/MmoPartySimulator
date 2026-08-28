@@ -73,7 +73,7 @@ describe("createInitialGameState", () => {
     expect(state.worldTravelTargetMapId).toBeNull();
     expect(state.poiPreferences).toEqual({
       stayInMap: false,
-      searchScope: "free_travel",
+      searchScope: "zone_only",
     });
     expect(state.partyIntent).toBeNull();
     expect(state.leaderIntent).toBeNull();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDebugMap, HUB_MAP_ID } from "./debugMap";
 import {
+  LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID,
   TELEPORT_ECHO_HARBOR_UNION_BASTION_KEY_ITEM_ID,
   awardKeyItem,
   awardKeyItemIfMissing,
@@ -51,7 +52,7 @@ describe("key items", () => {
 
     expect(duplicate.awardedQuantity).toBe(0);
     expect(duplicate.state).toBe(state);
-    expect(getOwnedKeyItemEntries(duplicate.state)).toHaveLength(1);
+    expect(getOwnedKeyItemEntries(duplicate.state)).toHaveLength(2);
   });
 
   it("restores old saves with empty key item state", () => {
@@ -72,7 +73,9 @@ describe("key items", () => {
     expect(restored.ok).toBe(true);
 
     if (restored.ok) {
-      expect(restored.state.keyItemsById).toEqual({});
+      expect(restored.state.keyItemsById).toEqual({
+        [LIVESTOCK_DUSKHEN_DISCOVERY_KEY_ITEM_ID]: 1,
+      });
     }
   });
 });

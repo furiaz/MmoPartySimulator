@@ -169,7 +169,9 @@ import {
   resolveNavigationClickTarget,
   resolveNpcInteractionApproachTarget,
   resolveWorldWipeRecoveryChoice,
+  clearAutoRoute,
   setAutoModeEnabled,
+  setAutoCombatOnArrivalEnabled,
   setBankAutoRoutingMode,
   setPartyLeader,
   setCompanionLegacySkillEnabled,
@@ -177,7 +179,7 @@ import {
   selectFirstClass,
   setPartyOrder,
   setPoiSearchScope,
-  setWorldTravelTargetMapId,
+  startAutoRoute,
   startPartyConsumableUse,
   startGameLoop,
   startDebugTelemetryRecording,
@@ -192,6 +194,7 @@ import {
   updateCompanionConsumableBehavior,
   updateCompanionSkillBehavior,
   type ActiveCombatProjectile,
+  type AutoRouteStartFailureReason,
   type BankAutoRoutingMode,
   type ClassPath,
   type Companion,
@@ -348,12 +351,11 @@ const wildernessMapIds = new Set([
   "map-7",
 ]);
 const poiSearchScopeLabels: Record<PoiSearchScope, string> = {
-  free_travel: "Free Travel",
+  free_travel: "Zone Only",
   zone_only: "Zone Only",
   subzone_only: "Subzone Only",
 };
 const poiSearchScopeCycle: PoiSearchScope[] = [
-  "free_travel",
   "zone_only",
   "subzone_only",
 ];
@@ -373,7 +375,7 @@ function getNextPoiSearchScope(scope: PoiSearchScope): PoiSearchScope {
 
   return poiSearchScopeCycle[
     (currentIndex + 1) % poiSearchScopeCycle.length
-  ] ?? "free_travel";
+  ] ?? "zone_only";
 }
 
 type EntityVisualMovement = {
@@ -781,6 +783,18 @@ function getWorldTravelTeleportFailureMessage(
   }
 }
 
+function getAutoRouteFailureMessage(reason: AutoRouteStartFailureReason): string {
+  switch (reason) {
+    case "current_map":
+      return "Already in that zone.";
+    case "unknown_destination":
+      return "Route unavailable until that zone has been visited.";
+    case "blocked_route":
+    default:
+      return "Route unavailable because the next path is blocked.";
+  }
+}
+
 function NewsBroadcastOverlay({
   broadcasts,
 }: {
@@ -988,7 +1002,7 @@ function LeaderPoiPanel({
   let emptyMessage: string | null = null;
 
   if (!autoModeEnabled) {
-    emptyMessage = "Auto mode off";
+    emptyMessage = "Auto Combat off";
   } else if (!hasLeader) {
     emptyMessage = "No leader";
   } else if (!consideredTargets || consideredTargets.length === 0) {
@@ -4403,6 +4417,16 @@ function App() {
     );
   }
 
+  function toggleAutoCombatOnArrival() {
+    queueSaveAfterStateChange("World travel route saved");
+    setGameState((state) =>
+      setAutoCombatOnArrivalEnabled(
+        state,
+        !state.autoCombatOnArrivalEnabled,
+      ),
+    );
+  }
+
   function showPreviousGuidePanel() {
     setActiveGuidePanelIndex((currentIndex) => Math.max(currentIndex - 1, 0));
   }
@@ -4482,7 +4506,7 @@ function App() {
     }
 
     setGameState((state) =>
-      issuePartyOrder(state, {
+      issuePartyOrder(clearAutoRouteForWorldCommand(state), {
         type: "attack",
         targetId: targetEnemyId,
       }),
@@ -4495,7 +4519,7 @@ function App() {
     }
 
     setGameState((state) =>
-      issuePartyOrder(state, {
+      issuePartyOrder(clearAutoRouteForWorldCommand(state), {
         type: "gather",
         targetId: targetResourceId,
       }),
@@ -5498,15 +5522,24 @@ function App() {
   }
 
   function setWorldTravelRoute(targetMapId: DebugMapId) {
-    queueSaveAfterStateChange("World travel route saved");
-    setGameState((state) =>
-      setAutoModeEnabled(setWorldTravelTargetMapId(state, targetMapId), true),
-    );
+    const route = startAutoRoute(gameState, targetMapId);
+
+    if (route.status === "success") {
+      queueSaveAfterStateChange("World travel route saved");
+      setGameState(route.state);
+      return;
+    }
+
+    setSaveStatusMessage(getAutoRouteFailureMessage(route.reason));
   }
 
   function clearWorldTravelRoute() {
     queueSaveAfterStateChange("World travel route saved");
-    setGameState((state) => setWorldTravelTargetMapId(state, null));
+    setGameState(clearAutoRoute);
+  }
+
+  function clearAutoRouteForWorldCommand(state: GameState): GameState {
+    return state.worldTravelTargetMapId ? clearAutoRoute(state) : state;
   }
 
   function teleportWorldTravel(targetMapId: DebugMapId) {
@@ -5864,7 +5897,7 @@ function App() {
 
   function commandPartyToMoveToPosition(targetPosition: Position) {
     setGameState((state) =>
-      issuePartyOrder(state, {
+      issuePartyOrder(clearAutoRouteForWorldCommand(state), {
         type: "move",
         targetPosition: { ...targetPosition },
       }),
@@ -5903,7 +5936,7 @@ function App() {
     }
 
     setGameState((state) => {
-      return issuePartyOrder(state, {
+      return issuePartyOrder(clearAutoRouteForWorldCommand(state), {
         type: "move",
         targetPosition: resolvedPosition,
       });
@@ -5950,6 +5983,10 @@ function App() {
 
     if (npc?.kind !== "npc") {
       return;
+    }
+
+    if (gameState.worldTravelTargetMapId) {
+      setGameState(clearAutoRoute);
     }
 
     const interactionKind = getNpcInteractionKind(npc);
@@ -6182,7 +6219,7 @@ function App() {
                 <strong>{currentMap.displayName}</strong>
                 <button
                   className={`stay-in-map-toggle${
-                    poiSearchScope !== "free_travel" ? " active" : ""
+                    poiSearchScope === "subzone_only" ? " active" : ""
                   }`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -6191,6 +6228,18 @@ function App() {
                   type="button"
                 >
                   Scope: {poiSearchScopeLabels[poiSearchScope]}
+                </button>
+                <button
+                  className={`auto-combat-toggle${
+                    gameState.autoModeEnabled ? " active" : ""
+                  }`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleAutoMode();
+                  }}
+                  type="button"
+                >
+                  Auto Combat: {gameState.autoModeEnabled ? "On" : "Off"}
                 </button>
               </div>
               <span>Prototype Zone ID: {currentMap.debugName}</span>
@@ -6632,12 +6681,12 @@ function App() {
               <h2>Dungeon's Chest Loot</h2>
               {activeDungeonChest.inventoryFull ? (
                 <p className="dungeon-chest-warning">
-                  Inventory full. Auto Mode stopped.
+                  Inventory full. Auto Combat stopped.
                 </p>
               ) : null}
               {dungeonChestCountdownSeconds !== null ? (
                 <p className="dungeon-chest-countdown">
-                  Auto Mode continues in {dungeonChestCountdownSeconds}s.
+                  Auto Combat continues in {dungeonChestCountdownSeconds}s.
                 </p>
               ) : null}
               <div className="dungeon-chest-grid">
@@ -6779,6 +6828,7 @@ function App() {
               }
               onSetWorldTravelRoute={setWorldTravelRoute}
               onClearWorldTravelRoute={clearWorldTravelRoute}
+              onToggleAutoCombatOnArrival={toggleAutoCombatOnArrival}
               onTeleportWorldTravelDestination={teleportWorldTravel}
               onUnequipEquipment={unequipEquipment}
               onUnequipFlask={unequipFlask}
@@ -6797,6 +6847,11 @@ function App() {
             onClaimPending={claimPendingOfflineLoot}
             onClose={() => setOfflineSummary(null)}
           />
+        ) : null}
+        {gameState.worldTravelTargetMapId ? (
+          <div className="auto-route-message" role="status">
+            Click on ground to stop auto routing
+          </div>
         ) : null}
         <CompanionVitalsPanel
           currentTime={currentTime}
@@ -6820,9 +6875,6 @@ function App() {
           <div className="test-controls simulation-controls">
             <button onClick={toggleSimulationLoop}>
               {isSimulationRunning ? "Stop Simulation" : "Start Simulation"}
-            </button>
-            <button onClick={toggleAutoMode}>
-              Auto Mode {gameState.autoModeEnabled ? "On" : "Off"}
             </button>
           </div>
 

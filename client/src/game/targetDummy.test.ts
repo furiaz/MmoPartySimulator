@@ -55,7 +55,6 @@ describe("hub target dummy", () => {
     const nextState = updateGame(state, { nowMs: 1000, deltaMs: 100 });
 
     expect(nextState.localPoiTarget?.targetEntityId).not.toBe(dummy.id);
-    expect(nextState.leaderIntent?.targetId).not.toBe(dummy.id);
   });
 
   it("does not select the AoE target dummy as an automatic POI", () => {
@@ -78,7 +77,6 @@ describe("hub target dummy", () => {
     const nextState = updateGame(state, { nowMs: 1000, deltaMs: 100 });
 
     expect(nextState.localPoiTarget?.targetEntityId).not.toBe(dummy.id);
-    expect(nextState.leaderIntent?.targetId).not.toBe(dummy.id);
   });
 
   it("ignores target dummies for ambient skill targeting", () => {

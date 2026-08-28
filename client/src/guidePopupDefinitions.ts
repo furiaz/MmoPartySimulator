@@ -21,8 +21,8 @@ export const guidePopupDefinitions: Record<GuidePopupId, GuidePopupDefinition> =
         body: "Start/Stop Simulation plays or pauses the game.",
       },
       {
-        title: "Auto Mode",
-        body: "Auto Mode plays for you, but may pause at tutorial checkpoints to guide you.",
+        title: "Auto Combat",
+        body: "Auto Combat handles nearby danger while you choose where the party travels.",
       },
       {
         title: "Have Fun",
