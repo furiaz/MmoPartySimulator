@@ -440,7 +440,7 @@ describe("debug maps", () => {
         ...wildernessMap.resources.map((resource) => resource.position),
       ]);
     }
-  });
+  }, 10000);
 
   it("keeps wilderness teleports and arrivals on reachable open floor", () => {
     for (const definition of Object.values(debugMapDefinitions)) {

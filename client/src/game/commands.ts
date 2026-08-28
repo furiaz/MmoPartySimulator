@@ -214,6 +214,11 @@ export function issuePartyOrder(
     worldTravelTargetMapId: null,
   });
 
+  nextState = {
+    ...nextState,
+    autoRoute: undefined,
+  };
+
   for (const member of getPartyMembers(nextState)) {
     if (member.state === "dead") {
       continue;

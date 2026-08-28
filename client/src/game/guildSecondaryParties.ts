@@ -351,6 +351,7 @@ export function moveGuildRosterCompanion(
           },
           partyLeaderId: nextLeaderId,
           autoModeEnabled: false,
+          autoRoute: undefined,
           worldTravelTargetMapId: null,
           partyIntent: null,
           leaderIntent: null,

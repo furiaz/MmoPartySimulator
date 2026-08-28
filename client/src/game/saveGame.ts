@@ -533,6 +533,8 @@ export function sanitizeGameStateForSave(state: GameState): GameState {
     map,
     quests,
     activeTeleport: null,
+    autoCombatOnArrivalEnabled: Boolean(state.autoCombatOnArrivalEnabled),
+    autoRoute: undefined,
     partyIntent: null,
     leaderIntent: null,
     directCompanionCommandsById: {},

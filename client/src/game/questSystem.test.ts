@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCompanion, createEnemy, createNpc, createResource } from "./entities";
+import { craftRecipe } from "./crafting";
 import { createDebugTelemetryState, startDebugTelemetryRecording } from "./debugTelemetry";
 import { DROP_VISUAL_DURATION_MS, updateDropSystem } from "./dropSystem";
 import {
@@ -16,7 +17,7 @@ import {
   MAP_TWO_TO_MAP_THREE_TELEPORTER_ID,
   TELEPORTER_ID,
 } from "./debugMap";
-import { addItemToInventoryState } from "./inventory";
+import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { buyMerchantItem } from "./merchant";
 import { addEntity, PROTOTYPE_VISUAL_FEEDBACK_DURATION_MS } from "./state";
 import { equipFlaskToCompanion } from "./consumables";
@@ -44,6 +45,7 @@ import { isTeleportWorking } from "./teleportState";
 import { isNavigationCellWalkable } from "./navigation";
 import { equipItemToCompanion } from "./equipmentSystem";
 import { createTestGameState } from "./testState";
+import { setCurrencyBalanceForDebug } from "./wallet";
 import type { EnemyArchetypeId } from "./types";
 import type { QuestId, QuestState } from "./questTypes";
 
@@ -267,6 +269,48 @@ describe("prototype quest system", () => {
     expect(quests.crawler_shelf_report.status).toBe("locked");
     expect(quests.find_slimeward_camp.status).toBe("locked");
     expect(quests.azure_trial.status).toBe("locked");
+  });
+
+  it("grants smithy starter materials on accept so Plain Charm can be crafted", () => {
+    let state = createStateWithParty({
+      quests: createQuestStates({
+        smiths_first_work: "available",
+      }),
+    });
+    state = addEntity(
+      state,
+      createNpc("smith", { x: 1, y: 0 }, "Smith", "smith"),
+    );
+    state = addItemToInventoryState(state, "slime_gel_t1", 3, "debug").state;
+    state = addItemToInventoryState(state, "crafting_string", 1, "debug").state;
+    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
+
+    state = acceptQuestFromQuestGiver(
+      state,
+      QUEST_GIVER_POI_ID,
+      "smiths_first_work",
+    );
+
+    expect(state.quests.smiths_first_work.status).toBe("active");
+    expect(countInventoryItem(state.inventory, "copper_ore")).toBe(2);
+    expect(countInventoryItem(state.inventory, "field_herb")).toBe(2);
+    expect(state.newsBroadcasts?.at(-1)?.text).toBe(
+      "Received Copper Ore x2 and Field Herb x2",
+    );
+
+    const craftResult = craftRecipe(state, "plain_charm");
+
+    expect(craftResult.result.status).toBe("success");
+    expect(countInventoryItem(craftResult.state.inventory, "plain_charm")).toBe(
+      1,
+    );
+    expect(
+      craftResult.state.quests.smiths_first_work.objectiveProgress
+        .craft_plain_charm,
+    ).toMatchObject({
+      currentCount: 1,
+      completed: true,
+    });
   });
 
   it("unlocks the Azurefen Hollow bridge quests before Slimeward Trail", () => {

@@ -13,6 +13,7 @@ import type {
   DirectCompanionCommand,
   ActiveCombatProjectile,
   ActiveTeleport,
+  AutoRouteRuntimeState,
   AutonomousTargetSuppressionState,
   DebugMapId,
   GameMap,
@@ -129,6 +130,7 @@ export type InterruptedPoiTarget = {
   leaderIntent: LeaderIntent | null;
   globalPoiIntent: GlobalPoiIntent | null;
   localPoiTarget: LocalPoiTarget | null;
+  worldTravelTargetMapId?: DebugMapId | null;
   lastPoiDecision?: PoiDecisionState;
 };
 
@@ -185,6 +187,8 @@ export type GameState = {
   activeTeleport?: ActiveTeleport | null;
   teleportStatesById?: Record<string, TeleportRuntimeState>;
   autoModeEnabled: boolean;
+  autoCombatOnArrivalEnabled?: boolean;
+  autoRoute?: AutoRouteRuntimeState;
   worldTravelTargetMapId: DebugMapId | null;
   poiPreferences: PoiPreferences;
   simulationTick: number;
@@ -639,18 +643,39 @@ export function setAutoModeEnabled(
   };
 }
 
+export function setAutoCombatOnArrivalEnabled(
+  state: GameState,
+  autoCombatOnArrivalEnabled: boolean,
+): GameState {
+  return {
+    ...state,
+    autoCombatOnArrivalEnabled,
+  };
+}
+
+export function setAutoRouteRuntime(
+  state: GameState,
+  autoRoute: AutoRouteRuntimeState | undefined,
+): GameState {
+  return {
+    ...state,
+    autoRoute,
+  };
+}
+
 export function setStayInMapEnabled(
   state: GameState,
   stayInMap: boolean,
 ): GameState {
-  return setPoiSearchScope(state, stayInMap ? "subzone_only" : "free_travel");
+  return setPoiSearchScope(state, stayInMap ? "subzone_only" : "zone_only");
 }
 
 export function getPoiSearchScope(state: GameState): PoiSearchScope {
-  return (
+  const searchScope =
     state.poiPreferences.searchScope ??
-    (state.poiPreferences.stayInMap ? "subzone_only" : "free_travel")
-  );
+    (state.poiPreferences.stayInMap ? "subzone_only" : "zone_only");
+
+  return searchScope === "free_travel" ? "zone_only" : searchScope;
 }
 
 export function setPoiSearchScope(

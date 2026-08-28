@@ -171,6 +171,24 @@
   color: #075985;
 }
 
+.auto-combat-toggle {
+  padding: 3px 8px;
+  border: 1px solid rgba(51, 65, 85, 0.62);
+  background: rgba(255, 255, 255, 0.78);
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.auto-combat-toggle.active {
+  border-color: #b45309;
+  background: #fef3c7;
+  color: #78350f;
+}
+
 .map-version {
   font-size: 11px;
   font-weight: 800;
@@ -1015,6 +1033,31 @@
   color: var(--main-menu-panel-text);
   box-shadow: var(--main-menu-panel-shadow);
   backdrop-filter: blur(10px);
+}
+
+.auto-route-message {
+  position: fixed;
+  right: 16px;
+  bottom: calc(13vh + 74px);
+  left: 16px;
+  z-index: 13;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.auto-route-message {
+  margin: 0 auto;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 9px 12px;
+  border: 1px solid rgba(90, 205, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(7, 15, 18, 0.9);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+  color: #ecfeff;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .game-menu-tabs {
@@ -4519,6 +4562,17 @@
 .world-map-actions button.locked {
   border-color: rgba(148, 163, 184, 0.25);
   color: rgba(203, 213, 225, 0.58);
+}
+
+.world-route-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 0 10px;
+  color: var(--main-menu-panel-text);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .news-broadcast-overlay {

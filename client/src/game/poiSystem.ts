@@ -1,5 +1,9 @@
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { autoDepositByRoutingMode } from "./bank";
+import {
+  completeAutoRouteArrival,
+  isAutoRoutePaused,
+} from "./autoRouteSystem";
 import { getSlimewardDungeonPoiTarget } from "./dungeonSystem";
 import { HUB_MAP_ID } from "./debugMap";
 import {
@@ -10,6 +14,7 @@ import {
 } from "./interactionApproach";
 import {
   getPartyLeader,
+  getPartyMembers,
   hasDeadPartyMembers,
 } from "./partySystem";
 import {
@@ -23,15 +28,20 @@ import {
   updateEntity,
   type GameState,
 } from "./state";
-import { selectPoiTarget } from "./poiTargetSelection";
+import {
+  selectAutoCombatPoiTarget,
+  selectPoiTarget,
+  selectQuestGuidePoiTarget,
+} from "./poiTargetSelection";
 import {
   getPartyExecutionIntent,
   setPartyExecutionIntent,
   setPartyIntent,
-  setWorldTravelTargetMapId,
 } from "./partyIntentState";
 import {
   QUEST_DEFINITIONS,
+  QUEST_ORDER,
+  completeQuestObjective,
   getActiveQuest,
   getAvailableQuest,
   getFirstIncompleteObjective,
@@ -40,7 +50,6 @@ import {
   getQuestGiverReadyQuests,
   hasQuestGiverWork,
   matchesObjectiveSubzoneAtPosition,
-  recordQuestPoiReachedForQuests,
   updateQuestGiverInteraction,
 } from "./questSystem";
 import {
@@ -67,6 +76,7 @@ export { getMapType } from "./poiTargetSelection";
 
 const QUEST_GIVER_INTERACTION_RANGE = 2;
 const DEFAULT_POI_INTERACTION_RANGE = 1.5;
+const QUEST_MARKER_PROXIMITY_RANGE = 1.5;
 const WILD_POI_REEVALUATE_INTERVAL_MS = 4000;
 const QUEST_RESOURCE_POI_COMMITMENT_MS = 4000;
 const POI_THREAT_PRESERVATION_DISTANCE = 3;
@@ -75,32 +85,42 @@ export function updatePoiSystem(
   state: GameState,
   resourceWorkContext?: ResourceWorkContext,
 ): GameState {
-  if (!state.autoModeEnabled || state.activeTeleport) {
-    return clearPoiSelection(state);
+  const markerInteractionState =
+    state.activeTeleport || isAutoRoutePaused(state)
+      ? state
+      : updateReachedQuestMarkerInteractions(state);
+
+  if (
+    (!markerInteractionState.autoModeEnabled &&
+      !markerInteractionState.worldTravelTargetMapId) ||
+    markerInteractionState.activeTeleport ||
+    isAutoRoutePaused(markerInteractionState)
+  ) {
+    return clearPoiSelection(markerInteractionState);
   }
 
-  if (getPartyExecutionIntent(state)?.source === "player") {
-    return clearPoiSelection(state);
+  if (getPartyExecutionIntent(markerInteractionState)?.source === "player") {
+    return clearPoiSelection(markerInteractionState);
   }
 
-  if (hasDeadPartyMembers(state)) {
-    return clearAiPoiSelectionForResurrection(state);
+  if (hasDeadPartyMembers(markerInteractionState)) {
+    return clearAiPoiSelectionForResurrection(markerInteractionState);
   }
 
-  const leader = getPartyLeader(state);
+  const leader = getPartyLeader(markerInteractionState);
 
   if (!leader || leader.commandPriority === "direct") {
-    return clearPoiSelection(state);
+    return clearPoiSelection(markerInteractionState);
   }
 
-  const dungeonPoiTarget = getSlimewardDungeonPoiTarget(state);
-  if (dungeonPoiTarget) {
+  const dungeonPoiTarget = getSlimewardDungeonPoiTarget(markerInteractionState);
+  if (markerInteractionState.autoModeEnabled && dungeonPoiTarget) {
     const nextState: GameState = {
-      ...state,
+      ...markerInteractionState,
       globalPoiIntent: { type: "idle", reason: "Dungeon waypoint route" },
       localPoiTarget: dungeonPoiTarget,
       lastPoiDecision: {
-        evaluatedAtMs: state.simulationTimeMs ?? 0,
+        evaluatedAtMs: markerInteractionState.simulationTimeMs ?? 0,
         selectedPoiId: dungeonPoiTarget.poiId,
         selectedCategory: dungeonPoiTarget.category,
         selectedMapId: dungeonPoiTarget.mapId,
@@ -115,7 +135,7 @@ export function updatePoiSystem(
   }
 
   const interactionState = clearReachedWorldTravelTarget(
-    updateReachedPoiInteractions(state),
+    updateReachedPoiInteractions(markerInteractionState),
   );
 
   const interactionLeader = getPartyLeader(interactionState);
@@ -138,6 +158,77 @@ export function updatePoiSystem(
         localPoiTarget,
       },
       localPoiTarget,
+    );
+  }
+
+  if (interactionState.autoModeEnabled && !interactionState.worldTravelTargetMapId) {
+    const guideSelection = selectQuestGuidePoiTarget(interactionState);
+
+    if (guideSelection.localTarget) {
+      const guideState = {
+        ...interactionState,
+        globalPoiIntent: { type: "idle" as const, reason: "Auto Combat escort follow" },
+        localPoiTarget: guideSelection.localTarget,
+        lastPoiDecision: {
+          evaluatedAtMs: interactionState.simulationTimeMs ?? 0,
+          selectedPoiId: guideSelection.localTarget.poiId,
+          selectedCategory: guideSelection.localTarget.category,
+          selectedMapId: guideSelection.localTarget.mapId,
+          selectedPosition: guideSelection.localTarget.position,
+          selectedReason: guideSelection.localTarget.reason,
+          consideredTargets: guideSelection.consideredTargets,
+          skippedReasons: guideSelection.skippedReasons,
+        },
+      };
+
+      return applyLocalTargetToPartyIntent(guideState, guideSelection.localTarget);
+    }
+
+    const autoCombatSelection = selectAutoCombatPoiTarget(
+      interactionState,
+      gathererReservations,
+    );
+    const autoCombatLastPoiDecision = {
+      evaluatedAtMs: interactionState.simulationTimeMs ?? 0,
+      selectedPoiId: autoCombatSelection.localTarget?.poiId,
+      selectedCategory: autoCombatSelection.localTarget?.category,
+      selectedMapId: autoCombatSelection.localTarget?.mapId,
+      selectedPosition: autoCombatSelection.localTarget?.position,
+      selectedReason: autoCombatSelection.localTarget?.reason,
+      consideredTargets: autoCombatSelection.consideredTargets,
+      skippedReasons: autoCombatSelection.skippedReasons,
+    };
+    let autoCombatState: GameState = {
+      ...interactionState,
+      globalPoiIntent: { type: "idle", reason: "Auto Combat local target" },
+      localPoiTarget: autoCombatSelection.localTarget,
+      lastPoiDecision: autoCombatLastPoiDecision,
+    };
+
+    if (autoCombatSelection.localTarget) {
+      autoCombatState = recordPoiSelected(
+        autoCombatState,
+        autoCombatSelection.localTarget,
+      );
+      autoCombatState = applyLocalTargetToPartyIntent(
+        autoCombatState,
+        autoCombatSelection.localTarget,
+      );
+    } else if (
+      getPartyExecutionIntent(autoCombatState)?.source !== "player"
+    ) {
+      autoCombatState = setPartyIntent(autoCombatState, null);
+      autoCombatState = {
+        ...autoCombatState,
+        globalPoiIntent: { type: "idle", reason: "Auto Combat local target" },
+        localPoiTarget: null,
+        lastPoiDecision: autoCombatLastPoiDecision,
+      };
+    }
+
+    return recordSkippedPois(
+      autoCombatState,
+      autoCombatSelection.skippedReasons,
     );
   }
 
@@ -400,7 +491,7 @@ function clearReachedWorldTravelTarget(state: GameState): GameState {
     return state;
   }
 
-  return setWorldTravelTargetMapId(state, null);
+  return completeAutoRouteArrival(state);
 }
 
 function updateReachedPoiInteractions(state: GameState): GameState {
@@ -486,10 +577,71 @@ function updateReachedQuestInspectInteraction(state: GameState): GameState {
     return state;
   }
 
-  return recordQuestPoiReachedForQuests(
-    state,
-    objective.targetPoiId,
-    state.currentMapId,
+  return completeQuestObjective(state, target.questId, target.objectiveId);
+}
+
+function updateReachedQuestMarkerInteractions(state: GameState): GameState {
+  if (!state.currentMapId) {
+    return state;
+  }
+
+  let nextState = state;
+
+  for (const questId of QUEST_ORDER) {
+    if (nextState.quests[questId]?.status !== "active") {
+      continue;
+    }
+
+    for (const objective of getTargetableQuestMarkerObjectives(nextState, questId)) {
+      if (
+        nextState.quests[questId]?.status !== "active" ||
+        nextState.quests[questId].objectiveProgress[objective.id]?.completed ||
+        !isQuestMarkerProximityObjective(objective) ||
+        objective.targetMapId !== nextState.currentMapId ||
+        !isAnyPartyMemberWithinQuestMarkerRange(nextState, objective.targetPosition)
+      ) {
+        continue;
+      }
+
+      nextState = completeQuestObjective(nextState, questId, objective.id);
+    }
+  }
+
+  return nextState;
+}
+
+function getTargetableQuestMarkerObjectives(
+  state: GameState,
+  questId: QuestId,
+): QuestObjectiveDefinition[] {
+  const incompleteObjectives = getIncompleteObjectives(state, questId);
+
+  return QUEST_DEFINITIONS[questId].objectiveFlow === "sequential"
+    ? incompleteObjectives.slice(0, 1)
+    : incompleteObjectives;
+}
+
+function isQuestMarkerProximityObjective(
+  objective: QuestObjectiveDefinition,
+): objective is QuestObjectiveDefinition & {
+  targetPoiId: string;
+  targetPosition: Position;
+} {
+  return (
+    (objective.type === "inspect_poi" || objective.type === "reach_poi") &&
+    Boolean(objective.targetPoiId) &&
+    Boolean(objective.targetPosition)
+  );
+}
+
+function isAnyPartyMemberWithinQuestMarkerRange(
+  state: GameState,
+  position: Position,
+): boolean {
+  return getPartyMembers(state).some(
+    (member) =>
+      member.state !== "dead" &&
+      getDistance(member.position, position) <= QUEST_MARKER_PROXIMITY_RANGE,
   );
 }
 

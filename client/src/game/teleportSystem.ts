@@ -28,6 +28,7 @@ import {
   HUB_TWO_MAP_ID,
   SLIMEWARD_CAMP_ID,
   SLIMEWARD_CHEST_ID,
+  SLIMEWARD_FLOOR_ONE_ID,
   SLIMEWARD_FLOOR_TWO_ID,
   mapOneEnemyStartData,
   mapOneResourceStartData,
@@ -200,6 +201,7 @@ export function teleportWorldTravelDestination(
       ...state,
       activeTeleport: teleport,
       autoModeEnabled: false,
+      autoRoute: undefined,
       worldTravelTargetMapId: null,
     },
     teleport,
@@ -271,6 +273,7 @@ function getAutoTeleport(state: GameState): DebugTeleportPoint | null {
   if (
     !state.autoModeEnabled ||
     state.activeTeleport ||
+    state.currentMapId !== SLIMEWARD_FLOOR_ONE_ID ||
     getTeleportPoi(state) ||
     hasDeadPartyMembers(state)
   ) {

@@ -19,6 +19,7 @@ import {
   getPartyCombatTarget,
   isEnemySuppressedForAutonomousTargeting,
 } from "./partyTargetSystem";
+import { isActivePartyThreat } from "./partyThreatSystem";
 import {
   getCompanionSkillBehavior,
   isBeginnerFirstAidSelfHealPriorityActive,
@@ -454,6 +455,76 @@ export function findEnemyTarget(
       isSkillEnemyTargetAvailable(state, caster, entity) &&
       isAllowedEnemyTarget(entity, options),
   );
+}
+
+function findOffensiveMobilityTarget(
+  state: GameState,
+  caster: Companion,
+  range: number,
+  options: SkillTargetOptions,
+): Enemy | undefined {
+  const forcedTarget = options.forcedEnemyTargetId
+    ? getEntityById(state, options.forcedEnemyTargetId)
+    : undefined;
+
+  if (
+    isLivingEnemy(forcedTarget) &&
+    isEnemyInRange(caster, forcedTarget, range) &&
+    isAllowedEnemyTarget(forcedTarget, options) &&
+    hasOffensiveMobilityCombatContext(state, caster, forcedTarget)
+  ) {
+    return forcedTarget;
+  }
+
+  const currentTarget = caster.currentTargetId
+    ? getEntityById(state, caster.currentTargetId)
+    : undefined;
+
+  if (
+    caster.state === "attack" &&
+    isLivingEnemy(currentTarget) &&
+    isEnemyInRange(caster, currentTarget, range) &&
+    isSkillEnemyTargetAvailable(state, caster, currentTarget) &&
+    isAllowedEnemyTarget(currentTarget, options)
+  ) {
+    return currentTarget;
+  }
+
+  const partyTarget = getPartyCombatTarget(state);
+
+  if (
+    partyTarget &&
+    isEnemyInRange(caster, partyTarget, range) &&
+    isAllowedEnemyTarget(partyTarget, options)
+  ) {
+    return partyTarget;
+  }
+
+  return findEnemyTarget(state, caster, range, {
+    ...options,
+    forcedEnemyTargetId: null,
+    enemyFilter: (enemy) =>
+      isActivePartyThreat(state, enemy) &&
+      (!options.enemyFilter || options.enemyFilter(enemy)),
+  });
+}
+
+function hasOffensiveMobilityCombatContext(
+  state: GameState,
+  caster: Companion,
+  enemy: Enemy,
+): boolean {
+  const partyTarget = getPartyCombatTarget(state);
+
+  if (partyTarget?.id === enemy.id) {
+    return true;
+  }
+
+  if (caster.state === "attack" && caster.currentTargetId === enemy.id) {
+    return true;
+  }
+
+  return isActivePartyThreat(state, enemy);
 }
 
 function isSkillEnemyTargetAvailable(
@@ -1210,7 +1281,7 @@ function findQuickStepTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, 6, options);
+    const enemy = findOffensiveMobilityTarget(state, caster, 6, options);
 
     return enemy &&
       getSkillDashPosition(
@@ -1272,7 +1343,12 @@ function findSkirmishShotTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(
@@ -1314,7 +1390,12 @@ function findPounceTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(
@@ -1356,7 +1437,12 @@ function findFlameStepTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(
@@ -1398,7 +1484,12 @@ function findRuneStepTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(
@@ -1440,7 +1531,12 @@ function findDawnStepTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(
@@ -1514,7 +1610,12 @@ function findAtonementStepTarget(
   const behavior = getCompanionSkillBehavior(caster);
 
   if (behavior.mobilitySkillUseMode === "offensive") {
-    const enemy = findEnemyTarget(state, caster, skill.range, options);
+    const enemy = findOffensiveMobilityTarget(
+      state,
+      caster,
+      skill.range,
+      options,
+    );
 
     return enemy &&
       getSkillDashPosition(

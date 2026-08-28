@@ -1,7 +1,12 @@
 import { isCompanionEntity, isLivingEnemy } from "./entityGuards";
+import {
+  canAutoRouteInterrupt,
+  isAutoRouteActive,
+} from "./autoRouteSystem";
 import { getPartyMembers } from "./partySystem";
 import { getGridDistance } from "./positionUtils";
 import { captureInterruptedPoiTarget } from "./poiResumeSystem";
+import { isMovementBlockedByStatus } from "./statusEffects";
 import {
   getEntityById,
   updateEntity,
@@ -24,6 +29,10 @@ import type {
 
 const SELF_DEFENSE_THREAT_RADIUS = 3;
 const STUCK_SELF_DEFENSE_RADIUS = 2;
+const AUTO_ROUTE_BODY_BLOCK_RADIUS = 3;
+const AUTO_ROUTE_BODY_BLOCK_MS = 1000;
+const AUTO_ROUTE_LOW_HEALTH_THREAT_RADIUS = 5;
+const AUTO_ROUTE_LOW_HEALTH_RATIO = 0.5;
 
 export function updatePartyIntentRecoverySystem(state: GameState): GameState {
   const deadCompanion = getDeadCompanion(state);
@@ -62,7 +71,12 @@ export function updatePartyIntentSelfDefenseSystem(state: GameState): GameState 
     return state;
   }
 
-  const selfDefenseTarget = getSelfDefenseTarget(state, Boolean(executionIntent));
+  const selfDefenseTarget = isAutoRouteActive(state)
+    ? getAutoRouteEmergencyTarget(state)
+    : getSelfDefenseTarget(
+        state,
+        Boolean(executionIntent) || state.autoModeEnabled,
+      );
 
   if (!selfDefenseTarget) {
     return state;
@@ -164,6 +178,27 @@ function getSelfDefenseTarget(
   return hasManagerExecutionIntent ? getCloseActiveThreatTarget(state) : null;
 }
 
+function getAutoRouteEmergencyTarget(state: GameState): Enemy | null {
+  const forcedTarget =
+    getRouteMovementBlockedTarget(state) ??
+    getRouteStatusBlockedTarget(state) ??
+    getRouteLowHealthTarget(state);
+
+  if (forcedTarget) {
+    return forcedTarget;
+  }
+
+  if (!canAutoRouteInterrupt(state)) {
+    return null;
+  }
+
+  return getStuckNearEnemyTarget(
+    state,
+    AUTO_ROUTE_BODY_BLOCK_RADIUS,
+    AUTO_ROUTE_BODY_BLOCK_MS,
+  );
+}
+
 function getBlockedMovementEnemyTarget(state: GameState): Enemy | null {
   const candidates = getPartyMembers(state)
     .filter((companion) => companion.commandPriority !== "direct")
@@ -197,12 +232,17 @@ function getMovementBlockerEnemy(
   return isLivingEnemy(blocker) ? blocker : null;
 }
 
-function getStuckNearEnemyTarget(state: GameState): Enemy | null {
+function getStuckNearEnemyTarget(
+  state: GameState,
+  radius = STUCK_SELF_DEFENSE_RADIUS,
+  minimumFailureMs = 1,
+): Enemy | null {
   const candidates = getPartyMembers(state)
     .filter(
       (companion) =>
         companion.commandPriority !== "direct" &&
-        (state.movementFailureMsByEntityId?.[companion.id] ?? 0) > 0,
+        (state.movementFailureMsByEntityId?.[companion.id] ?? 0) >=
+          minimumFailureMs,
     )
     .flatMap((companion) =>
       Object.values(state.entities)
@@ -210,7 +250,7 @@ function getStuckNearEnemyTarget(state: GameState): Enemy | null {
         .filter(
           (enemy) =>
             getGridDistance(companion.position, enemy.position) <=
-            STUCK_SELF_DEFENSE_RADIUS,
+            radius,
         )
         .map((enemy) => ({ companion, enemy })),
     )
@@ -222,6 +262,77 @@ function getStuckNearEnemyTarget(state: GameState): Enemy | null {
     );
 
   return candidates[0]?.enemy ?? null;
+}
+
+function getRouteMovementBlockedTarget(state: GameState): Enemy | null {
+  return getBlockedMovementEnemyTarget(state);
+}
+
+function getRouteStatusBlockedTarget(state: GameState): Enemy | null {
+  const candidates = getPartyMembers(state)
+    .filter((companion) => companion.commandPriority !== "direct")
+    .filter(
+      (companion) =>
+        isMovementBlockedByStatus(state, companion.id) ||
+        hasActiveStatusType(state, companion.id, "taunted"),
+    )
+    .flatMap((companion) =>
+      Object.values(state.entities)
+        .filter(isLivingEnemy)
+        .filter(
+          (enemy) =>
+            enemy.currentTargetId === companion.id ||
+            getGridDistance(companion.position, enemy.position) <=
+              AUTO_ROUTE_LOW_HEALTH_THREAT_RADIUS,
+        )
+        .map((enemy) => ({ companion, enemy })),
+    )
+    .sort(
+      (first, second) =>
+        getGridDistance(first.companion.position, first.enemy.position) -
+          getGridDistance(second.companion.position, second.enemy.position) ||
+        first.enemy.id.localeCompare(second.enemy.id),
+    );
+
+  return candidates[0]?.enemy ?? null;
+}
+
+function getRouteLowHealthTarget(state: GameState): Enemy | null {
+  const candidates = getPartyMembers(state)
+    .filter((companion) => companion.health / companion.maxHealth <= AUTO_ROUTE_LOW_HEALTH_RATIO)
+    .flatMap((companion) =>
+      Object.values(state.entities)
+        .filter(isLivingEnemy)
+        .filter(
+          (enemy) =>
+            getGridDistance(companion.position, enemy.position) <=
+            AUTO_ROUTE_LOW_HEALTH_THREAT_RADIUS,
+        )
+        .map((enemy) => ({ companion, enemy })),
+    )
+    .sort(
+      (first, second) =>
+        getGridDistance(first.companion.position, first.enemy.position) -
+          getGridDistance(second.companion.position, second.enemy.position) ||
+        first.enemy.id.localeCompare(second.enemy.id),
+    );
+
+  return candidates[0]?.enemy ?? null;
+}
+
+function hasActiveStatusType(
+  state: GameState,
+  targetId: string,
+  type: "taunted",
+): boolean {
+  const nowMs = state.simulationTimeMs ?? 0;
+
+  return Object.values(state.statusEffectsById ?? {}).some(
+    (status) =>
+      status.targetId === targetId &&
+      status.type === type &&
+      status.expiresAt > nowMs,
+  );
 }
 
 function getCloseActiveThreatTarget(state: GameState): Enemy | null {

@@ -60,6 +60,14 @@ export function resolvePartyActivityPlan(
     options.combatBreakDistance ?? COMBAT_BREAK_DISTANCE;
   const movementTargetPosition = getPartyMovementTargetPosition(state);
 
+  if (state.worldTravelTargetMapId && getPartyCombatTarget(state) === null) {
+    return {
+      phase: "traveling",
+      target: null,
+      targetPosition: movementTargetPosition ?? null,
+    };
+  }
+
   if (hasDirectPlayerPartyIntent(state)) {
     const intentTarget = getPartyCombatTarget(state);
 

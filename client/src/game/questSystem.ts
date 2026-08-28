@@ -22,6 +22,7 @@ import {
 import { createNpc } from "./entities";
 import { addItemToInventoryState } from "./inventory";
 import { getItemDefinition } from "./items";
+import { queueNewsBroadcast } from "./newsBroadcast";
 import {
   MAX_CHARACTER_LEVEL,
   getDebugXpMultiplier,
@@ -70,6 +71,12 @@ export {
 
 export const QUEST_GIVER_POI_ID = npcIds[0];
 export const EQUIPMENT_TUTORIAL_QUEST_ID: QuestId = "outfit_the_expedition";
+const SMITHS_FIRST_WORK_ACCEPTANCE_GRANTS: QuestRewardItem[] = [
+  { itemId: "copper_ore", quantity: 2 },
+  { itemId: "field_herb", quantity: 2 },
+];
+const SMITHS_FIRST_WORK_ACCEPTANCE_GRANT_MESSAGE =
+  "Received Copper Ore x2 and Field Herb x2";
 
 export const QUEST_ORDER: QuestId[] = [
   "clear_the_shore",
@@ -1061,7 +1068,39 @@ function acceptQuest(
     );
   }
 
+  nextState = grantQuestAcceptanceItems(nextState, questId);
+
   return nextState;
+}
+
+function grantQuestAcceptanceItems(
+  state: GameState,
+  questId: QuestId,
+): GameState {
+  if (questId !== "smiths_first_work") {
+    return state;
+  }
+
+  let nextState = state;
+  let grantedAllItems = true;
+
+  for (const grant of SMITHS_FIRST_WORK_ACCEPTANCE_GRANTS) {
+    const addResult = addItemToInventoryState(
+      nextState,
+      grant.itemId,
+      grant.quantity,
+      "quest_reward",
+    );
+    nextState = addResult.state;
+
+    if (addResult.result.addedQuantity !== grant.quantity) {
+      grantedAllItems = false;
+    }
+  }
+
+  return grantedAllItems
+    ? queueNewsBroadcast(nextState, SMITHS_FIRST_WORK_ACCEPTANCE_GRANT_MESSAGE)
+    : nextState;
 }
 
 function claimQuestReward(

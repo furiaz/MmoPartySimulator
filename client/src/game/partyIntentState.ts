@@ -38,6 +38,10 @@ export function setWorldTravelTargetMapId(
 
   return {
     ...state,
+    autoRoute:
+      worldTravelTargetMapId === state.worldTravelTargetMapId
+        ? state.autoRoute
+        : undefined,
     partyIntent,
     worldTravelTargetMapId,
   };

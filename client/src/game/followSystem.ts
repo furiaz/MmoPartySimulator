@@ -6,6 +6,7 @@ import {
 import { moveEntityTowardPositionIfUnoccupied } from "./movementPlanning";
 import { getSoftFollowPosition, isStackedWithPartyMember } from "./partySpacing";
 import {
+  getOrderedPartyMembers,
   getPartyLeader,
   isPartyMember,
   isPartyMemberBusyGatheringResource,
@@ -13,11 +14,13 @@ import {
 import { isCompanionAssignedToResurrectionRecovery } from "./resurrectionSystem";
 import { getPartyMovementTargetPosition } from "./partyTargetSystem";
 import { arePositionsEqual, getGridDistance } from "./positionUtils";
-import type { AutonomousEntity, GameEntity } from "./types";
+import type { AutonomousEntity, GameEntity, Position } from "./types";
 
 export const FOLLOW_LEASH_RADIUS = 1.5;
 const FOLLOW_CATCHUP_DISTANCE = 5;
 const FOLLOW_CATCH_UP_SPEED_MULTIPLIER = 1.8;
+const SETTLE_SIDE_SPACING = 0.9;
+const SETTLE_BACK_SPACING = 0.45;
 
 export function updateFollowSystem(
   state: GameState,
@@ -56,12 +59,15 @@ export function updateFollowSystem(
         ? FOLLOW_CATCH_UP_SPEED_MULTIPLIER
         : 1;
 
-    const followPosition = getSoftFollowPosition(
-      nextState,
-      follower,
-      leader,
-      getPartyMovementTargetPosition(nextState),
-    );
+    const movementTargetPosition = getPartyMovementTargetPosition(nextState);
+    const followPosition = movementTargetPosition
+      ? getSoftFollowPosition(
+          nextState,
+          follower,
+          leader,
+          movementTargetPosition,
+        )
+      : getSettledFollowPosition(nextState, follower, leader);
 
     nextState = moveEntityTowardPositionIfUnoccupied(
       nextState,
@@ -70,7 +76,12 @@ export function updateFollowSystem(
       {
         allowPartyPassThrough: true,
         pathProfile: "follow",
-        pathTargetKey: `follow:${leader.id}`,
+        pathTargetKey: getFollowPathTargetKey(
+          leader.id,
+          follower.id,
+          followPosition,
+          Boolean(movementTargetPosition),
+        ),
         pathTargetPosition: followPosition,
         speedMultiplier,
       },
@@ -87,6 +98,43 @@ export function updateFollowSystem(
   }
 
   return nextState;
+}
+
+function getSettledFollowPosition(
+  state: GameState,
+  follower: AutonomousEntity,
+  leader: AutonomousEntity,
+): Position {
+  const followers = getOrderedPartyMembers(state).filter(
+    (partyMember) => partyMember.id !== leader.id,
+  );
+  const index = followers.findIndex((partyMember) => partyMember.id === follower.id);
+  const offsetPattern = [-1, 1, -2, 2];
+  const offsetRank = offsetPattern[index] ?? 0;
+
+  return {
+    x: leader.position.x + offsetRank * SETTLE_SIDE_SPACING,
+    y: leader.position.y + SETTLE_BACK_SPACING,
+  };
+}
+
+function getFollowPathTargetKey(
+  leaderId: string,
+  followerId: string,
+  followPosition: Position,
+  hasMovementTarget: boolean,
+): string {
+  if (hasMovementTarget) {
+    return `follow:${leaderId}`;
+  }
+
+  return [
+    "follow",
+    leaderId,
+    followerId,
+    followPosition.x.toFixed(2),
+    followPosition.y.toFixed(2),
+  ].join(":");
 }
 
 export function isWithinFollowLeash(

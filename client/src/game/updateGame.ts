@@ -1,5 +1,6 @@
 import { updateAttackSystem } from "./attackSystem";
 import { createAttackSlotPathDistanceCache } from "./attackSlots";
+import { updateAutoRouteRuntime } from "./autoRouteSystem";
 import { updateCompanionAoeChannelSystem } from "./companionAoeChannelSystem";
 import { updateCombatProjectileSystem } from "./combatProjectileSystem";
 import {
@@ -20,10 +21,6 @@ import {
 } from "./dungeonSystem";
 import { updateDropSystem } from "./dropSystem";
 import { updateDirectCompanionCommandSystem } from "./directCompanionCommands";
-import {
-  reserveExploringPartyMemberNextTile,
-  updateExplorationSystem,
-} from "./explorationSystem";
 import { updateFollowSystem } from "./followSystem";
 import { updateGatherSystem } from "./gatherSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
@@ -46,7 +43,10 @@ import { updatePoiSystem } from "./poiSystem";
 import { updateQuestGuideSystem } from "./questGuideSystem";
 import { createResourceWorkContext } from "./gathererResourceReservation";
 import { updateResurrectionSystem } from "./resurrectionSystem";
-import { getPartyMembers } from "./partySystem";
+import {
+  getPartyMembers,
+  isPartyMemberBusyGatheringResource,
+} from "./partySystem";
 import { updateRoleSystem } from "./roleSystem";
 import { updateRoleBonusAssignments } from "./roleBonus";
 import {
@@ -93,6 +93,7 @@ export function updateGame(
     clearFrameMovementPlanning(advanceSimulationTime(state, timing)),
     timing.nowMs,
   );
+  nextState = updateAutoRouteRuntime(nextState);
   nextState = updateNewsBroadcasts(nextState, timing.nowMs);
   nextState = clearExpiredAutonomousTargetSuppressions(nextState);
   nextState = updateStatusEffects(nextState, timing.nowMs);
@@ -180,19 +181,12 @@ export function updateGame(
     nextState = updatePartyFormationSystem(nextState, movedEntityIds);
   }
 
-  if (nextState.autoModeEnabled) {
-    nextState = reserveExploringPartyMemberNextTile(nextState);
-  }
-
   nextState = updateDefendSystem(
     nextState,
     movedEntityIds,
     timing,
     attackSlotPathDistanceCache,
   );
-  if (nextState.autoModeEnabled) {
-    nextState = updateExplorationSystem(nextState, movedEntityIds);
-  }
   nextState = updateFollowSystem(nextState, movedEntityIds);
   nextState = updateQuestGuideSystem(nextState, movedEntityIds, timing);
   nextState = updateEnemyAISystem(nextState, timing, movedEntityIds);
@@ -266,7 +260,10 @@ function idleAutonomousPartyMembersWithoutPoi(state: GameState): GameState {
       nextState.resurrectionChannelsByHelperId?.[member.id] ||
       member.commandPriority === "direct" ||
       member.state === "idle" ||
-      member.state === "dead"
+      member.state === "dead" ||
+      isPartyMemberBusyGatheringResource(nextState, member) ||
+      (member.role === "gatherer" &&
+        (member.state === "attack" || member.state === "follow"))
     ) {
       continue;
     }

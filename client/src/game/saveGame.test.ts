@@ -697,7 +697,7 @@ describe("save game serialization", () => {
     });
     expect(restored.state.farm).toEqual(createInitialFarmState());
     expect(restored.state.worldDiscovery).toEqual({
-      visitedMapIds: [],
+      visitedMapIds: [HUB_MAP_ID],
       visitedSubzonesByMapId: {},
     });
     expect(restored.state.entities["hub-guild-coordinator"]).toMatchObject({
