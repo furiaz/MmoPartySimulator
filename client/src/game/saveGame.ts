@@ -35,7 +35,10 @@ import { sanitizeInnKitchenState } from "./innKitchen";
 import { sanitizeInnUpgradesState } from "./innRoomUpgrades";
 import { sanitizeWorldDiscoveryState } from "./worldDiscovery";
 import { sanitizePartyInventory } from "./inventory";
-import { getItemDefinitionForResourceType } from "./items";
+import {
+  getItemDefinition,
+  getItemDefinitionForResourceType,
+} from "./items";
 import { sanitizeKeyItemsById } from "./keyItems";
 import {
   grantCharacterXpToCompanion,
@@ -968,10 +971,11 @@ function sanitizeInventorySlotList(slots: unknown): InventorySlot[] {
         return [];
       }
 
+      const itemId = slot.itemId as ItemId;
       const quantity = sanitizeNonNegativeNumber(slot.quantity);
 
-      return quantity > 0
-        ? [{ itemId: slot.itemId as ItemId, quantity }]
+      return quantity > 0 && getItemDefinition(itemId)
+        ? [{ itemId, quantity }]
         : [];
     }),
   );

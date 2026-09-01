@@ -19,6 +19,7 @@ import {
   getQuickExchangeItems,
   quickExchangeParts,
 } from "./merchant";
+import { getItemDefinition } from "./items";
 import { createInitialQuestStates } from "./questSystem";
 import { LIVESTOCK_DUSKHEN_CREATURE_ID } from "./livestock";
 
@@ -361,38 +362,16 @@ describe("merchant buy", () => {
     expect(countInventoryItem(nextState.inventory, "first_aid_skill_book")).toBe(1);
   });
 
-  it("buys crafting supplies into shared inventory for Crowns", () => {
-    let state = createMerchantState();
-    state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
-
-    const { state: nextState, result } = buyMerchantItem(
-      state,
-      MERCHANT_ID,
-      "crafting_string",
-    );
-
-    expect(result).toMatchObject({
-      status: "success",
-      itemId: "crafting_string",
-      priceCrowns: 2,
-      previousCrowns: 10,
-      newCrowns: 8,
-    });
-    expect(getCurrencyBalance(nextState.wallet, "crowns")).toBe(8);
-    expect(countInventoryItem(nextState.inventory, "crafting_string")).toBe(1);
-  });
-
-  it("includes crafting supplies in the supplies stock group", () => {
+  it("does not expose standalone materials in Merchant Buy stock", () => {
     const state = createMerchantState();
 
-    const supplies = getFilteredMerchantBuyStock(state, MERCHANT_ID, {
-      mainFilter: "supplies",
-    });
+    const stock = getFilteredMerchantBuyStock(state, MERCHANT_ID);
 
-    expect(supplies).toEqual([
-      { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
-      { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
-    ]);
+    expect(
+      stock.some(
+        (entry) => getItemDefinition(entry.itemId)?.category === "material",
+      ),
+    ).toBe(false);
   });
 
   it("does not mutate state when Crowns are insufficient", () => {

@@ -50,7 +50,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 2],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -59,7 +58,6 @@ describe("Smith crafting", () => {
     expect(result.result.status).toBe("success");
     expect(countInventoryItem(result.state.inventory, "softwood")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBe(0);
-    expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "training_sword")).toBe(1);
     expect(getCurrencyBalance(result.state.wallet, "crowns")).toBe(6);
   });
@@ -124,7 +122,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 2],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
     state = startDebugTelemetryRecording(state);
@@ -174,11 +171,6 @@ describe("Smith crafting", () => {
           itemId: "slime_gel_t1",
           quantity: 2,
         }),
-        expect.objectContaining({
-          kind: "item",
-          itemId: "crafting_string",
-          quantity: 1,
-        }),
       ]),
     );
   });
@@ -188,7 +180,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 2],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -201,7 +192,6 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -220,7 +210,6 @@ describe("Smith crafting", () => {
     let state = createCraftingState();
     state = addItems(state, [
       ["softwood", 5],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
     state = startDebugTelemetryRecording(state);
@@ -262,7 +251,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 2],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 3).state;
 
@@ -278,11 +266,10 @@ describe("Smith crafting", () => {
   });
 
   it("requires free inventory space after accounting for consumed inputs", () => {
-    let state = createCraftingState({ inventory: createEmptyPartyInventory(3) });
+    let state = createCraftingState({ inventory: createEmptyPartyInventory(2) });
     state = addItems(state, [
       ["softwood", 6],
       ["slime_gel_t1", 3],
-      ["crafting_string", 2],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -302,7 +289,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 1],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -410,7 +396,6 @@ describe("Smith crafting", () => {
     state = addItems(state, [
       ["softwood", 5],
       ["slime_gel_t1", 1],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 4).state;
     const recipe = getCraftingRecipe("training_sword");
@@ -489,7 +474,6 @@ describe("Smith crafting", () => {
       ["softwood", 6],
       ["spider_silk_t1", 2],
       ["wolf_pelt", 1],
-      ["crafting_string", 3],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
 
@@ -527,7 +511,6 @@ describe("Smith crafting", () => {
         ["softwood", 6],
         ["spider_silk_t1", 2],
         ["wolf_pelt", 1],
-        ["crafting_string", 3],
       ]);
       state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
 
@@ -567,7 +550,6 @@ describe("Smith crafting", () => {
     equippedState = addItems(equippedState, [
       ["softwood", 6],
       ["spider_silk_t1", 2],
-      ["crafting_string", 3],
     ]);
     equippedState = setCurrencyBalanceForDebug(
       equippedState,
@@ -594,7 +576,6 @@ describe("Smith crafting", () => {
     bankState = addItems(bankState, [
       ["softwood", 6],
       ["spider_silk_t1", 2],
-      ["crafting_string", 3],
     ]);
     bankState = setCurrencyBalanceForDebug(bankState, "crowns", 20).state;
 
@@ -612,7 +593,6 @@ describe("Smith crafting", () => {
       ["softwood", 6],
       ["spider_silk_t1", 2],
       ["wolf_pelt", 1],
-      ["crafting_string", 3],
     ]);
     state = {
       ...state,
@@ -633,7 +613,6 @@ describe("Smith crafting", () => {
     materialState = addItems(materialState, [
       ["softwood", 5],
       ["slime_gel_t1", 2],
-      ["crafting_string", 1],
     ]);
     materialState = {
       ...materialState,
@@ -652,17 +631,16 @@ describe("Smith crafting", () => {
   });
 
   it("allows consumed inputs to free the inventory space needed for the output", () => {
-    let state = createCraftingState({ inventory: createEmptyPartyInventory(5) });
+    let state = createCraftingState({ inventory: createEmptyPartyInventory(4) });
     state = addItems(state, [
       ["scout_cap", 1],
       ["softwood", 6],
       ["spider_silk_t1", 2],
       ["wolf_pelt", 1],
-      ["crafting_string", 3],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 20).state;
 
-    expect(state.inventory.slots).toHaveLength(5);
+    expect(state.inventory.slots).toHaveLength(4);
 
     const result = craftRecipe(state, "stalker_mask");
 
@@ -681,7 +659,6 @@ describe("Smith crafting", () => {
       ["copper_ore", 2],
       ["field_herb", 2],
       ["slime_gel_t1", 3],
-      ["crafting_string", 1],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
@@ -691,7 +668,6 @@ describe("Smith crafting", () => {
     expect(countInventoryItem(result.state.inventory, "slime_gel_t1")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "copper_ore")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "field_herb")).toBe(0);
-    expect(countInventoryItem(result.state.inventory, "crafting_string")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "plain_charm")).toBe(1);
     expect(
       result.state.quests.smiths_first_work.objectiveProgress.craft_plain_charm,
@@ -710,7 +686,6 @@ describe("Smith crafting", () => {
         { kind: "item", itemId: "copper_ore", quantity: 6 },
         { kind: "item", itemId: "tin_ore", quantity: 3 },
         { kind: "item", itemId: "crawler_pebble_t1", quantity: 2 },
-        { kind: "item", itemId: "iron_nails", quantity: 2 },
       ],
     });
     expect(getCraftingRecipe("field_bronze_pendant")).toMatchObject({
@@ -721,7 +696,6 @@ describe("Smith crafting", () => {
         { kind: "item", itemId: "copper_ore", quantity: 4 },
         { kind: "item", itemId: "tin_ore", quantity: 3 },
         { kind: "item", itemId: "field_herb", quantity: 3 },
-        { kind: "item", itemId: "crafting_string", quantity: 2 },
       ],
     });
     expect(getCraftingRecipe("reinforced_bronze_pendant")).toMatchObject({
@@ -738,7 +712,6 @@ describe("Smith crafting", () => {
         { kind: "item", itemId: "copper_ore", quantity: 10 },
         { kind: "item", itemId: "tin_ore", quantity: 6 },
         { kind: "item", itemId: "crawler_plate_t1", quantity: 2 },
-        { kind: "item", itemId: "iron_nails", quantity: 4 },
       ],
     });
     expect(getCraftingRecipe("polished_bronze_pendant")).toMatchObject({
@@ -755,7 +728,6 @@ describe("Smith crafting", () => {
         { kind: "item", itemId: "copper_ore", quantity: 8 },
         { kind: "item", itemId: "tin_ore", quantity: 6 },
         { kind: "item", itemId: "field_herb", quantity: 6 },
-        { kind: "item", itemId: "crafting_string", quantity: 4 },
       ],
     });
   });
@@ -811,7 +783,6 @@ describe("Smith crafting", () => {
       ["redleaf_herb", 14],
       ["imp_horn_chip_t2", 5],
       ["imp_tail_t2", 1],
-      ["crafting_string", 5],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
 
@@ -830,7 +801,6 @@ describe("Smith crafting", () => {
       ["copper_ore", 10],
       ["tin_ore", 6],
       ["crawler_plate_t1", 2],
-      ["iron_nails", 4],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 40).state;
 
@@ -855,7 +825,6 @@ describe("Smith crafting", () => {
     expect(countInventoryItem(result.state.inventory, "copper_ore")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "tin_ore")).toBe(0);
     expect(countInventoryItem(result.state.inventory, "crawler_plate_t1")).toBe(0);
-    expect(countInventoryItem(result.state.inventory, "iron_nails")).toBe(0);
     expect(
       countInventoryItem(result.state.inventory, "reinforced_bronze_pendant"),
     ).toBe(1);
@@ -876,7 +845,6 @@ describe("Smith crafting", () => {
         ["redleaf_herb", 14],
         ["imp_horn_chip_t2", 5],
         ["imp_tail_t2", 1],
-        ["crafting_string", 5],
       ]);
       state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
 
@@ -914,7 +882,6 @@ describe("Smith crafting", () => {
       ["redleaf_herb", 14],
       ["imp_horn_chip_t2", 5],
       ["imp_tail_t2", 1],
-      ["crafting_string", 5],
     ]);
     equippedState = setCurrencyBalanceForDebug(equippedState, "crowns", 50).state;
 
@@ -938,7 +905,6 @@ describe("Smith crafting", () => {
       ["redleaf_herb", 14],
       ["imp_horn_chip_t2", 5],
       ["imp_tail_t2", 1],
-      ["crafting_string", 5],
     ]);
     bankState = setCurrencyBalanceForDebug(bankState, "crowns", 50).state;
 
@@ -954,7 +920,6 @@ describe("Smith crafting", () => {
       ["redleaf_herb", 14],
       ["imp_horn_chip_t2", 5],
       ["imp_tail_t2", 1],
-      ["crafting_string", 5],
     ]);
     lockedState = {
       ...lockedState,
@@ -976,7 +941,6 @@ describe("Smith crafting", () => {
       ["iron_ore", 20],
       ["crawler_plate_t2", 2],
       ["wolf_fang_t2", 2],
-      ["iron_nails", 6],
     ]);
     weaponState = setCurrencyBalanceForDebug(weaponState, "crowns", 50).state;
 
@@ -988,7 +952,6 @@ describe("Smith crafting", () => {
       ["iron_ore", 20],
       ["crawler_plate_t2", 2],
       ["wolf_fang_t2", 2],
-      ["iron_nails", 6],
     ]);
     wrongTypeState = setCurrencyBalanceForDebug(
       wrongTypeState,
@@ -1008,7 +971,6 @@ describe("Smith crafting", () => {
       ["iron_ore", 20],
       ["hardwood", 10],
       ["crawler_plate_t2", 3],
-      ["iron_nails", 8],
     ]);
     offhandState = setCurrencyBalanceForDebug(offhandState, "crowns", 50).state;
 
@@ -1024,7 +986,6 @@ describe("Smith crafting", () => {
       ["iron_ore", 20],
       ["crawler_plate_t2", 2],
       ["wolf_fang_t2", 2],
-      ["iron_nails", 6],
     ]);
     state = setCurrencyBalanceForDebug(state, "crowns", 50).state;
     state = startDebugTelemetryRecording(state);

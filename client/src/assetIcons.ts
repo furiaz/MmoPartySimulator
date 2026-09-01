@@ -11,7 +11,6 @@ import type {
 
 const nowAssetPackPath = "/assets/Generated/now-pack";
 const equipmentIconPath = "/assets/Generated/equipment-icons/items";
-const craftingSupplyIconPath = "/assets/Generated/crafting-supply-icons/items";
 const skillBookIconPath = "/assets/Generated/skill-book-icons/items";
 const wildernessMapAssetPath = "/assets/Generated/map-wilderness";
 const hubFloorAssetPath = "/assets/Generated/hub-floors";
@@ -46,8 +45,6 @@ export const INVENTORY_ITEM_ICON_SRC: Partial<Record<ItemId, string>> = {
   iron_ore: `${nowAssetPackPath}/ore-node.png`,
   redleaf_herb: `${nowAssetPackPath}/herb-node.png`,
   tin_ore: `${nowAssetPackPath}/ore-node.png`,
-  crafting_string: `${craftingSupplyIconPath}/crafting_string.png`,
-  iron_nails: `${craftingSupplyIconPath}/iron_nails.png`,
   slime_gel_t1: `${nowAssetPackPath}/herb-node.png`,
   slime_core_t1: `${nowAssetPackPath}/ore-node.png`,
   bat_wing_t1: `${nowAssetPackPath}/wood-node.png`,

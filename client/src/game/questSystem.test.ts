@@ -282,7 +282,6 @@ describe("prototype quest system", () => {
       createNpc("smith", { x: 1, y: 0 }, "Smith", "smith"),
     );
     state = addItemToInventoryState(state, "slime_gel_t1", 3, "debug").state;
-    state = addItemToInventoryState(state, "crafting_string", 1, "debug").state;
     state = setCurrencyBalanceForDebug(state, "crowns", 10).state;
 
     state = acceptQuestFromQuestGiver(

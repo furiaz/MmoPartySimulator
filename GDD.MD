@@ -1450,7 +1450,7 @@ Current prototype quests:
 
 - Outfit the Expedition
   - Quest id: outfit_the_expedition
-  - Objectives: equip a Training Sword, equip a Guard Coif, equip a Minor Recovery Flask, buy 1 First Aid skill book, buy 1 Crafting String, and buy 1 Iron Nails
+  - Objectives: equip a Training Sword, equip a Guard Coif, equip a Minor Recovery Flask, and buy 1 First Aid skill book
   - Rewards: 10 Crowns, 4 character XP
   - Unlocks: First Work at the Smithy
 
@@ -2538,7 +2538,7 @@ Current prototype save behavior:
 - save files use a prototype save version
 - invalid, unsupported, malformed, or incompatible saves are rejected with player-facing feedback
 - restored saves rebuild the current prototype map from saved quest state
-- restored saves preserve valid shared inventory, wallet, bank, key item, quest, companion, Guild & Inn, world discovery, pending offline loot, and teleport working state
+- restored saves preserve valid shared inventory, wallet, bank, key item, quest, companion, Guild & Inn, world discovery, pending offline loot, and teleport working state while dropping removed or invalid item IDs from saved item containers
 - restored saves clear transient runtime state such as active travel, direct commands, combat feedback, projectiles, cooldowns, movement caches, resurrection channels, recovery overlays, temporary visuals, consumable buffs, skill runtime state, status effects, companion AoE channels, enemy AoE channels, enemy AoE cooldowns, and debug telemetry
 - restored saves clear short-lived news broadcast feedback
 - restored saves sanitize companion skill progression and preserve valid learned skill rank data

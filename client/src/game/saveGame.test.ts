@@ -268,6 +268,67 @@ describe("save game serialization", () => {
     });
   });
 
+  it("drops removed item ids from saved inventory, bank, and pending offline loot", () => {
+    const removedItemId = "removed_crafting_supply" as ItemId;
+    const state = createTestGameState({
+      inventory: {
+        capacity: 6,
+        slots: [
+          { itemId: removedItemId, quantity: 2 },
+          { itemId: "minor_recovery_flask", quantity: 1 },
+        ],
+      },
+      bank: {
+        capacity: 6,
+        slots: [
+          { itemId: removedItemId, quantity: 3, slotIndex: 0 },
+          { itemId: "softwood", quantity: 4, slotIndex: 1 },
+        ],
+        lockedSlotIndices: [],
+        autoRoutingMode: "keep_inventory",
+      },
+      pendingOfflineFarmingLoot: {
+        mapId: MAP_ONE_ID,
+        subzoneId: "shore-fringe",
+        subzoneName: "Shore Fringe",
+        creditedMs: 60_000,
+        enemyKills: 1,
+        xpGranted: 1,
+        rolledLoot: [
+          { itemId: removedItemId, quantity: 5 },
+          { itemId: "softwood", quantity: 1 },
+        ],
+        collectedLoot: [{ itemId: removedItemId, quantity: 1 }],
+        pendingLoot: [
+          { itemId: removedItemId, quantity: 4 },
+          { itemId: "slime_gel_t1", quantity: 2 },
+        ],
+        createdAtMs: NOW_MS,
+      },
+    });
+
+    const restored = restoreGameStateFromSave(createSavedGame(state, NOW_MS));
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    expect(restored.state.inventory.slots).toEqual([
+      { itemId: "minor_recovery_flask", quantity: 1 },
+    ]);
+    expect(restored.state.bank.slots).toEqual([
+      { itemId: "softwood", quantity: 4, slotIndex: 1 },
+    ]);
+    expect(restored.state.pendingOfflineFarmingLoot?.rolledLoot).toEqual([
+      { itemId: "softwood", quantity: 1 },
+    ]);
+    expect(restored.state.pendingOfflineFarmingLoot?.collectedLoot).toEqual([]);
+    expect(restored.state.pendingOfflineFarmingLoot?.pendingLoot).toEqual([
+      { itemId: "slime_gel_t1", quantity: 2 },
+    ]);
+  });
+
   it("preserves Guild recruit candidate, timer, and sequence through save restore", () => {
     const guildRecruit = {
       ...createInitialGuildRecruitState(NOW_MS),

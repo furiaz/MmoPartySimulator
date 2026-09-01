@@ -318,23 +318,9 @@ describe("quest progression hooks", () => {
     ).toBe(false);
 
     state = recordMerchantItemPurchasedForQuests(state, "first_aid_skill_book");
-    state = recordMerchantItemPurchasedForQuests(state, "crafting_string");
-    state = recordMerchantItemPurchasedForQuests(state, "iron_nails");
 
     expect(
       state.quests.outfit_the_expedition.objectiveProgress.buy_first_aid_skill_book,
-    ).toMatchObject({
-      currentCount: 1,
-      completed: true,
-    });
-    expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_crafting_string,
-    ).toMatchObject({
-      currentCount: 1,
-      completed: true,
-    });
-    expect(
-      state.quests.outfit_the_expedition.objectiveProgress.buy_iron_nails,
     ).toMatchObject({
       currentCount: 1,
       completed: true,

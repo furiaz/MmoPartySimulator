@@ -416,7 +416,6 @@ describe("companion debug test tools", () => {
     const nextState = debugAddCraftingMaterialsAndEnemyDropsToInventory(state);
 
     expect(countInventoryItem(nextState.inventory, "softwood")).toBe(20);
-    expect(countInventoryItem(nextState.inventory, "crafting_string")).toBe(20);
     expect(countInventoryItem(nextState.inventory, "slime_gel_t1")).toBe(20);
     expect(countInventoryItem(nextState.inventory, "orc_hide")).toBe(20);
     expect(countInventoryItem(nextState.inventory, "training_sword")).toBe(0);

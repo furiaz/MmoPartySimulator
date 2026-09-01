@@ -170,18 +170,6 @@ export const QUEST_DEFINITIONS: Record<QuestId, QuestDefinition> = {
         itemId: "first_aid_skill_book",
         requiredCount: 1,
       },
-      {
-        id: "buy_crafting_string",
-        type: "buy_merchant_item",
-        itemId: "crafting_string",
-        requiredCount: 1,
-      },
-      {
-        id: "buy_iron_nails",
-        type: "buy_merchant_item",
-        itemId: "iron_nails",
-        requiredCount: 1,
-      },
     ],
     unlocksQuestIds: ["smiths_first_work"],
     rewards: {

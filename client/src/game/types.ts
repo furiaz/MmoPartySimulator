@@ -194,10 +194,6 @@ export type ResourceItemId =
   | "redleaf_herb"
   | "tin_ore";
 
-export type CraftingSupplyItemId =
-  | "crafting_string"
-  | "iron_nails";
-
 export type ItemCategory =
   | "material"
   | "consumable"
@@ -601,7 +597,6 @@ export type SkillBookItemId =
 
 export type ItemId =
   | ResourceItemId
-  | CraftingSupplyItemId
   | JunkItemId
   | EquipmentItemId
   | ConsumableItemId

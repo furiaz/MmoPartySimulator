@@ -61,7 +61,6 @@ export type MerchantMenuSelection =
 
 export type MerchantStockGroup =
   | "flasks"
-  | "supplies"
   | "books"
   | "weapons"
   | "offhands"
@@ -252,8 +251,6 @@ type QuickExchangeOptions = {
 const BASE_MERCHANT_BUY_STOCK: MerchantStockEntry[] = [
   { itemId: "minor_recovery_flask", priceCrowns: 30, group: "flasks" },
   { itemId: "soldiers_recovery_flask", priceCrowns: 45, group: "flasks" },
-  { itemId: "crafting_string", priceCrowns: 2, group: "supplies" },
-  { itemId: "iron_nails", priceCrowns: 3, group: "supplies" },
   { itemId: "throw_rock_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "kick_skill_book", priceCrowns: 25, group: "books" },
   { itemId: "guard_up_skill_book", priceCrowns: 25, group: "books" },

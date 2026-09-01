@@ -422,7 +422,6 @@ type EntityHoverTooltipState = {
 const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
   all: "All",
   flasks: "Flasks",
-  supplies: "Supplies",
   books: "Books",
   weapons: "Weapons",
   offhands: "Offhands",
@@ -436,7 +435,6 @@ const merchantBuyFilterLabels: Record<MerchantBuyFilter, string> = {
 const merchantBuyFilters: MerchantBuyFilter[] = [
   "all",
   "flasks",
-  "supplies",
   "books",
   "weapons",
   "offhands",
