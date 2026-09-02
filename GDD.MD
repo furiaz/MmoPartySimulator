@@ -368,6 +368,7 @@ Current prototype movement also includes lightweight overlap cleanup:
 
 - stationary overlapping companions, normal enemies, and NPCs may be nudged apart when an available position exists
 - moving entities, reserved positions, walls, active resources, and blocked positions are respected
+- same-party overlap cleanup treats the current leader as anchored; followers may be nudged away from the leader, but the leader is not moved by follower overlap cleanup
 - companions and small/simple enemies may be pushed; NPCs can participate as overlap sources but are not general movement actors
 - this is a readability and unclogging aid, not a final crowd simulation, physics system, or collision-push combat mechanic
 
@@ -550,6 +551,7 @@ Current prototype enemy respawn behavior:
 - enemies respawn at their home position
 - respawn restores health and clears temporary target, roam, mark, and bind state
 - respawn may reroll eligible Superior enemy variant state
+- normal enemy respawn pauses while a matching subzone is suppressed by an active defend-area quest objective or its short post-completion restore delay
 - enemy respawn does not run in the hub
 
 Current prototype enemy AoE behavior:
@@ -627,7 +629,7 @@ Resources:
 - can have a resource tier
 - can limit simultaneous gatherers
 - become depleted
-- may be rebuilt by map reset, debug reset, or future respawn behavior
+- may be rebuilt by map reset, debug reset, or current prototype resource respawn behavior
 
 Gathering is task-based, not manual.
 
@@ -636,6 +638,13 @@ Gatherers and collectors search for or receive valid resources, move to an open 
 Current prototype resource interaction range is 2.
 
 Resources may limit how many gatherers or collectors can gather them at once.
+
+Current prototype resource respawn behavior:
+
+- authored wilderness resource nodes respawn after 30 seconds when depleted
+- respawn restores the node at its authored position with full durability and full quantity
+- respawn uses the node's authored resource type and tier
+- resource respawn is a current prototype AFK support behavior, not a production resource ecosystem
 
 
 Current resource categories:
@@ -1280,6 +1289,7 @@ It may show:
 - inventory-full turn-in feedback when quest rewards cannot fit
 - category grouping for different quest sources, including main prototype quests and Guild Notice Board quests
 - NPC quest location information using current prototype zone/subzone names
+- world entity quest indicators may show a separate yellow `!` beside quest-relevant entities
 
 The Quests menu must not implement a full quest journal, branching dialogue, quest reward economy, reputation, cutscenes, or production quest content unless explicitly requested.
 
@@ -1543,12 +1553,27 @@ Current prototype quest guide behavior:
 - repair objectives can be progressed by a nearby party member or quest guide NPC
 - repair progress pauses if the repair actor is targeted by an enemy
 - defend objectives can spawn quest enemies during repair progress
+- defend objectives may temporarily suppress normal enemies in the objective subzone, including living and defeated normal enemies, so the defense encounter can use quest-spawned attackers cleanly
+- normal enemies suppressed for a defend objective restore together 3 seconds after that defense objective completes
+- living quest-spawned defense enemies are cleaned up when the defense objective completes
 - defeat elite objectives can spawn an aggressive quest enemy
 - unlock route objectives complete the associated route step
 
 Quest guide, rescue, repair, defend, route unlock, and elite behaviors are prototype quest-objective helpers.
 
 They are not full follower, recruitment, dialogue, companion, town NPC, production escort, event scripting, or final quest framework systems.
+
+Current prototype world quest indicator behavior:
+
+- quest-relevant world entities may show a separate yellow `!` immediately before the entity name
+- enemy name text remains unchanged; the `!` is a separate visual prefix
+- active incomplete main quest enemy, resource, guide NPC, rescue NPC, and explicit POI/NPC objectives may mark matching living or active entities on the current map
+- available and ready-to-turn-in NPC quests may mark their quest giver NPC
+- taken incomplete Guild Notice Board kill objectives may mark matching living enemies
+- completed objectives, completed quests, available Notice Board quests, and done Notice Board quests do not mark enemy targets
+- an entity shows at most one quest `!` even if multiple quests match it
+- a future Notice Board-specific alternate icon may exist later, but it is not part of the current prototype behavior
+
 Current prototype quest reward behavior:
 
 - ready quests can grant rewards through Quest Giver turn-in

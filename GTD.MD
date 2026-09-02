@@ -22,6 +22,7 @@ The game is divided into:
 
 - Game Logic: `client/src/game/`
 - UI Layer: React components in `client/src/`
+- UI-facing derived helpers: non-persisted presentation helpers in `client/src/`, such as `questEntityIndicators.ts` and quest route/objective marker helpers
 - World renderer: `client/src/worldRenderer/PixiWorldRenderer.tsx` and `client/src/worldRenderer/PixiWorldRendererHelpers.ts`
 - Visual asset registry, image icon mappings, and sprite helpers: `client/src/visualAssets.ts`, `client/src/assetIcons.ts`, and `client/src/SpriteAnimation.tsx`
 
@@ -139,6 +140,7 @@ Current game-logic implementation files include:
 - `questTypes.ts`
 - `resurrectionSystem.ts`
 - `resourceInteraction.ts`
+- `resourceRespawnSystem.ts`
 - `roleBonus.ts`
 - `roleProfiles.ts`
 - `roleSystem.ts`
@@ -1439,6 +1441,17 @@ Quest state is stored on `GameState` as:
 quests: Record<QuestId, QuestState>;
 ```
 
+Current quest runtime state may include:
+
+- quest drop pity counters by objective id
+- repair progress by objective id
+- defense started objective ids
+- defense spawned wave keys
+- quest-spawned enemy ids by objective id
+- legacy despawned subzone enemy ids by objective id
+- suppressed subzone enemy snapshots by objective id
+- suppressed subzone enemy restore timestamps by objective id
+
 Current quest ids are:
 
 - `clear_the_shore`
@@ -1499,6 +1512,8 @@ Current implemented quest objective behavior includes defeat counts, enemy quest
 
 Current NPC quest location display and World Travel quest hints are derived UI data from `QUEST_DEFINITIONS` and `QuestState`. Active NPC quests use incomplete objectives in definition order, resolving objective location from `targetMapId` first and then `enemyMapId`. Unmapped active NPC quest objectives point to Harbor Union Bastion. Ready-to-turn-in NPC quests point to the quest giver hub and render as completed without objective lines. Slimeward special-region objectives resolve to Azurefen Hollow / Imp Fen, the nearest routeable parent zone/subzone, instead of dungeon floor route rows. Guild Notice Board quests do not participate in these NPC quest route hints. This UI hint layer must not add persisted quest-location state, new route commands, or Notice Board routing behavior.
 
+`questEntityIndicators.ts` derives UI-only quest entity indicators from current quest state, Guild Notice Board state, and current entities. It returns at most one indicator per entity id. Active incomplete main quest objectives may mark matching living enemies, active resources, guide NPCs, rescue NPCs, or explicit objective NPC/POI entities on the current map. Available and ready-to-turn-in main quests may mark their quest giver NPC. Taken incomplete Guild Notice Board kill objectives may mark matching living enemies by `enemyTypeId`; available and done Notice Board quests do not mark enemies. This helper must not persist indicator state or own quest simulation behavior.
+
 Current prototype quest chain:
 
 - `clear_the_shore` unlocks `outfit_the_expedition`
@@ -1536,7 +1551,11 @@ Current quest objective helper behavior:
 - guide NPCs pause when no companion is within escort range or nearby living enemies are present
 - rescue objectives complete when the leader reaches the NPC after nearby enemies are cleared
 - repair objectives progress while a party member or quest guide NPC is near the target and not targeted by an enemy
-- defend objectives start from a nearby repair actor, spawn quest enemy waves, and use repair progress as the defense timer
+- defend objectives start from a nearby repair actor, suppress normal objective-subzone enemies, spawn quest enemy waves, and use repair progress as the defense timer
+- defend objective suppression removes and stores living or dead normal non-quest-spawn enemies in the objective subzone while leaving quest-spawned enemies available for defense waves
+- completed defend objectives clean up living quest-spawned enemies and schedule normal subzone enemy restoration
+- suppressed normal subzone enemies restore together after `QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS`
+- legacy defense saves with only despawned enemy ids may rebuild missing authored enemies from map enemy start data during restoration
 - defeat elite objectives ensure the configured elite quest enemy is spawned
 - unlock route objectives complete the current route objective when active
 - collect dungeon chest objectives complete when the matching dungeon chest has been collected
@@ -1545,6 +1564,11 @@ Current quest objective helper behavior:
 The quest guide and related quest objective helpers are prototype systems.
 
 They must not become a general follower, recruitment, companion NPC, production escort, final event scripting, or final quest framework unless explicitly requested.
+
+Current quest guide constants include:
+
+- `QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS = 3_000`
+
 POI selection types live in `poiTypes.ts`.
 
 Current POI categories are:
@@ -1735,12 +1759,13 @@ Current high-level order:
 47. Update Slimeward dungeon system
 48. Update enemy respawn system
 49. Update gathering
-50. Update entity separation
-51. Update skill shield block positions
-52. Idle autonomous party members when no POI or leader intent is active
-53. Record current world discovery for supported wild subzones
-54. Apply debug companion infinite health again when enabled
-55. Record debug telemetry
+50. Update resource respawn
+51. Update entity separation
+52. Update skill shield block positions
+53. Idle autonomous party members when no POI or leader intent is active
+54. Record current world discovery for supported wild subzones
+55. Apply debug companion infinite health again when enabled
+56. Record debug telemetry
 
 Movement conflicts are guarded with per-tick moved entity ids, movement intent records, path records, attack slot cache records, and reserved positions.
 
@@ -1779,6 +1804,8 @@ Movement-related types live in `movementTypes.ts`.
 `resourceInteraction.ts` owns the current prototype resource interaction range constant.
 
 `entitySeparationSystem.ts` owns lightweight stationary overlap cleanup for selected companions, enemies, and NPCs after normal movement and gathering updates.
+
+Same-party separation treats the current party leader as anchored. When the leader overlaps another companion, only the non-leader companion is nudged away if an available position exists.
 
 Navigation helpers live in `navigation.ts`.
 
@@ -2205,6 +2232,7 @@ Current enemy respawn behavior:
 - respawns dead wild-map enemies after the respawn delay
 - restores respawned enemies to home position, idle state, full health, and no target
 - clears temporary target, roam, mark, and bind runtime state for the respawned enemy
+- skips normal enemy respawns while the enemy's subzone is suppressed by an active defend-area objective or its post-completion restore delay
 
 Current enemy respawn constant:
 
@@ -2255,6 +2283,26 @@ Current gathering constants:
 
 Gatherers with autonomous gatherer behavior may stay committed to a resource task unless it becomes invalid or unsafe by current checks.
 
+`resourceRespawnSystem.ts` owns current prototype resource node respawn behavior for authored wilderness resources.
+
+Current resource respawn behavior:
+
+- uses current map id or current map data to find authored resource start data
+- records `depletedAtMs` when an authored active-map resource first becomes depleted without a timestamp
+- respawns authored depleted resources after the respawn delay
+- recreates the node from authored start data at its authored position
+- restores full durability and quantity through normal resource creation
+- preserves authored resource type and tier
+- clears stale `depletedAtMs` from active resource nodes
+
+Current resource respawn constant:
+
+- `RESOURCE_RESPAWN_DELAY_MS = 30_000`
+
+Resource respawn is prototype AFK support behavior.
+
+It should not become production resource scheduling, a final gathering economy, persistent world spawning, or profession progression unless explicitly requested.
+
 ---
 
 ## Exploration System
@@ -2293,6 +2341,7 @@ Current resource fields:
 - `quantity`
 - `maxGatherers`
 - `isDepleted`
+- `depletedAtMs`
 
 Current resource types:
 
@@ -2309,6 +2358,8 @@ type LootTier = 1 | 2;
 Gathering reduces durability.
 
 When durability reaches zero, quantity decreases, resource yield is routed through prototype inventory helpers, durability resets if quantity remains, and the resource becomes depleted when quantity reaches zero.
+
+When an authored wilderness-map resource remains depleted for `RESOURCE_RESPAWN_DELAY_MS`, it may be rebuilt at its authored position with full durability and quantity.
 
 Resource yields currently resolve by resource type and tier.
 
@@ -3280,6 +3331,7 @@ Current visual and rendering files:
 - `client/src/visualAssets.ts`
 - `client/src/assetIcons.ts`
 - `client/src/SpriteAnimation.tsx`
+- `client/src/questEntityIndicators.ts`
 - `client/src/worldRenderer/PixiWorldRenderer.tsx`
 - `client/src/worldRenderer/PixiWorldRendererHelpers.ts`
 
@@ -3329,6 +3381,7 @@ Current world renderer behavior:
 - React hosts the renderer and passes game state and command callbacks.
 - The renderer supports preview and full modes.
 - The renderer may draw floor chunks, walls, obstacles, decorative map visual objects, entities, resources, NPCs, teleports, labels, combat feedback, skill visuals, companion AoE visuals, enemy AoE danger circles and channel bars, basic combat projectile visuals, drop visuals, resurrection feedback, world-wipe feedback, status-effect presentation where supported, and camera-follow presentation.
+- The renderer may draw quest entity indicators as separate yellow `!` text prefixes beside relevant enemy, NPC, or resource labels without modifying entity display names.
 - The renderer uses redraw gating so stable preview/full renderer frames are skipped unless game state, timed visual work, texture readiness, or sizing changes require a draw.
 - The renderer tracks Pixi texture lifetime with shared, current-map, previous-map, and durable texture scopes, then best-effort evicts old map-only textures.
 - The renderer reuses managed Pixi sprites and text where safe, caches static map-derived render data, and records draw/texture/performance sample metrics for debugging.
