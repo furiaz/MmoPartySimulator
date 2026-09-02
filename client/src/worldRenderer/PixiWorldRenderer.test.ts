@@ -473,6 +473,7 @@ function createFullRenderSignatureInput(
     map: createWideMap(),
     movementClickFeedbackEvents: [],
     partyIntent: null,
+    questEntityIndicators: [],
     questGiverHasWork: false,
     questObjectiveMarkers: [],
     renderSize: { width: 320, height: 180 },
@@ -571,6 +572,17 @@ describe("getFullRenderSignature", () => {
       getFullRenderSignature({
         ...input,
         suppressMovePoiRing: true,
+      }),
+    ).not.toBe(baseSignature);
+    expect(
+      getFullRenderSignature({
+        ...input,
+        questEntityIndicators: [
+          {
+            entityId: companion.id,
+            id: `main_quest:test:${companion.id}`,
+          },
+        ],
       }),
     ).not.toBe(baseSignature);
     expect(
@@ -1178,6 +1190,7 @@ describe("enemy nameplates", () => {
     });
 
     expect(getEnemyNameplateText(enemy)).toBe("Cave Bat Lv 2");
+    expect(getEnemyNameplateText(enemy)).not.toContain("!");
   });
 
   it("prefixes Superior enemies", () => {

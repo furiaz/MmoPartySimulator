@@ -32,6 +32,7 @@ import {
   getQuestTurnInErrorText,
 } from "./questUiHelpers";
 import { getQuestObjectiveMarkers } from "./questObjectiveMarkers";
+import { getQuestEntityIndicators } from "./questEntityIndicators";
 import { QuestTrackerPanel } from "./QuestTrackerPanel";
 import { BankPanel } from "./BankPanel";
 import type { PixiRendererPerformanceSample } from "./worldRenderer/PixiWorldRendererHelpers";
@@ -3343,6 +3344,10 @@ function App() {
     () => getQuestObjectiveMarkers(gameState),
     [gameState],
   );
+  const questEntityIndicators = useMemo(
+    () => getQuestEntityIndicators(gameState),
+    [gameState],
+  );
   const targetEnemy = enemies.find((enemy) => enemy.state !== "dead");
   const targetResource = resources.find(isActiveResource);
   const inventory = gameState.inventory;
@@ -6279,6 +6284,7 @@ function App() {
               onCursorPositionChange={updateMapCursorPosition}
               onResourceClick={commandCompanionsToGatherResource}
               partyIntent={gameState.partyIntent}
+              questEntityIndicators={questEntityIndicators}
               questObjectiveMarkers={questObjectiveMarkers}
               questGiverHasWork={questGiverHasWork}
               resurrectionProgressByCompanionId={resurrectionProgressByCompanionId}

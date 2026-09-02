@@ -86,6 +86,7 @@ import {
   type OverheadStatusPresentation,
   type OverheadUiBox,
   type PixiRendererPerformanceSample,
+  type QuestEntityIndicator,
 } from "./PixiWorldRendererHelpers";
 
 const { Application, Assets, Container, Graphics, Sprite, Text } = PIXI;
@@ -122,6 +123,10 @@ const criticalHitBackingSize = 128;
 const deadEnemyFadeDurationMs = 2500;
 const entityFeedbackTintDurationMs = 260;
 const enemyNameplateFontSize = 10;
+const questEntityIndicatorColor = 0xfacc15;
+const questEntityIndicatorStrokeColor = 0x451a03;
+const questEntityNameplateGap = 8;
+const questEntityLabelFontSize = 10;
 const enemyNameplateStatusGap = 2;
 const enemyNameplateHealthGap = 3;
 const aggressiveEnemyNameplateColor = 0xdc2626;
@@ -276,6 +281,7 @@ type PixiWorldRendererProps = {
   onCursorPositionChange?: (position: Position | null) => void;
   onResourceClick?: (resourceId: string) => void;
   partyIntent?: PartyIntent | null;
+  questEntityIndicators?: QuestEntityIndicator[];
   questObjectiveMarkers?: QuestObjectiveMarker[];
   resurrectionProgressByCompanionId?: Record<string, ResurrectionProgressState>;
   questGiverHasWork?: boolean;
@@ -456,6 +462,7 @@ type DrawWorldOptions = {
   navigationClickAccessibility: NavigationClickAccessibility | null;
   onPerformanceSample?: (sample: PixiRendererPerformanceSample) => void;
   partyIntent: PartyIntent | null;
+  questEntityIndicators: QuestEntityIndicator[];
   questObjectiveMarkers: QuestObjectiveMarker[];
   questGiverHasWork: boolean;
   requestRedraw?: () => void;
@@ -2191,6 +2198,7 @@ function drawEntityOverheadUiPass({
   layer,
   managedState,
   metrics,
+  questEntityIndicators,
   statusPresentationTime,
   statusEffectsById,
   transform,
@@ -2201,11 +2209,15 @@ function drawEntityOverheadUiPass({
   layer: Container;
   managedState: ManagedRendererState;
   metrics: PixiDrawMetrics;
+  questEntityIndicators: QuestEntityIndicator[];
   statusPresentationTime: number;
   statusEffectsById: Record<string, StatusEffectState>;
   transform: FullTransform;
   visibleTileBounds: TileBounds;
 }) {
+  const questIndicatorEntityIds = new Set(
+    questEntityIndicators.map((indicator) => indicator.entityId),
+  );
   const entries = entities
     .filter((entity) => isPositionInTileBounds(entity.position, visibleTileBounds))
     .map((entity) => {
@@ -2267,9 +2279,20 @@ function drawEntityOverheadUiPass({
       layer,
       managedState,
       metrics,
+      hasQuestIndicator: questIndicatorEntityIds.has(entry.entity.id),
       transform,
     });
   }
+
+  drawQuestEntityLabels({
+    entities,
+    layer,
+    managedState,
+    metrics,
+    questIndicatorEntityIds,
+    transform,
+    visibleTileBounds,
+  });
 }
 
 function getEntityOverheadUiBox(
@@ -2442,12 +2465,14 @@ function getEnemyNameplatePosition(
 
 function drawEnemyNameplate({
   enemy,
+  hasQuestIndicator,
   layer,
   managedState,
   metrics,
   transform,
 }: {
   enemy: Extract<GameEntity, { kind: "enemy" }>;
+  hasQuestIndicator: boolean;
   layer: Container;
   managedState: ManagedRendererState;
   metrics: PixiDrawMetrics;
@@ -2457,7 +2482,7 @@ function drawEnemyNameplate({
     return;
   }
 
-  drawManagedFeedbackText({
+  const nameplate = drawManagedFeedbackText({
     color: getEnemyNameplateColor(enemy),
     fontSize: enemyNameplateFontSize,
     key: `enemy-nameplate:${enemy.id}`,
@@ -2466,6 +2491,137 @@ function drawEnemyNameplate({
     metrics,
     position: getEnemyNameplatePosition(enemy, transform),
     text: getEnemyNameplateText(enemy),
+  });
+
+  if (hasQuestIndicator) {
+    drawQuestNameplatePrefix({
+      fontSize: enemyNameplateFontSize + 1,
+      key: `quest-entity-indicator:${enemy.id}`,
+      layer,
+      managedState,
+      metrics,
+      nameplate,
+    });
+  }
+}
+
+function drawQuestEntityLabels({
+  entities,
+  layer,
+  managedState,
+  metrics,
+  questIndicatorEntityIds,
+  transform,
+  visibleTileBounds,
+}: {
+  entities: GameEntity[];
+  layer: Container;
+  managedState: ManagedRendererState;
+  metrics: PixiDrawMetrics;
+  questIndicatorEntityIds: Set<string>;
+  transform: FullTransform;
+  visibleTileBounds: TileBounds;
+}) {
+  for (const entity of entities) {
+    if (
+      !questIndicatorEntityIds.has(entity.id) ||
+      !isPositionInTileBounds(entity.position, visibleTileBounds) ||
+      (entity.kind !== "npc" && entity.kind !== "resource")
+    ) {
+      continue;
+    }
+
+    if (entity.kind === "resource" && !isActiveResource(entity)) {
+      continue;
+    }
+
+    const text = getQuestEntityLabelText(entity);
+
+    if (!text) {
+      continue;
+    }
+
+    const label = drawManagedFeedbackText({
+      color: 0xf8fafc,
+      fontSize: questEntityLabelFontSize,
+      key: `quest-entity-label:${entity.id}`,
+      layer,
+      managedState,
+      metrics,
+      position: getQuestEntityLabelPosition(entity, transform),
+      strokeColor: 0x0f172a,
+      strokeWidth: 4,
+      text,
+    });
+
+    drawQuestNameplatePrefix({
+      fontSize: questEntityLabelFontSize + 1,
+      key: `quest-entity-indicator:${entity.id}`,
+      layer,
+      managedState,
+      metrics,
+      nameplate: label,
+    });
+  }
+}
+
+function getQuestEntityLabelText(entity: GameEntity): string | null {
+  if (entity.kind === "npc") {
+    return entity.displayName;
+  }
+
+  if (entity.kind === "resource") {
+    return {
+      herb: "Herb",
+      ore: "Ore",
+      wood: "Wood",
+    }[entity.resourceType];
+  }
+
+  return null;
+}
+
+function getQuestEntityLabelPosition(
+  entity: GameEntity,
+  transform: FullTransform,
+): Position {
+  const center = toFullPosition(entity.position, transform);
+
+  return {
+    x: center.x,
+    y: center.y - transform.cellPixelSize * 1.08,
+  };
+}
+
+function drawQuestNameplatePrefix({
+  fontSize,
+  key,
+  layer,
+  managedState,
+  metrics,
+  nameplate,
+}: {
+  fontSize: number;
+  key: string;
+  layer: Container;
+  managedState: ManagedRendererState;
+  metrics: PixiDrawMetrics;
+  nameplate: Text;
+}) {
+  drawManagedFeedbackText({
+    color: questEntityIndicatorColor,
+    fontSize,
+    key,
+    layer,
+    managedState,
+    metrics,
+    position: {
+      x: nameplate.x - nameplate.width / 2 - questEntityNameplateGap,
+      y: nameplate.y,
+    },
+    strokeColor: questEntityIndicatorStrokeColor,
+    strokeWidth: 4,
+    text: "!",
   });
 }
 
@@ -5408,6 +5564,7 @@ function drawFullMap({
   movementClickFeedbackEvents,
   onPerformanceSample,
   partyIntent,
+  questEntityIndicators,
   questObjectiveMarkers,
   questGiverHasWork,
   requestRedraw,
@@ -5444,6 +5601,7 @@ function drawFullMap({
   movementClickFeedbackEvents: MovementClickFeedbackEvent[];
   onPerformanceSample?: (sample: PixiRendererPerformanceSample) => void;
   partyIntent: PartyIntent | null;
+  questEntityIndicators: QuestEntityIndicator[];
   questObjectiveMarkers: QuestObjectiveMarker[];
   questGiverHasWork: boolean;
   requestRedraw?: () => void;
@@ -5734,6 +5892,7 @@ function drawFullMap({
     layer: layers.effectsLayer,
     managedState,
     metrics,
+    questEntityIndicators,
     statusPresentationTime,
     statusEffectsById,
     transform,
@@ -5793,6 +5952,7 @@ function drawWorld({
   fullSignatureRef,
   lastDrawnTextureRevisionRef,
   previewSignatureRef,
+  questEntityIndicators,
   questObjectiveMarkers,
   questGiverHasWork,
   requestRedraw,
@@ -5847,6 +6007,7 @@ function drawWorld({
       map,
       movementClickFeedbackEvents,
       partyIntent,
+      questEntityIndicators,
       questGiverHasWork,
       questObjectiveMarkers,
       renderSize,
@@ -5899,6 +6060,7 @@ function drawWorld({
       movementClickFeedbackEvents,
       onPerformanceSample,
       partyIntent,
+      questEntityIndicators,
       questObjectiveMarkers,
       questGiverHasWork,
       requestRedraw,
@@ -6084,6 +6246,7 @@ export function PixiWorldRenderer({
   onCursorPositionChange,
   onResourceClick,
   partyIntent = null,
+  questEntityIndicators = [],
   questObjectiveMarkers = [],
   resurrectionProgressByCompanionId = {},
   questGiverHasWork = false,
@@ -6138,6 +6301,7 @@ export function PixiWorldRenderer({
   const latestModeRef = useRef(mode);
   const latestOnPerformanceSampleRef = useRef(onPerformanceSample);
   const latestPartyIntentRef = useRef<PartyIntent | null>(partyIntent);
+  const latestQuestEntityIndicatorsRef = useRef(questEntityIndicators);
   const latestQuestObjectiveMarkersRef = useRef(questObjectiveMarkers);
   const latestQuestGiverHasWorkRef = useRef(questGiverHasWork);
   const latestRenderSizeRef = useRef(getRenderSize(mode, viewportSize));
@@ -6199,6 +6363,7 @@ export function PixiWorldRenderer({
     latestModeRef.current = mode;
     latestOnPerformanceSampleRef.current = onPerformanceSample;
     latestPartyIntentRef.current = partyIntent;
+    latestQuestEntityIndicatorsRef.current = questEntityIndicators;
     latestQuestObjectiveMarkersRef.current = questObjectiveMarkers;
     latestQuestGiverHasWorkRef.current = questGiverHasWork;
     latestRenderSizeRef.current = renderSize;
@@ -6232,6 +6397,7 @@ export function PixiWorldRenderer({
     navigationClickAccessibility,
     onPerformanceSample,
     partyIntent,
+    questEntityIndicators,
     questObjectiveMarkers,
     questGiverHasWork,
     renderSize,
@@ -6350,6 +6516,7 @@ export function PixiWorldRenderer({
         fullHadTimedWorkRef,
         fullSignatureRef,
         lastDrawnTextureRevisionRef,
+        questEntityIndicators: latestQuestEntityIndicatorsRef.current,
         questObjectiveMarkers: latestQuestObjectiveMarkersRef.current,
         previewSignatureRef,
         questGiverHasWork: latestQuestGiverHasWorkRef.current,
@@ -6501,6 +6668,7 @@ export function PixiWorldRenderer({
     navigationClickAccessibility,
     onPerformanceSample,
     partyIntent,
+    questEntityIndicators,
     questObjectiveMarkers,
     questGiverHasWork,
     renderSize,

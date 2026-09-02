@@ -303,6 +303,11 @@ export type QuestObjectiveMarker = {
   position: Position;
 };
 
+export type QuestEntityIndicator = {
+  id: string;
+  entityId: string;
+};
+
 export type MovementClickFeedbackEvent = {
   id: string;
   position: Position;
@@ -331,6 +336,7 @@ export type FullRenderSignatureInput = {
   map: GameMap;
   movementClickFeedbackEvents: MovementClickFeedbackEvent[];
   partyIntent: PartyIntent | null;
+  questEntityIndicators: QuestEntityIndicator[];
   questGiverHasWork: boolean;
   questObjectiveMarkers: QuestObjectiveMarker[];
   renderSize: RenderSize;
@@ -1025,6 +1031,7 @@ export function getFullRenderSignature({
   map,
   movementClickFeedbackEvents,
   partyIntent,
+  questEntityIndicators,
   questGiverHasWork,
   questObjectiveMarkers,
   renderSize,
@@ -1096,6 +1103,7 @@ export function getFullRenderSignature({
       getResurrectionProgressSignature,
     ),
     getEventSignature(questObjectiveMarkers, getQuestObjectiveMarkerSignature),
+    getEventSignature(questEntityIndicators, getQuestEntityIndicatorSignature),
     questGiverHasWork ? "quest-work" : "quest-idle",
     showDebugOverlays ? "debug-on" : "debug-off",
     showDebugOverlays
@@ -1414,6 +1422,12 @@ function getResurrectionProgressSignature(
 
 function getQuestObjectiveMarkerSignature(marker: QuestObjectiveMarker): string {
   return getPositionSignature(marker.position);
+}
+
+function getQuestEntityIndicatorSignature(
+  indicator: QuestEntityIndicator,
+): string {
+  return `${indicator.id}:${indicator.entityId}`;
 }
 
 function getDirectCommandSignature(
