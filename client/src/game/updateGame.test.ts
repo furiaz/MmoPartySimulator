@@ -3982,6 +3982,42 @@ describe("game update intent priority", () => {
     );
   });
 
+  it("keeps a Gatherer-role follower still at settled follow spacing when the leader is idle", () => {
+    const leader = createLeader({ x: 10, y: 10 });
+    const settledFollowPosition = {
+      x: leader.position.x - 0.9,
+      y: leader.position.y + 0.45,
+    };
+    const gatherer = {
+      ...createCompanion(
+        "gatherer",
+        settledFollowPosition,
+        leader.id,
+        "gatherer",
+      ),
+      state: "follow" as const,
+      currentTargetId: leader.id,
+    };
+    let nextState = createMapOneState([leader, gatherer], {
+      autoModeEnabled: false,
+      partyLeaderId: leader.id,
+      map: createOpenTestMap(),
+      quests: createQuestStates(),
+    });
+
+    for (let tick = 1; tick <= 5; tick += 1) {
+      nextState = updateGame(nextState, {
+        nowMs: tick * 100,
+        deltaMs: 100,
+      });
+    }
+
+    expect(nextState.entities[leader.id].position).toEqual(leader.position);
+    expect(nextState.entities[gatherer.id].position).toEqual(
+      settledFollowPosition,
+    );
+  });
+
   it("lets gatherers choose nearby resources from their own position within leader leash", () => {
     const leader = createLeader({ x: 2, y: 2 });
     const gatherer = {

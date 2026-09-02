@@ -46,4 +46,21 @@ describe("resource depletion", () => {
       isDepleted: true,
     });
   });
+
+  it("records when a resource is depleted", () => {
+    const resource = createResource("wood", { x: 0, y: 0 }, {
+      durability: 1,
+      maxDurability: 1,
+      quantity: 1,
+    });
+
+    const depletedResource = gatherResource(resource, 1, 12_345);
+
+    expect(depletedResource).toMatchObject({
+      durability: 0,
+      quantity: 0,
+      isDepleted: true,
+      depletedAtMs: 12_345,
+    });
+  });
 });

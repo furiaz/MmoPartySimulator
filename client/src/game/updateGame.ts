@@ -23,6 +23,7 @@ import { updateDropSystem } from "./dropSystem";
 import { updateDirectCompanionCommandSystem } from "./directCompanionCommands";
 import { updateFollowSystem } from "./followSystem";
 import { updateGatherSystem } from "./gatherSystem";
+import { updateResourceRespawnSystem } from "./resourceRespawnSystem";
 import { updateHealingFountainSystem } from "./healingFountainSystem";
 import { updateNewsBroadcasts } from "./newsBroadcast";
 import { settleFarmState } from "./farm";
@@ -218,6 +219,7 @@ export function updateGame(
     movedEntityIds,
     timing.nowMs,
   );
+  nextState = updateResourceRespawnSystem(nextState, timing.nowMs);
   nextState = updateEntitySeparationSystem(nextState, movedEntityIds);
   nextState = updateSkillShieldBlockPositions(nextState);
   nextState = idleAutonomousPartyMembersWithoutPoi(nextState);

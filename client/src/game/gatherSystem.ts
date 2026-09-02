@@ -178,7 +178,7 @@ export function updateGatherSystem(
       resource.quantity > 0 &&
       resource.durability > 0 &&
       gatherAmount >= resource.durability;
-    const gatheredResource = gatherResource(resource, gatherAmount);
+    const gatheredResource = gatherResource(resource, gatherAmount, now);
 
     nextState = updateEntity(nextState, gatheredResource);
     nextState = addCombatFeedback(nextState, {

@@ -1,6 +1,7 @@
 import { moveEntityTo } from "./entities";
 import { getEnemyCombatBodyRadius } from "./enemyArchetypes";
 import {
+  ENTITY_COLLISION_DISTANCE,
   getEntityCollisionShape,
   isEntitySeparationPositionAvailable,
   isPositionInsideEntityCollisionShape,
@@ -91,6 +92,15 @@ function separateStationaryPair(
 ): GameState {
   const firstPushable = isPushable(first);
   const secondPushable = isPushable(second);
+  const leaderPair = getSamePartyLeaderPair(state, first, second);
+
+  if (leaderPair) {
+    return pushEntityAwayFromSource(
+      state,
+      leaderPair.follower,
+      leaderPair.leader,
+    );
+  }
 
   if (firstPushable && secondPushable) {
     let nextState = pushEntityAwayFromSource(state, first, second);
@@ -106,6 +116,26 @@ function separateStationaryPair(
   }
 
   return secondPushable ? pushEntityAwayFromSource(state, second, first) : state;
+}
+
+function getSamePartyLeaderPair(
+  state: GameState,
+  first: SeparationParticipant,
+  second: SeparationParticipant,
+): { leader: SeparationParticipant; follower: SeparationParticipant } | null {
+  if (first.kind !== "companion" || second.kind !== "companion") {
+    return null;
+  }
+
+  if (first.id === state.partyLeaderId && isPushable(second)) {
+    return { leader: first, follower: second };
+  }
+
+  if (second.id === state.partyLeaderId && isPushable(first)) {
+    return { leader: second, follower: first };
+  }
+
+  return null;
 }
 
 function pushEntityAwayFromSource(
@@ -161,12 +191,35 @@ function areEntitiesOverlapping(
   first: SeparationParticipant,
   second: SeparationParticipant,
 ): boolean {
+  if (isSamePartyCompanionPair(first, second)) {
+    return areSamePartyCompanionsOverlapping(first, second);
+  }
+
   return (
     isPositionInsideEntityCollisionShape(first, second.position) ||
     isPositionInsideEntityCollisionShape(second, first.position) ||
     getEuclideanDistance(first.position, second.position) <
       getSeparationThreshold(first, second)
   );
+}
+
+function areSamePartyCompanionsOverlapping(
+  first: SeparationParticipant,
+  second: SeparationParticipant,
+): boolean {
+  return (
+    isPositionInsideEntityCollisionShape(first, second.position) ||
+    isPositionInsideEntityCollisionShape(second, first.position) ||
+    getEuclideanDistance(first.position, second.position) <
+      ENTITY_COLLISION_DISTANCE
+  );
+}
+
+function isSamePartyCompanionPair(
+  first: SeparationParticipant,
+  second: SeparationParticipant,
+): boolean {
+  return first.kind === "companion" && second.kind === "companion";
 }
 
 function getSeparationThreshold(

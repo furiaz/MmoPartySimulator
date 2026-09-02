@@ -4,7 +4,9 @@ import {
   HUB_MAP_ID,
   HUB_TWO_MAP_ID,
   MAP_ONE_ID,
+  MAP_TWO_ID,
   SLIMEWARD_FLOOR_ONE_ID,
+  mapTwoEnemyStartData,
 } from "./debugMap";
 import { createDebugTelemetryState } from "./debugTelemetry";
 import { createCompanion, createResource } from "./entities";
@@ -38,6 +40,10 @@ import { addItemToInventoryState, countInventoryItem } from "./inventory";
 import { getPartySizeLimit } from "./leveling";
 import { moveCompanionToRestingReserve } from "./partySystem";
 import { createInitialQuestStates } from "./questSystem";
+import {
+  QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS,
+  updateQuestGuideSystem,
+} from "./questGuideSystem";
 import {
   applyOfflineFarmingProgress,
   claimPendingOfflineFarmingLoot,
@@ -1051,6 +1057,67 @@ describe("offline farming", () => {
 
     expect(restored.state.pendingOfflineFarmingLoot?.pendingLoot.length).toBeGreaterThan(0);
   });
+
+  it("restores legacy id-only suppressed defense enemies after save and reload", () => {
+    const legacyEnemyStart = mapTwoEnemyStartData.find(
+      (enemyStart) => enemyStart.subzoneId === "south-east",
+    );
+    expect(legacyEnemyStart).toBeDefined();
+    const quests = createInitialQuestStates();
+    quests.hold_the_field_cache = {
+      ...quests.hold_the_field_cache,
+      status: "ready_to_turn_in",
+      objectiveProgress: {
+        ...quests.hold_the_field_cache.objectiveProgress,
+        defend_old_grove_cache: {
+          objectiveId: "defend_old_grove_cache",
+          currentCount: 1,
+          completed: true,
+        },
+      },
+      runtime: {
+        defenseStartedObjectiveIds: { defend_old_grove_cache: true },
+        despawnedSubzoneEnemyIdsByObjectiveId: {
+          defend_old_grove_cache: [legacyEnemyStart!.id],
+        },
+      },
+    };
+    const save = createSavedGame(
+      createTestGameState({
+        currentMapId: MAP_TWO_ID,
+        map: createDebugMap(MAP_TWO_ID),
+        quests,
+      }),
+      NOW_MS,
+    );
+    const restored = restoreGameStateFromSave(save);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+
+    const scheduledState = updateQuestGuideSystem(
+      restored.state,
+      new Set(),
+      createTiming(NOW_MS, 100),
+      () => 0.99,
+    );
+    const restoredState = updateQuestGuideSystem(
+      scheduledState,
+      new Set(),
+      createTiming(NOW_MS + QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS, 100),
+      () => 0.99,
+    );
+
+    expect(restoredState.entities[legacyEnemyStart!.id]).toMatchObject({
+      kind: "enemy",
+      id: legacyEnemyStart!.id,
+      state: "idle",
+      position: legacyEnemyStart!.position,
+      subzoneId: "south-east",
+    });
+  });
 });
 
 function createWildState(secondRole: PartyMemberRole): GameState {
@@ -1098,4 +1165,13 @@ function getSkipReason(state: GameState): string {
 
 function totalResources(resources: { quantity: number }[]): number {
   return resources.reduce((total, resource) => total + resource.quantity, 0);
+}
+
+function createTiming(nowMs: number, deltaMs: number) {
+  return {
+    nowMs,
+    deltaMs,
+    deltaSeconds: deltaMs / 1000,
+    frameNumber: 1,
+  };
 }

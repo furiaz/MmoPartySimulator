@@ -1,5 +1,6 @@
 import type {
   DebugMapId,
+  Enemy,
   EnemyArchetypeId,
   EnemyTypeId,
   EnemyVariant,
@@ -132,6 +133,8 @@ export type QuestRuntimeState = {
   defenseSpawnedWaveKeys?: Record<string, true>;
   questSpawnedEnemyIdsByObjectiveId?: Record<string, string[]>;
   despawnedSubzoneEnemyIdsByObjectiveId?: Record<string, string[]>;
+  suppressedSubzoneEnemiesByObjectiveId?: Record<string, Enemy[]>;
+  suppressedSubzoneEnemyRestoreAtMsByObjectiveId?: Record<string, number>;
 };
 
 export type QuestState = {

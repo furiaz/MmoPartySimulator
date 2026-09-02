@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { createCompanion } from "./entities";
-import { MAP_TWO_ID, createDebugMap } from "./debugMap";
+import { createCompanion, createEnemy } from "./entities";
+import {
+  MAP_TWO_ID,
+  createDebugMap,
+  mapTwoEnemyStartData,
+} from "./debugMap";
 import { createInitialQuestStates } from "./questSystem";
-import { updateQuestGuideSystem } from "./questGuideSystem";
+import {
+  QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS,
+  updateQuestGuideSystem,
+} from "./questGuideSystem";
 import { addEntity, type GameState } from "./state";
 import { createTestGameState } from "./testState";
 import type { Enemy, GameEntity } from "./types";
@@ -58,6 +65,200 @@ describe("quest guide defense objectives", () => {
       }),
     ).toBe(true);
   });
+
+  it("suppresses living and dead normal subzone enemies when Hold the Field Cache starts", () => {
+    const leader = createCompanion("leader", { x: 100, y: 25 }, "leader");
+    const livingEnemy = createEnemy("living-normal", { x: 99, y: 25 }, undefined, {
+      enemyTypeId: "goblin_scout",
+      subzoneId: "south-east",
+    });
+    const deadEnemy: Enemy = {
+      ...createEnemy("dead-normal", { x: 101, y: 25 }, undefined, {
+        enemyTypeId: "bog_imp",
+        subzoneId: "south-east",
+      }),
+      state: "dead",
+      health: 0,
+      defeatedAtMs: 1_000,
+    };
+    const outsideEnemy = createEnemy("outside-normal", { x: 130, y: 25 }, undefined, {
+      enemyTypeId: "wolf",
+      subzoneId: "north-east",
+    });
+
+    const nextState = updateQuestGuideSystem(
+      createMapTwoState([leader, livingEnemy, deadEnemy, outsideEnemy], {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          hold_the_field_cache: "active",
+        }),
+      }),
+      new Set(),
+      createTiming(2_000, 100),
+    );
+
+    expect(nextState.entities[livingEnemy.id]).toBeUndefined();
+    expect(nextState.entities[deadEnemy.id]).toBeUndefined();
+    expect(nextState.entities[outsideEnemy.id]).toBeDefined();
+    expect(
+      nextState.quests.hold_the_field_cache.runtime
+        ?.suppressedSubzoneEnemiesByObjectiveId?.defend_old_grove_cache?.map(
+          (enemy) => enemy.id,
+        )
+        .sort(),
+    ).toEqual(["dead-normal", "living-normal"]);
+  });
+
+  it("restores suppressed Hold the Field Cache enemies together after the breathing room", () => {
+    const leader = createCompanion("leader", { x: 100, y: 25 }, "leader");
+    const enemy = createEnemy("normal-enemy", { x: 99, y: 25 }, undefined, {
+      enemyTypeId: "goblin_scout",
+      subzoneId: "south-east",
+    });
+    const startedState = updateQuestGuideSystem(
+      createMapTwoState([leader, enemy], {
+        partyLeaderId: leader.id,
+        quests: createQuestStates({
+          hold_the_field_cache: "active",
+        }),
+      }),
+      new Set(),
+      createTiming(2_000, 12_000),
+      () => 0.99,
+    );
+
+    expect(startedState.entities[enemy.id]).toBeUndefined();
+    expect(
+      startedState.quests.hold_the_field_cache.objectiveProgress
+        .defend_old_grove_cache.completed,
+    ).toBe(true);
+    expect(
+      Object.values(startedState.entities).some(
+        (entity) =>
+          entity.kind === "enemy" &&
+          entity.questSpawn?.objectiveId === "defend_old_grove_cache",
+      ),
+    ).toBe(false);
+
+    const beforeRestore = updateQuestGuideSystem(
+      startedState,
+      new Set(),
+      createTiming(
+        2_000 + QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS - 1,
+        100,
+      ),
+      () => 0.99,
+    );
+    expect(beforeRestore.entities[enemy.id]).toBeUndefined();
+
+    const afterRestore = updateQuestGuideSystem(
+      beforeRestore,
+      new Set(),
+      createTiming(
+        2_000 + QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS,
+        100,
+      ),
+      () => 0.99,
+    );
+    const restoredEnemy = afterRestore.entities[enemy.id];
+
+    expect(restoredEnemy).toMatchObject({
+      id: enemy.id,
+      kind: "enemy",
+      state: "idle",
+      health: enemy.maxHealth,
+      position: enemy.homePosition,
+      currentTargetId: null,
+      variant: undefined,
+    });
+    expect(
+      afterRestore.quests.hold_the_field_cache.runtime
+        ?.suppressedSubzoneEnemyRestoreAtMsByObjectiveId
+        ?.defend_old_grove_cache,
+    ).toBeUndefined();
+  });
+
+  it("suppresses normal subzone enemies for Open the Causeway defense", () => {
+    const leader = createCompanion("leader", { x: 153, y: 29 }, "leader");
+    const enemy = createEnemy("causeway-normal", { x: 145, y: 22 }, undefined, {
+      enemyTypeId: "wolf",
+      subzoneId: "north-east",
+    });
+
+    const nextState = updateQuestGuideSystem(
+      createMapTwoState([leader, enemy], {
+        partyLeaderId: leader.id,
+        quests: createQuestStates(
+          {
+            open_wolf_causeway: "active",
+          },
+          {
+            open_wolf_causeway: ["escort_causeway_worker"],
+          },
+        ),
+      }),
+      new Set(),
+      createTiming(2_000, 100),
+    );
+
+    expect(nextState.entities[enemy.id]).toBeUndefined();
+    expect(
+      nextState.quests.open_wolf_causeway.runtime
+        ?.suppressedSubzoneEnemiesByObjectiveId?.defend_wolf_causeway?.[0]?.id,
+    ).toBe(enemy.id);
+  });
+
+  it("restores legacy id-only suppressed enemies from authored map starts", () => {
+    const legacyEnemyStart = mapTwoEnemyStartData.find(
+      (enemyStart) => enemyStart.subzoneId === "south-east",
+    );
+    expect(legacyEnemyStart).toBeDefined();
+    const questState = createQuestStates({
+      hold_the_field_cache: "ready_to_turn_in",
+    });
+    questState.hold_the_field_cache = {
+      ...questState.hold_the_field_cache,
+      runtime: {
+        defenseStartedObjectiveIds: { defend_old_grove_cache: true },
+        despawnedSubzoneEnemyIdsByObjectiveId: {
+          defend_old_grove_cache: [legacyEnemyStart!.id],
+        },
+      },
+    };
+    questState.hold_the_field_cache.objectiveProgress.defend_old_grove_cache = {
+      objectiveId: "defend_old_grove_cache",
+      currentCount: 1,
+      completed: true,
+    };
+
+    const scheduledState = updateQuestGuideSystem(
+      createMapTwoState([], {
+        quests: questState,
+      }),
+      new Set(),
+      createTiming(5_000, 100),
+      () => 0.99,
+    );
+    expect(scheduledState.entities[legacyEnemyStart!.id]).toBeUndefined();
+
+    const restoredState = updateQuestGuideSystem(
+      scheduledState,
+      new Set(),
+      createTiming(
+        5_000 + QUEST_DEFENSE_SUBZONE_ENEMY_RESTORE_DELAY_MS,
+        100,
+      ),
+      () => 0.99,
+    );
+
+    expect(restoredState.entities[legacyEnemyStart!.id]).toMatchObject({
+      kind: "enemy",
+      id: legacyEnemyStart!.id,
+      state: "idle",
+      position: legacyEnemyStart!.position,
+      subzoneId: "south-east",
+    });
+  });
 });
 
 function createMapTwoState(
@@ -76,15 +277,37 @@ function createMapTwoState(
   );
 }
 
+function createTiming(nowMs: number, deltaMs: number) {
+  return {
+    nowMs,
+    deltaMs,
+    deltaSeconds: deltaMs / 1000,
+    frameNumber: 1,
+  };
+}
+
 function createQuestStates(
   statuses: Partial<Record<QuestId, QuestState["status"]>>,
+  completedObjectiveIdsByQuestId: Partial<Record<QuestId, string[]>> = {},
 ) {
   const quests = createInitialQuestStates();
 
   for (const questId of Object.keys(quests) as Array<keyof typeof quests>) {
+    const completedObjectiveIds = completedObjectiveIdsByQuestId[questId] ?? [];
+    const objectiveProgress = { ...quests[questId].objectiveProgress };
+
+    for (const objectiveId of completedObjectiveIds) {
+      objectiveProgress[objectiveId] = {
+        objectiveId,
+        currentCount: 1,
+        completed: true,
+      };
+    }
+
     quests[questId] = {
       ...quests[questId],
       status: statuses[questId] ?? quests[questId].status,
+      objectiveProgress,
     };
   }
 

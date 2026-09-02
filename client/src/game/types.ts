@@ -2991,6 +2991,7 @@ export type ResourceEntity = BaseEntity & {
   quantity: number;
   maxGatherers: number;
   isDepleted: boolean;
+  depletedAtMs?: number;
 };
 
 export type NpcEntity = BaseEntity & {

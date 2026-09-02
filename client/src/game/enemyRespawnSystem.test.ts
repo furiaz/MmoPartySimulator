@@ -6,9 +6,15 @@ import {
 } from "./enemyRespawnSystem";
 import { updateDropSystem } from "./dropSystem";
 import { createTestGameState } from "./testState";
-import { createDebugMap, MAP_ONE_ID, HUB_MAP_ID } from "./debugMap";
+import {
+  createDebugMap,
+  HUB_MAP_ID,
+  MAP_ONE_ID,
+  MAP_TWO_ID,
+} from "./debugMap";
 import { countInventoryItem } from "./inventory";
 import { startDebugTelemetryRecording } from "./debugTelemetry";
+import { createInitialQuestStates } from "./questSystem";
 
 describe("enemy respawn system", () => {
   it("records defeat time without respawning immediately", () => {
@@ -252,6 +258,45 @@ describe("enemy respawn system", () => {
       entityId: enemy.id,
       enemyVariant: "superior",
       reason: "respawn",
+    });
+  });
+
+  it("does not respawn normal enemies while their subzone is suppressed by a defense objective", () => {
+    const enemy = {
+      ...createEnemy("enemy", { x: 78, y: 25 }, undefined, {
+        enemyTypeId: "bog_imp",
+        subzoneId: "south-east",
+      }),
+      state: "dead" as const,
+      health: 0,
+      defeatedAtMs: 0,
+    };
+    const quests = createInitialQuestStates();
+    quests.hold_the_field_cache = {
+      ...quests.hold_the_field_cache,
+      status: "active",
+      runtime: {
+        defenseStartedObjectiveIds: {
+          defend_old_grove_cache: true,
+        },
+      },
+    };
+    const state = createTestGameState({
+      currentMapId: MAP_TWO_ID,
+      map: createDebugMap(MAP_TWO_ID),
+      entities: { [enemy.id]: enemy },
+      quests,
+    });
+
+    const nextState = updateEnemyRespawnSystem(
+      state,
+      ENEMY_RESPAWN_DELAY_MS,
+    );
+
+    expect(nextState.entities[enemy.id]).toMatchObject({
+      state: "dead",
+      health: 0,
+      defeatedAtMs: 0,
     });
   });
 });

@@ -302,6 +302,7 @@ export function setLastAttackAt<T extends CombatEntity>(
 export function gatherResource(
   resource: ResourceEntity,
   gatherAmount: number,
+  depletedAtMs?: number,
 ): ResourceEntity {
   const currentQuantity = Math.max(0, resource.quantity);
 
@@ -311,6 +312,7 @@ export function gatherResource(
       durability: 0,
       quantity: 0,
       isDepleted: true,
+      depletedAtMs: resource.depletedAtMs ?? depletedAtMs,
     };
   }
 
@@ -322,6 +324,7 @@ export function gatherResource(
       durability,
       quantity: currentQuantity,
       isDepleted: false,
+      depletedAtMs: undefined,
     };
   }
 
@@ -332,6 +335,7 @@ export function gatherResource(
     durability: quantity > 0 ? Math.max(0, resource.maxDurability) : 0,
     quantity,
     isDepleted: quantity <= 0,
+    depletedAtMs: quantity <= 0 ? depletedAtMs : undefined,
   };
 }
 

@@ -48,6 +48,64 @@ describe("stationary overlap separation", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("pushes an overlapping Gatherer-role companion away from the leader", () => {
+    const leader = createCompanion("leader", { x: 5, y: 5 }, "leader");
+    const gatherer = createCompanion(
+      "gatherer",
+      { x: 5, y: 5 },
+      leader.id,
+      "gatherer",
+    );
+    const state = createState([leader, gatherer], {
+      partyLeaderId: leader.id,
+    });
+    const nextState = updateEntitySeparationSystem(state, new Set());
+
+    expect(nextState.entities[leader.id].position).toEqual(leader.position);
+    expect(nextState.entities[gatherer.id].position).not.toEqual(
+      gatherer.position,
+    );
+  });
+
+  it("keeps the leader fixed when the leader is second in companion iteration order", () => {
+    const gatherer = createCompanion(
+      "gatherer",
+      { x: 5, y: 5 },
+      "leader",
+      "gatherer",
+    );
+    const leader = createCompanion("leader", { x: 5, y: 5 }, "leader");
+    const state = createState([gatherer, leader], {
+      partyLeaderId: leader.id,
+    });
+    const nextState = updateEntitySeparationSystem(state, new Set());
+
+    expect(nextState.entities[leader.id].position).toEqual(leader.position);
+    expect(nextState.entities[gatherer.id].position).not.toEqual(
+      gatherer.position,
+    );
+  });
+
+  it("does not nudge a Gatherer-role companion at settled follow spacing", () => {
+    const leader = createCompanion("leader", { x: 5, y: 5 }, "leader");
+    const settledFollowPosition = { x: 4.1, y: 5.45 };
+    const gatherer = createCompanion(
+      "gatherer",
+      settledFollowPosition,
+      leader.id,
+      "gatherer",
+    );
+    const state = createState([leader, gatherer], {
+      partyLeaderId: leader.id,
+    });
+    const nextState = updateEntitySeparationSystem(state, new Set());
+
+    expect(nextState.entities[leader.id].position).toEqual(leader.position);
+    expect(nextState.entities[gatherer.id].position).toEqual(
+      settledFollowPosition,
+    );
+  });
+
   it("does not separate a normal companion standing at a small enemy attack edge", () => {
     const companion = createCompanion(
       "companion",

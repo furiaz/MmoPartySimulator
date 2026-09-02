@@ -2,6 +2,10 @@ import { createEnemy } from "./entities";
 import { appendDebugTelemetryEvent } from "./debugTelemetry";
 import { isSlimewardDungeonFloorMapId } from "./dungeonSystem";
 import { isSuperiorEnemy, rollEnemyVariantForSpawn } from "./enemyVariants";
+import {
+  QUEST_DEFINITIONS,
+  QUEST_ORDER,
+} from "./questSystem";
 import { updateEntity, type GameState } from "./state";
 import type { Enemy } from "./types";
 
@@ -26,7 +30,8 @@ export function updateEnemyRespawnSystem(
     if (
       entity.kind !== "enemy" ||
       entity.state !== "dead" ||
-      entity.questSpawn
+      entity.questSpawn ||
+      isEnemySuppressedByDefenseObjective(nextState, entity, nowMs)
     ) {
       continue;
     }
@@ -47,6 +52,48 @@ export function updateEnemyRespawnSystem(
   }
 
   return nextState;
+}
+
+function isEnemySuppressedByDefenseObjective(
+  state: GameState,
+  enemy: Enemy,
+  nowMs: number,
+): boolean {
+  if (!enemy.subzoneId) {
+    return false;
+  }
+
+  for (const questId of QUEST_ORDER) {
+    const quest = state.quests[questId];
+
+    for (const objective of QUEST_DEFINITIONS[questId].objectives) {
+      if (
+        objective.type !== "defend_area" ||
+        objective.targetMapId !== state.currentMapId ||
+        objective.targetSubzoneId !== enemy.subzoneId
+      ) {
+        continue;
+      }
+
+      const runtime = quest.runtime;
+      const hasStarted = Boolean(
+        runtime?.defenseStartedObjectiveIds?.[objective.id],
+      );
+      const isCompleted = Boolean(
+        quest.objectiveProgress[objective.id]?.completed,
+      );
+      const restoreAtMs =
+        runtime?.suppressedSubzoneEnemyRestoreAtMsByObjectiveId?.[objective.id];
+      const isWithinRestoreDelay =
+        restoreAtMs !== undefined && nowMs < restoreAtMs;
+
+      if (hasStarted && (!isCompleted || isWithinRestoreDelay)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function respawnEnemy(
