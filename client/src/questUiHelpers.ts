@@ -1,13 +1,52 @@
 import {
+  debugMapDefinitions,
   getItemDefinition,
+  HUB_MAP_ID,
+  HUB_TWO_MAP_ID,
+  MAP_THREE_ID,
   QUEST_DEFINITIONS,
   QUEST_ORDER,
   type GameState,
+  type DebugMapId,
   type QuestObjectiveDefinition,
+  type QuestId,
   type QuestReward,
   type QuestState,
   type ResourceEntity,
 } from "./game";
+import {
+  SLIMEWARD_CAMP_ID,
+  SLIMEWARD_FLOOR_ONE_ID,
+  SLIMEWARD_FLOOR_TWO_ID,
+} from "./game/debugMap";
+
+const SLIMEWARD_PARENT_SUBZONE_ID = "south-center";
+const SLIMEWARD_PARENT_SUBZONE_NAME = "Imp Fen";
+
+export type QuestLocationDisplay = {
+  key: string;
+  mapId: DebugMapId;
+  mapName: string;
+  subzoneId: string | null;
+  subzoneName: string | null;
+  label: string;
+};
+
+export type NpcQuestRouteHint = {
+  questId: QuestId;
+  questName: string;
+  status: Extract<QuestState["status"], "active" | "ready_to_turn_in">;
+  objectiveLines: string[];
+};
+
+export type NpcQuestRouteHintLocationGroup = {
+  location: QuestLocationDisplay;
+  hints: NpcQuestRouteHint[];
+};
+
+export type NpcQuestRouteHintsByMap = Partial<
+  Record<DebugMapId, NpcQuestRouteHintLocationGroup[]>
+>;
 
 export function formatQuestStatus(status: QuestState["status"]): string {
   return status
@@ -86,6 +125,93 @@ export function getQuestRewardText(reward: QuestReward | undefined): string {
   ].filter((part): part is string => Boolean(part));
 
   return rewardParts.length > 0 ? rewardParts.join(" | ") : "No listed rewards";
+}
+
+export function getQuestDetailLocations(
+  quest: QuestState,
+): QuestLocationDisplay[] {
+  const definition = QUEST_DEFINITIONS[quest.questId];
+
+  if (definition.sourceType !== "npc") {
+    return [];
+  }
+
+  if (quest.status === "ready_to_turn_in") {
+    return [getQuestTurnInLocation(quest)];
+  }
+
+  if (quest.status !== "active") {
+    return [];
+  }
+
+  return dedupeQuestLocations(
+    definition.objectives
+      .filter((objective) => !quest.objectiveProgress[objective.id]?.completed)
+      .map(getObjectiveQuestLocation),
+  );
+}
+
+export function getNpcQuestRouteHintGroupsByMap(
+  quests: GameState["quests"],
+): NpcQuestRouteHintsByMap {
+  const groupsByMap: NpcQuestRouteHintsByMap = {};
+
+  for (const quest of getQuestLogQuests(quests)) {
+    const definition = QUEST_DEFINITIONS[quest.questId];
+
+    if (definition.sourceType !== "npc") {
+      continue;
+    }
+
+    if (quest.status === "ready_to_turn_in") {
+      addQuestRouteHint(groupsByMap, getQuestTurnInLocation(quest), {
+        questId: quest.questId,
+        questName: definition.displayName,
+        status: quest.status,
+        objectiveLines: [],
+      });
+      continue;
+    }
+
+    if (quest.status !== "active") {
+      continue;
+    }
+
+    const hintEntries = new Map<
+      string,
+      { location: QuestLocationDisplay; objectiveLines: string[] }
+    >();
+
+    for (const objective of definition.objectives) {
+      if (quest.objectiveProgress[objective.id]?.completed) {
+        continue;
+      }
+
+      const location = getObjectiveQuestLocation(objective);
+      const existing = hintEntries.get(location.key);
+      const objectiveLine = getObjectiveProgressText(quest, objective);
+
+      if (existing) {
+        existing.objectiveLines.push(objectiveLine);
+      } else {
+        hintEntries.set(location.key, {
+          location,
+          objectiveLines: [objectiveLine],
+        });
+      }
+    }
+
+    for (const entry of hintEntries.values()) {
+      addQuestRouteHint(groupsByMap, entry.location, {
+        questId: quest.questId,
+        questName: definition.displayName,
+        status: quest.status,
+        objectiveLines: entry.objectiveLines,
+      });
+    }
+  }
+
+  return groupsByMap;
 }
 
 export function getQuestTurnInErrorText(quest: QuestState): string | null {
@@ -168,7 +294,99 @@ function getObjectiveProgressText(
   const progress = quest.objectiveProgress[objective.id];
   const requiredCount = objective.requiredCount ?? 1;
 
-  return `${getObjectiveLabel(objective, requiredCount)} ${progress.currentCount}/${requiredCount}`;
+  return `${getObjectiveLabel(objective, requiredCount)} ${progress?.currentCount ?? 0}/${requiredCount}`;
+}
+
+function getObjectiveQuestLocation(
+  objective: QuestObjectiveDefinition,
+): QuestLocationDisplay {
+  const rawMapId = objective.targetMapId ?? objective.enemyMapId;
+
+  if (isSlimewardSpecialMap(rawMapId)) {
+    return createQuestLocation(
+      MAP_THREE_ID,
+      SLIMEWARD_PARENT_SUBZONE_ID,
+      SLIMEWARD_PARENT_SUBZONE_NAME,
+    );
+  }
+
+  if (!rawMapId) {
+    return createQuestLocation(HUB_MAP_ID);
+  }
+
+  return createQuestLocation(rawMapId, objective.targetSubzoneId);
+}
+
+function getQuestTurnInLocation(quest: QuestState): QuestLocationDisplay {
+  return createQuestLocation(
+    quest.questId === "azure_trial" ? HUB_TWO_MAP_ID : HUB_MAP_ID,
+  );
+}
+
+function createQuestLocation(
+  mapId: DebugMapId,
+  subzoneId?: string | null,
+  subzoneNameOverride?: string | null,
+): QuestLocationDisplay {
+  const mapDefinition = debugMapDefinitions[mapId];
+  const subzoneName =
+    subzoneNameOverride ??
+    mapDefinition.subzones?.find((subzone) => subzone.id === subzoneId)
+      ?.displayName ??
+    null;
+  const mapName = mapDefinition.displayName;
+  const label = subzoneName ? `${mapName} / ${subzoneName}` : mapName;
+
+  return {
+    key: `${mapId}:${subzoneId ?? ""}:${subzoneName ?? ""}`,
+    mapId,
+    mapName,
+    subzoneId: subzoneId ?? null,
+    subzoneName,
+    label,
+  };
+}
+
+function dedupeQuestLocations(
+  locations: QuestLocationDisplay[],
+): QuestLocationDisplay[] {
+  const seenLocationKeys = new Set<string>();
+
+  return locations.filter((location) => {
+    if (seenLocationKeys.has(location.key)) {
+      return false;
+    }
+
+    seenLocationKeys.add(location.key);
+    return true;
+  });
+}
+
+function addQuestRouteHint(
+  groupsByMap: NpcQuestRouteHintsByMap,
+  location: QuestLocationDisplay,
+  hint: NpcQuestRouteHint,
+): void {
+  const mapGroups = groupsByMap[location.mapId] ?? [];
+  let locationGroup = mapGroups.find((group) => group.location.key === location.key);
+
+  if (!locationGroup) {
+    locationGroup = { location, hints: [] };
+    mapGroups.push(locationGroup);
+    groupsByMap[location.mapId] = mapGroups;
+  }
+
+  locationGroup.hints.push(hint);
+}
+
+function isSlimewardSpecialMap(
+  mapId: DebugMapId | undefined,
+): boolean {
+  return (
+    mapId === SLIMEWARD_CAMP_ID ||
+    mapId === SLIMEWARD_FLOOR_ONE_ID ||
+    mapId === SLIMEWARD_FLOOR_TWO_ID
+  );
 }
 
 function formatRewardItem(rewardItem: NonNullable<QuestReward["items"]>[number]): string {

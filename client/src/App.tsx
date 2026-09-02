@@ -31,6 +31,7 @@ import {
   getQuestRewardText,
   getQuestTurnInErrorText,
 } from "./questUiHelpers";
+import { getQuestObjectiveMarkers } from "./questObjectiveMarkers";
 import { QuestTrackerPanel } from "./QuestTrackerPanel";
 import { BankPanel } from "./BankPanel";
 import type { PixiRendererPerformanceSample } from "./worldRenderer/PixiWorldRendererHelpers";
@@ -350,15 +351,6 @@ const wildernessMapIds = new Set([
   "map-6",
   "map-7",
 ]);
-const poiSearchScopeLabels: Record<PoiSearchScope, string> = {
-  free_travel: "Zone Only",
-  zone_only: "Zone Only",
-  subzone_only: "Subzone Only",
-};
-const poiSearchScopeCycle: PoiSearchScope[] = [
-  "zone_only",
-  "subzone_only",
-];
 const emptyDirectCompanionCommands: Record<string, DirectCompanionCommand> = {};
 const emptyDropVisualEvents: DropVisualEvent[] = [];
 const emptyCombatProjectiles: ActiveCombatProjectile[] = [];
@@ -370,12 +362,17 @@ const emptySkillMarks: Record<string, SkillMarkState> = {};
 const emptySkillShieldBlocks: Record<string, SkillShieldBlockState> = {};
 const emptySkillVisualEvents: SkillVisualEvent[] = [];
 
-function getNextPoiSearchScope(scope: PoiSearchScope): PoiSearchScope {
-  const currentIndex = poiSearchScopeCycle.indexOf(scope);
+function getAutoCombatModeLabel(
+  autoModeEnabled: boolean,
+  poiSearchScope: PoiSearchScope,
+): string {
+  if (!autoModeEnabled) {
+    return "Auto Combat: Off";
+  }
 
-  return poiSearchScopeCycle[
-    (currentIndex + 1) % poiSearchScopeCycle.length
-  ] ?? "zone_only";
+  return poiSearchScope === "subzone_only"
+    ? "Auto Combat: On - Subzone Only"
+    : "Auto Combat: On - Zone Only";
 }
 
 type EntityVisualMovement = {
@@ -3342,26 +3339,10 @@ function App() {
   const questGiverHasWork = hasQuestGiverWork(gameState);
   const suppressEscortGuideMovePoiRing =
     shouldSuppressEscortGuideMovePoiRing(gameState);
-  const questInspectMarkers = useMemo(() => {
-    const activeQuest = getActiveQuest(gameState);
-
-    if (!activeQuest) {
-      return [];
-    }
-
-    return QUEST_DEFINITIONS[activeQuest.questId].objectives
-      .filter(
-        (objective) =>
-          objective.type === "inspect_poi" &&
-          objective.targetMapId === gameState.currentMapId &&
-          Boolean(objective.targetPosition) &&
-          !activeQuest.objectiveProgress[objective.id]?.completed,
-      )
-      .map((objective) => ({
-        id: `${activeQuest.questId}:${objective.id}`,
-        position: objective.targetPosition!,
-      }));
-  }, [gameState]);
+  const questObjectiveMarkers = useMemo(
+    () => getQuestObjectiveMarkers(gameState),
+    [gameState],
+  );
   const targetEnemy = enemies.find((enemy) => enemy.state !== "dead");
   const targetResource = resources.find(isActiveResource);
   const inventory = gameState.inventory;
@@ -4409,10 +4390,23 @@ function App() {
     startSimulationLoop();
   }
 
-  function toggleAutoMode() {
-    setGameState((state) =>
-      setAutoModeEnabled(state, !state.autoModeEnabled),
-    );
+  function cycleAutoCombatMode() {
+    setGameState((state) => {
+      const currentScope = getPoiSearchScope(state);
+
+      if (!state.autoModeEnabled) {
+        return setPoiSearchScope(
+          setAutoModeEnabled(state, true),
+          "subzone_only",
+        );
+      }
+
+      if (currentScope === "subzone_only") {
+        return setPoiSearchScope(state, "zone_only");
+      }
+
+      return setAutoModeEnabled(state, false);
+    });
   }
 
   function toggleAutoCombatOnArrival() {
@@ -4468,15 +4462,6 @@ function App() {
     if (shouldResumeSimulation) {
       startSimulationLoop();
     }
-  }
-
-  function cyclePoiSearchScope() {
-    setGameState((state) =>
-      setPoiSearchScope(
-        state,
-        getNextPoiSearchScope(getPoiSearchScope(state)),
-      ),
-    );
   }
 
   function changePartyMemberRole(
@@ -6216,28 +6201,19 @@ function App() {
                 <span className="map-version">v{gameVersion}</span>
                 <strong>{currentMap.displayName}</strong>
                 <button
-                  className={`stay-in-map-toggle${
-                    poiSearchScope === "subzone_only" ? " active" : ""
-                  }`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    cyclePoiSearchScope();
-                  }}
-                  type="button"
-                >
-                  Scope: {poiSearchScopeLabels[poiSearchScope]}
-                </button>
-                <button
                   className={`auto-combat-toggle${
                     gameState.autoModeEnabled ? " active" : ""
                   }`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    toggleAutoMode();
+                    cycleAutoCombatMode();
                   }}
                   type="button"
                 >
-                  Auto Combat: {gameState.autoModeEnabled ? "On" : "Off"}
+                  {getAutoCombatModeLabel(
+                    gameState.autoModeEnabled,
+                    poiSearchScope,
+                  )}
                 </button>
               </div>
               <span>Prototype Zone ID: {currentMap.debugName}</span>
@@ -6303,7 +6279,7 @@ function App() {
               onCursorPositionChange={updateMapCursorPosition}
               onResourceClick={commandCompanionsToGatherResource}
               partyIntent={gameState.partyIntent}
-              questInspectMarkers={questInspectMarkers}
+              questObjectiveMarkers={questObjectiveMarkers}
               questGiverHasWork={questGiverHasWork}
               resurrectionProgressByCompanionId={resurrectionProgressByCompanionId}
               showDebugOverlays={showEntityInfo}
@@ -6343,6 +6319,7 @@ function App() {
               mode="preview"
               movementClickFeedbackEvents={activeMovementClickFeedbackEvents}
               navigationClickAccessibility={navigationClickAccessibility}
+              questObjectiveMarkers={questObjectiveMarkers}
               onFloorClick={commandPartyToMoveFromMinimapPosition}
               onPerformanceSample={handleRendererPerformanceSample}
               onCursorPositionChange={updateMapCursorPosition}

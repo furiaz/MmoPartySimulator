@@ -153,24 +153,6 @@
   flex-wrap: wrap;
 }
 
-.stay-in-map-toggle {
-  padding: 3px 7px;
-  border: 1px solid rgba(51, 65, 85, 0.62);
-  background: rgba(255, 255, 255, 0.78);
-  color: #1f2937;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.1;
-  pointer-events: auto;
-  white-space: nowrap;
-}
-
-.stay-in-map-toggle.active {
-  border-color: #0284c7;
-  background: #e0f2fe;
-  color: #075985;
-}
-
 .auto-combat-toggle {
   padding: 3px 8px;
   border: 1px solid rgba(51, 65, 85, 0.62);
@@ -4534,22 +4516,106 @@
   background: rgba(16, 28, 32, 0.34);
 }
 
-.world-map-row div {
+.world-map-location {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
+.world-map-title-row {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+
 .world-map-row strong,
-.world-map-row span {
+.world-map-debug-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.world-map-row span {
+.world-map-debug-name {
   color: #aec6ca;
   font-size: 12px;
+}
+
+.world-quest-marker {
+  align-items: center;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.66);
+  border-radius: 999px;
+  color: #facc15;
+  cursor: help;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 900;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  overflow: visible;
+  position: relative;
+  width: 18px;
+}
+
+.world-quest-marker:focus-visible {
+  outline: 2px solid rgba(250, 204, 21, 0.8);
+  outline-offset: 2px;
+}
+
+.world-quest-tooltip {
+  background: rgba(8, 16, 19, 0.96);
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
+  color: #e7f6f7;
+  display: none;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  left: 50%;
+  line-height: 1.35;
+  max-width: min(360px, calc(100vw - 32px));
+  min-width: 230px;
+  padding: 10px 12px;
+  position: absolute;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: normal;
+  width: max-content;
+  z-index: 35;
+}
+
+.world-quest-marker:hover .world-quest-tooltip,
+.world-quest-marker:focus .world-quest-tooltip,
+.world-quest-marker:focus-within .world-quest-tooltip {
+  display: grid;
+}
+
+.world-quest-tooltip::before {
+  border-bottom: 7px solid rgba(250, 204, 21, 0.42);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: -7px;
+  transform: translateX(-50%);
+}
+
+.world-quest-tooltip-group,
+.world-quest-tooltip-entry {
+  display: grid;
+  gap: 4px;
+}
+
+.world-quest-tooltip strong,
+.world-quest-tooltip span {
+  color: inherit;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .world-map-actions {

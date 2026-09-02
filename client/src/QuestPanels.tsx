@@ -11,6 +11,7 @@ import {
 import {
   formatQuestStatus,
   getObjectiveLabel,
+  getQuestDetailLocations,
   getQuestLogQuests,
   getQuestProgressTotals,
   getQuestRewardText,
@@ -128,6 +129,9 @@ function QuestDetailPanel({ quest }: { quest: QuestState }) {
   const definition = QUEST_DEFINITIONS[quest.questId];
   const turnInErrorText = getQuestTurnInErrorText(quest);
   const runtimeProgress = getQuestRuntimeProgressDisplay(quest);
+  const questLocations = getQuestDetailLocations(quest);
+  const locationHeading =
+    questLocations.length === 1 ? "Location" : "Locations";
 
   return (
     <div className="quest-detail-panel">
@@ -135,6 +139,12 @@ function QuestDetailPanel({ quest }: { quest: QuestState }) {
         <span>{definition.displayName}</span>
         <span>{formatQuestStatus(quest.status)}</span>
       </div>
+      {questLocations.length > 0 ? (
+        <div className="placeholder-box">
+          {locationHeading}:{" "}
+          {questLocations.map((location) => location.label).join(" | ")}
+        </div>
+      ) : null}
       <div className="quest-objective-list">
         {definition.objectives.map((objective) => {
           const progress = quest.objectiveProgress[objective.id];

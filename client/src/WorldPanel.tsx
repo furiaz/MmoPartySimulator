@@ -14,6 +14,10 @@ import {
   type DebugMapId,
   type GameState,
 } from "./game";
+import {
+  getNpcQuestRouteHintGroupsByMap,
+  type NpcQuestRouteHintLocationGroup,
+} from "./questUiHelpers";
 
 const prototypeRegionMapIds: DebugMapId[] = [
   HUB_MAP_ID,
@@ -47,6 +51,9 @@ export function WorldPanel({
   const activeRouteName = worldTravelTargetMapId
     ? debugMapDefinitions[worldTravelTargetMapId].displayName
     : null;
+  const questHintGroupsByMap = getNpcQuestRouteHintGroupsByMap(
+    gameState.quests,
+  );
 
   return (
     <section className="world-panel" aria-label="World">
@@ -89,12 +96,20 @@ export function WorldPanel({
               : isActiveRoute
                 ? "Route Active"
                 : "Set Route";
+            const questHintGroups = questHintGroupsByMap[mapId] ?? [];
 
             return (
               <div className="world-map-row" key={mapId}>
-                <div>
-                  <strong>{mapDefinition.displayName}</strong>
-                  <span>{mapDefinition.debugName}</span>
+                <div className="world-map-location">
+                  <span className="world-map-title-row">
+                    <strong>{mapDefinition.displayName}</strong>
+                    {questHintGroups.length > 0 ? (
+                      <QuestRouteHintMarker groups={questHintGroups} />
+                    ) : null}
+                  </span>
+                  <span className="world-map-debug-name">
+                    {mapDefinition.debugName}
+                  </span>
                 </div>
                 <div className="world-map-actions">
                   <button
@@ -135,4 +150,62 @@ export function WorldPanel({
       </div>
     </section>
   );
+}
+
+function QuestRouteHintMarker({
+  groups,
+}: {
+  groups: NpcQuestRouteHintLocationGroup[];
+}) {
+  return (
+    <span
+      aria-label={getQuestRouteHintAccessibleLabel(groups)}
+      className="world-quest-marker"
+      tabIndex={0}
+    >
+      !
+      <span className="world-quest-tooltip" role="tooltip">
+        {groups.map((group) => (
+          <span className="world-quest-tooltip-group" key={group.location.key}>
+            <strong>{group.location.label}</strong>
+            {group.hints.map((hint) => (
+              <span
+                className="world-quest-tooltip-entry"
+                key={`${group.location.key}:${hint.questId}:${hint.status}`}
+              >
+                <span>
+                  Quest: {hint.questName}
+                  {hint.status === "ready_to_turn_in" ? " (Completed)" : ""}
+                </span>
+                {hint.objectiveLines.length > 0 ? (
+                  <span>Objectives: {hint.objectiveLines.join(" | ")}</span>
+                ) : null}
+              </span>
+            ))}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function getQuestRouteHintAccessibleLabel(
+  groups: NpcQuestRouteHintLocationGroup[],
+): string {
+  return groups
+    .flatMap((group) =>
+      group.hints.map((hint) => {
+        const questName =
+          hint.status === "ready_to_turn_in"
+            ? `${hint.questName} completed`
+            : hint.questName;
+        const objectives =
+          hint.objectiveLines.length > 0
+            ? `. Objectives: ${hint.objectiveLines.join("; ")}`
+            : "";
+
+        return `${group.location.label}. Quest: ${questName}${objectives}`;
+      }),
+    )
+    .join(" ");
 }

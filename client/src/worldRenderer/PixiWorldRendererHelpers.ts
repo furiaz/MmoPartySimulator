@@ -298,7 +298,7 @@ export type ViewportSize = {
   height: number;
 };
 
-export type QuestInspectMarker = {
+export type QuestObjectiveMarker = {
   id: string;
   position: Position;
 };
@@ -332,7 +332,7 @@ export type FullRenderSignatureInput = {
   movementClickFeedbackEvents: MovementClickFeedbackEvent[];
   partyIntent: PartyIntent | null;
   questGiverHasWork: boolean;
-  questInspectMarkers: QuestInspectMarker[];
+  questObjectiveMarkers: QuestObjectiveMarker[];
   renderSize: RenderSize;
   resurrectionProgressByCompanionId: Record<string, ResurrectionProgressState>;
   showDebugOverlays: boolean;
@@ -926,6 +926,7 @@ export function getPreviewRenderSignature({
   map,
   movementClickFeedbackEvents = [],
   navigationClickAccessibility = null,
+  questObjectiveMarkers = [],
   viewportSize,
 }: {
   cameraOffset: Position;
@@ -934,6 +935,7 @@ export function getPreviewRenderSignature({
   map: GameMap;
   movementClickFeedbackEvents?: MovementClickFeedbackEvent[];
   navigationClickAccessibility?: NavigationClickAccessibility | null;
+  questObjectiveMarkers?: QuestObjectiveMarker[];
   viewportSize?: ViewportSize;
 }): string {
   const wallSignature = map.walls
@@ -984,6 +986,7 @@ export function getPreviewRenderSignature({
       movementClickFeedbackEvents,
       getMovementClickFeedbackSignature,
     ),
+    getEventSignature(questObjectiveMarkers, getQuestObjectiveMarkerSignature),
     cameraOffset.x,
     cameraOffset.y,
     cellPixelSize,
@@ -1023,7 +1026,7 @@ export function getFullRenderSignature({
   movementClickFeedbackEvents,
   partyIntent,
   questGiverHasWork,
-  questInspectMarkers,
+  questObjectiveMarkers,
   renderSize,
   resurrectionProgressByCompanionId,
   showDebugOverlays,
@@ -1092,7 +1095,7 @@ export function getFullRenderSignature({
       resurrectionProgressByCompanionId,
       getResurrectionProgressSignature,
     ),
-    getEventSignature(questInspectMarkers, getQuestInspectMarkerSignature),
+    getEventSignature(questObjectiveMarkers, getQuestObjectiveMarkerSignature),
     questGiverHasWork ? "quest-work" : "quest-idle",
     showDebugOverlays ? "debug-on" : "debug-off",
     showDebugOverlays
@@ -1409,7 +1412,7 @@ function getResurrectionProgressSignature(
   return `${progress.companionId}:${progress.progressMs}:${progress.requiredMs}`;
 }
 
-function getQuestInspectMarkerSignature(marker: QuestInspectMarker): string {
+function getQuestObjectiveMarkerSignature(marker: QuestObjectiveMarker): string {
   return getPositionSignature(marker.position);
 }
 

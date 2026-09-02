@@ -522,6 +522,8 @@ type PoiSearchScope = "free_travel" | "zone_only" | "subzone_only";
 
 `zone_only` keeps autonomous POI selection on the current prototype map without applying leader-subzone filtering. It is not the final zone system.
 
+The current React map UI exposes Auto Combat and POI search scope through one combined control that cycles between Off, On - Subzone Only, and On - Zone Only. The UI does not add a separate persisted mode; it writes the existing `autoModeEnabled` and `poiPreferences.searchScope` fields.
+
 Current shared inventory, bank, key item, and wallet fields include:
 
 - `inventory`
@@ -1494,6 +1496,8 @@ type QuestObjectiveType =
 ```
 
 Current implemented quest objective behavior includes defeat counts, enemy quest drop counts, gather counts, reach POIs, inspect POIs, guide NPC escort objectives, rescue NPC objectives, repair POIs, defend areas, route unlocks, elite defeat objectives, dungeon chest collection checks, equipment equip checks, flask equip checks, Merchant Buy item checks, and crafted item checks.
+
+Current NPC quest location display and World Travel quest hints are derived UI data from `QUEST_DEFINITIONS` and `QuestState`. Active NPC quests use incomplete objectives in definition order, resolving objective location from `targetMapId` first and then `enemyMapId`. Unmapped active NPC quest objectives point to Harbor Union Bastion. Ready-to-turn-in NPC quests point to the quest giver hub and render as completed without objective lines. Slimeward special-region objectives resolve to Azurefen Hollow / Imp Fen, the nearest routeable parent zone/subzone, instead of dungeon floor route rows. Guild Notice Board quests do not participate in these NPC quest route hints. This UI hint layer must not add persisted quest-location state, new route commands, or Notice Board routing behavior.
 
 Current prototype quest chain:
 

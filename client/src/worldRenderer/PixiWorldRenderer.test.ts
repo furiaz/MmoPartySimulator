@@ -188,6 +188,17 @@ describe("getPreviewRenderSignature", () => {
         cellPixelSize: 16,
       }),
     ).not.toBe(baseSignature);
+    expect(
+      getPreviewRenderSignature({
+        ...baseInput,
+        questObjectiveMarkers: [
+          {
+            id: "quest:objective",
+            position: { x: 10, y: 5 },
+          },
+        ],
+      }),
+    ).not.toBe(baseSignature);
   });
 
   it("changes when navigation click accessibility changes", () => {
@@ -463,7 +474,7 @@ function createFullRenderSignatureInput(
     movementClickFeedbackEvents: [],
     partyIntent: null,
     questGiverHasWork: false,
-    questInspectMarkers: [],
+    questObjectiveMarkers: [],
     renderSize: { width: 320, height: 180 },
     resurrectionProgressByCompanionId: {},
     showDebugOverlays: false,

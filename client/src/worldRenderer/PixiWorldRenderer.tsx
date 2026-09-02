@@ -237,7 +237,7 @@ const skillFeedbackDisplayNames = new Set(
 
 type PixiRendererMode = "preview" | "full";
 
-type QuestInspectMarker = {
+type QuestObjectiveMarker = {
   id: string;
   position: Position;
 };
@@ -276,7 +276,7 @@ type PixiWorldRendererProps = {
   onCursorPositionChange?: (position: Position | null) => void;
   onResourceClick?: (resourceId: string) => void;
   partyIntent?: PartyIntent | null;
-  questInspectMarkers?: QuestInspectMarker[];
+  questObjectiveMarkers?: QuestObjectiveMarker[];
   resurrectionProgressByCompanionId?: Record<string, ResurrectionProgressState>;
   questGiverHasWork?: boolean;
   showDebugOverlays?: boolean;
@@ -456,7 +456,7 @@ type DrawWorldOptions = {
   navigationClickAccessibility: NavigationClickAccessibility | null;
   onPerformanceSample?: (sample: PixiRendererPerformanceSample) => void;
   partyIntent: PartyIntent | null;
-  questInspectMarkers: QuestInspectMarker[];
+  questObjectiveMarkers: QuestObjectiveMarker[];
   questGiverHasWork: boolean;
   requestRedraw?: () => void;
   renderSize: RenderSize;
@@ -1892,9 +1892,9 @@ function drawPoiRing(
     .stroke({ color, alpha: 0.32, width: 2 });
 }
 
-function drawQuestInspectMarkers(
+function drawQuestObjectiveMarkers(
   graphics: Graphics,
-  markers: QuestInspectMarker[],
+  markers: QuestObjectiveMarker[],
   transform: FullTransform,
   visibleTileBounds: TileBounds,
 ) {
@@ -5231,6 +5231,29 @@ function drawMovementClickFeedbackEvents({
   }
 }
 
+function drawPreviewQuestObjectiveMarkers(
+  graphics: Graphics,
+  markers: QuestObjectiveMarker[],
+  transform: PreviewTransform,
+) {
+  const radius = Math.max(3, transform.scale * 2.1);
+
+  for (const marker of markers) {
+    const markerPosition = toPreviewPosition(marker.position, transform);
+    const center = {
+      x: markerPosition.x + transform.scale / 2,
+      y: markerPosition.y + transform.scale / 2,
+    };
+
+    graphics
+      .circle(center.x, center.y, radius)
+      .fill({ color: 0xfacc15, alpha: 0.48 });
+    graphics
+      .circle(center.x, center.y, radius + 2)
+      .stroke({ color: 0xfacc15, alpha: 0.92, width: 2 });
+  }
+}
+
 function drawPreviewMap(
   graphics: Graphics,
   map: GameMap,
@@ -5241,6 +5264,7 @@ function drawPreviewMap(
     currentTime,
     movementClickFeedbackEvents,
     navigationClickAccessibility,
+    questObjectiveMarkers,
     viewportSize,
   }: {
     cameraOffset: Position;
@@ -5248,6 +5272,7 @@ function drawPreviewMap(
     currentTime: number;
     movementClickFeedbackEvents: MovementClickFeedbackEvent[];
     navigationClickAccessibility: NavigationClickAccessibility | null;
+    questObjectiveMarkers: QuestObjectiveMarker[];
     viewportSize?: ViewportSize;
   },
 ) {
@@ -5310,6 +5335,12 @@ function drawPreviewMap(
       .circle(entityPosition.x, entityPosition.y, entityRadius)
       .fill(getEntityColor(entity));
   }
+
+  drawPreviewQuestObjectiveMarkers(
+    graphics,
+    questObjectiveMarkers,
+    transform,
+  );
 
   drawMovementClickFeedbackEvents({
     currentTime,
@@ -5377,7 +5408,7 @@ function drawFullMap({
   movementClickFeedbackEvents,
   onPerformanceSample,
   partyIntent,
-  questInspectMarkers,
+  questObjectiveMarkers,
   questGiverHasWork,
   requestRedraw,
   renderSize,
@@ -5413,7 +5444,7 @@ function drawFullMap({
   movementClickFeedbackEvents: MovementClickFeedbackEvent[];
   onPerformanceSample?: (sample: PixiRendererPerformanceSample) => void;
   partyIntent: PartyIntent | null;
-  questInspectMarkers: QuestInspectMarker[];
+  questObjectiveMarkers: QuestObjectiveMarker[];
   questGiverHasWork: boolean;
   requestRedraw?: () => void;
   renderSize: RenderSize;
@@ -5550,9 +5581,9 @@ function drawFullMap({
     transform,
     visibleTileBounds,
   });
-  drawQuestInspectMarkers(
+  drawQuestObjectiveMarkers(
     overlayGraphics,
-    questInspectMarkers,
+    questObjectiveMarkers,
     transform,
     visibleTileBounds,
   );
@@ -5762,7 +5793,7 @@ function drawWorld({
   fullSignatureRef,
   lastDrawnTextureRevisionRef,
   previewSignatureRef,
-  questInspectMarkers,
+  questObjectiveMarkers,
   questGiverHasWork,
   requestRedraw,
   renderSize,
@@ -5817,7 +5848,7 @@ function drawWorld({
       movementClickFeedbackEvents,
       partyIntent,
       questGiverHasWork,
-      questInspectMarkers,
+      questObjectiveMarkers,
       renderSize,
       resurrectionProgressByCompanionId,
       showDebugOverlays,
@@ -5868,7 +5899,7 @@ function drawWorld({
       movementClickFeedbackEvents,
       onPerformanceSample,
       partyIntent,
-      questInspectMarkers,
+      questObjectiveMarkers,
       questGiverHasWork,
       requestRedraw,
       renderSize,
@@ -5900,6 +5931,7 @@ function drawWorld({
     map,
     movementClickFeedbackEvents,
     navigationClickAccessibility,
+    questObjectiveMarkers,
     viewportSize,
   });
 
@@ -5930,6 +5962,7 @@ function drawWorld({
     currentTime,
     movementClickFeedbackEvents,
     navigationClickAccessibility,
+    questObjectiveMarkers,
     viewportSize,
   });
   finishPixiDrawMetrics(metrics, managedState, textureCache);
@@ -6051,7 +6084,7 @@ export function PixiWorldRenderer({
   onCursorPositionChange,
   onResourceClick,
   partyIntent = null,
-  questInspectMarkers = [],
+  questObjectiveMarkers = [],
   resurrectionProgressByCompanionId = {},
   questGiverHasWork = false,
   showDebugOverlays = false,
@@ -6105,7 +6138,7 @@ export function PixiWorldRenderer({
   const latestModeRef = useRef(mode);
   const latestOnPerformanceSampleRef = useRef(onPerformanceSample);
   const latestPartyIntentRef = useRef<PartyIntent | null>(partyIntent);
-  const latestQuestInspectMarkersRef = useRef(questInspectMarkers);
+  const latestQuestObjectiveMarkersRef = useRef(questObjectiveMarkers);
   const latestQuestGiverHasWorkRef = useRef(questGiverHasWork);
   const latestRenderSizeRef = useRef(getRenderSize(mode, viewportSize));
   const latestViewportSizeRef = useRef(viewportSize);
@@ -6166,7 +6199,7 @@ export function PixiWorldRenderer({
     latestModeRef.current = mode;
     latestOnPerformanceSampleRef.current = onPerformanceSample;
     latestPartyIntentRef.current = partyIntent;
-    latestQuestInspectMarkersRef.current = questInspectMarkers;
+    latestQuestObjectiveMarkersRef.current = questObjectiveMarkers;
     latestQuestGiverHasWorkRef.current = questGiverHasWork;
     latestRenderSizeRef.current = renderSize;
     latestViewportSizeRef.current = viewportSize;
@@ -6199,7 +6232,7 @@ export function PixiWorldRenderer({
     navigationClickAccessibility,
     onPerformanceSample,
     partyIntent,
-    questInspectMarkers,
+    questObjectiveMarkers,
     questGiverHasWork,
     renderSize,
     resurrectionProgressByCompanionId,
@@ -6317,7 +6350,7 @@ export function PixiWorldRenderer({
         fullHadTimedWorkRef,
         fullSignatureRef,
         lastDrawnTextureRevisionRef,
-        questInspectMarkers: latestQuestInspectMarkersRef.current,
+        questObjectiveMarkers: latestQuestObjectiveMarkersRef.current,
         previewSignatureRef,
         questGiverHasWork: latestQuestGiverHasWorkRef.current,
         renderSize: latestRenderSizeRef.current,
@@ -6468,7 +6501,7 @@ export function PixiWorldRenderer({
     navigationClickAccessibility,
     onPerformanceSample,
     partyIntent,
-    questInspectMarkers,
+    questObjectiveMarkers,
     questGiverHasWork,
     renderSize,
     resurrectionProgressByCompanionId,

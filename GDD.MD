@@ -1279,6 +1279,7 @@ It may show:
 - simple prototype reward text
 - inventory-full turn-in feedback when quest rewards cannot fit
 - category grouping for different quest sources, including main prototype quests and Guild Notice Board quests
+- NPC quest location information using current prototype zone/subzone names
 
 The Quests menu must not implement a full quest journal, branching dialogue, quest reward economy, reputation, cutscenes, or production quest content unless explicitly requested.
 
@@ -1372,12 +1373,17 @@ It may show:
 - whether a destination can currently be selected
 - simple unavailable-state messaging when travel is blocked
 - unlocked direct Teleportation Echo options where current prototype key items support them
+- yellow `!` NPC quest hints beside route destinations with active or ready-to-turn-in NPC quest relevance
 
 World Travel selection may request travel to a known prototype map destination.
 
 The POI system should route the party toward the next valid teleport step along the current prototype route.
 
 Direct Teleportation Echo selection may immediately move the party to an unlocked supported prototype destination when no active transition or recovery interaction blocks it.
+
+NPC quest hints are informational route-menu markers, not separate quest route buttons.
+
+NPC quest hints may show active quest objectives by prototype zone/subzone and may show ready-to-turn-in NPC quests at the quest giver hub as completed. If multiple active NPC quests point to the same destination, one marker may group those quests in a tooltip. If an NPC quest objective is inside a special region such as the Slimeward dungeon, the hint should point to the nearest routeable parent zone/subzone, such as Azurefen Hollow / Imp Fen for Slimeward objectives. Guild Notice Board quests do not appear in NPC quest route hints.
 
 World Travel must use existing prototype teleport route data and current map state.
 
@@ -1599,11 +1605,11 @@ POI selection may use path distance, priority, target scoring, progressive fallb
 When Stay in Subzone is enabled, POI selection should prefer targets inside the leader's current subzone while still allowing valid teleport POIs and local quest interactions.
 
 
-Current prototype UI exposes POI search scope as Free Travel, Zone Only, and Subzone Only.
+Current prototype UI exposes Auto Combat and POI search scope as one combined control:
 
-- Free Travel allows current prototype route and map travel where supported.
-- Zone Only keeps autonomous POI selection on the current prototype map.
-- Subzone Only keeps autonomous POI selection inside the leader's current subzone where supported.
+- Auto Combat: Off disables autonomous combat targeting.
+- Auto Combat: On - Subzone Only enables autonomous combat targeting and keeps POI selection inside the leader's current subzone where supported.
+- Auto Combat: On - Zone Only enables autonomous combat targeting and keeps autonomous POI selection on the current prototype map.
 
 Zone Only is a prototype map-scope control and must not be treated as the final zone system.
 
